@@ -2,6 +2,13 @@
 
 Plataforma full-stack para administrar estacionamientos registrados, tickets con QR, reservas, pagos y cupos en tiempo real.
 
+## 🌐 Demo en vivo
+- Web: https://estacionamientos-web.onrender.com
+- API: https://estacionamientos-api.onrender.com/health
+- Demo cliente: `cliente@demo.cl` / `password` — Demo administrador: `admin@demo.cl` / `password`
+
+Desplegado en Render (backend + frontend) con base de datos Postgres en [Neon](https://neon.tech). El backend está en el plan gratuito de Render, por lo que puede tardar ~30-60s en despertar tras un período de inactividad.
+
 ## Stack
 - React + Vite (web y empaquetado móvil Android vía Capacitor)
 - Node.js + Express
@@ -40,6 +47,13 @@ Los tests de backend requieren una base de datos accesible; se ejecutan dentro d
 ```bash
 docker exec estacionamientos-backend npm test
 ```
+
+## Despliegue (producción)
+- **Backend**: Render Web Service (Node), build `cd backend && npm install`, start `cd backend && npm start`. Las migraciones corren automáticamente al iniciar.
+- **Frontend**: Render Static Site, build `cd frontend && npm install && npm run build`, publica `frontend/dist`.
+- **Base de datos**: Postgres gratuito en Neon (no expira, a diferencia del plan gratuito de Postgres en Render que se borra a los 30 días).
+- Variables de entorno configuradas en el dashboard de cada servicio de Render (no se suben al repo). Ver `backend/.env.example` para la lista completa.
+- Cualquier push a `main` en GitHub redepliega automáticamente ambos servicios.
 
 ## Empaquetado móvil (Android)
 Ver [`frontend/android`](frontend/android) — proyecto Capacitor ya generado. Para reconstruir el APK tras cambios:

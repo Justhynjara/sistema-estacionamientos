@@ -15,7 +15,7 @@ INSERT INTO tickets (estacionamiento_id,codigo_qr,patente,fecha_entrada,fecha_sa
 SELECT e.id,qr,patente,
        date_trunc('day',NOW()) + hora_entrada,
        CASE WHEN hora_salida IS NULL THEN NULL ELSE date_trunc('day',NOW()) + hora_salida END,
-       estado,monto
+       demo.estado,demo.monto
 FROM estacionamientos e
 JOIN (VALUES
   ('QR-DEMO-1','AA1111','9 hours'::interval,'10 hours 30 minutes'::interval,'CERRADO',3000),
