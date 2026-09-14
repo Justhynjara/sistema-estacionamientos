@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react';
 import { api } from './services/api.js';
+import QRCodeCanvas from './QRCode.jsx';
+import Pagination, { usePagination } from './Pagination.jsx';
 
 function Tabs({ tab, setTab }) {
   const tabs = [['estacionamientos', '🅿️ Mis estacionamientos'], ['dashboard', '📊 Dashboard de tickets']];
@@ -93,16 +95,29 @@ function GestionTicketPanel({ reloadParking }) {
 }
 
 function EstacionamientosTab({ parking, reloadParking }) {
-  async function emitirTicket(id) {
+  const [ticketEmitido, setTicketEmitido] = useState(null);
+
+  async function emitirTicket(id, nombre) {
     const patente = prompt('Patente del vehículo (opcional)') || null;
     try {
       const r = await api.post('/tickets', { estacionamiento_id: id, patente });
-      alert('Ticket emitido. Código QR: ' + r.data.codigo_qr);
+      setTicketEmitido({ codigo: r.data.codigo_qr, nombre });
       reloadParking();
     } catch (err) { alert(err.response?.data?.error || 'Error al emitir ticket'); }
   }
   return (
     <div>
+      {ticketEmitido && (
+        <div className="card" style={{ textAlign: 'center' }}>
+          <h3>🎫 Ticket emitido en {ticketEmitido.nombre}</h3>
+          <p>Entrega este código QR al conductor:</p>
+          <div style={{ display: 'flex', justifyContent: 'center', margin: '12px 0' }}>
+            <QRCodeCanvas value={ticketEmitido.codigo} />
+          </div>
+          <p style={{ fontFamily: 'monospace', color: 'var(--text-muted)', fontSize: '.8rem', wordBreak: 'break-all' }}>{ticketEmitido.codigo}</p>
+          <button type="button" className="secondary" onClick={() => setTicketEmitido(null)}>Cerrar</button>
+        </div>
+      )}
       <div className="grid">
         {parking.map(p => (
           <div className="card" key={p.id}>
@@ -110,7 +125,7 @@ function EstacionamientosTab({ parking, reloadParking }) {
             <p>{p.direccion}</p>
             <p>💰 ${Number(p.precio_hora).toLocaleString('es-CL')} / hora</p>
             <p className={'badge ' + (p.cupos_disponibles > 0 ? 'ok' : 'off')}>🅿️ {p.cupos_disponibles} / {p.cupo_maximo} disponibles</p>
-            <button onClick={() => emitirTicket(p.id)} disabled={p.cupos_disponibles <= 0}>🎫 Emitir ticket</button>
+            <button onClick={() => emitirTicket(p.id, p.nombre)} disabled={p.cupos_disponibles <= 0}>🎫 Emitir ticket</button>
           </div>
         ))}
         {parking.length === 0 && <div className="empty-state">Aún no tienes estacionamientos asignados. Pide al administrador que registre uno a tu nombre.</div>}
@@ -158,6 +173,7 @@ function DashboardTab({ parking }) {
   }, [estacionamientoId, fecha]);
 
   const maxEntradas = data ? Math.max(1, ...data.flujoPorHora.map(h => h.entradas)) : 1;
+  const { pageItems: ticketsPagina, page: ticketsPage, setPage: setTicketsPage, totalPages: ticketsTotalPages } = usePagination(data?.tickets || [], 10);
 
   return (
     <div>
@@ -225,7 +241,7 @@ function DashboardTab({ parking }) {
               <table className="table">
                 <thead><tr><th>Estacionamiento</th><th>Patente</th><th>Entrada</th><th>Salida</th><th>Estado</th><th>Cobro</th></tr></thead>
                 <tbody>
-                  {data.tickets.map(t => (
+                  {ticketsPagina.map(t => (
                     <tr key={t.id}>
                       <td>{t.estacionamiento_nombre}</td>
                       <td>{t.patente || '—'}</td>
@@ -239,6 +255,7 @@ function DashboardTab({ parking }) {
               </table>
               {data.tickets.length === 0 && <div className="empty-state">No hay tickets emitidos ese día.</div>}
             </div>
+            <Pagination page={ticketsPage} totalPages={ticketsTotalPages} onChange={setTicketsPage} />
           </div>
         </>
       )}

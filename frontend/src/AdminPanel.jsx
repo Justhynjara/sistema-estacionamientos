@@ -1,5 +1,69 @@
 import { useEffect, useState } from 'react';
+import { MapContainer, TileLayer, Marker, useMap, useMapEvents } from 'react-leaflet';
+import L from 'leaflet';
+import 'leaflet/dist/leaflet.css';
 import { api } from './services/api.js';
+import { geocode } from './utils/geo.js';
+import Pagination, { usePagination } from './Pagination.jsx';
+
+const SANTIAGO = { lat: -33.4489, lng: -70.6693 };
+
+function pinIcon() {
+  return L.divIcon({
+    html: '<div style="font-size:26px;line-height:26px;transform:translate(-50%,-100%)">📍</div>',
+    className: '', iconSize: [26, 26], iconAnchor: [0, 0]
+  });
+}
+const icon = pinIcon();
+
+function RecenterMap({ center }) {
+  const map = useMap();
+  useEffect(() => { if (center) map.setView(center, 15); }, [center, map]);
+  return null;
+}
+
+function ClickToPick({ onPick }) {
+  useMapEvents({ click(e) { onPick({ lat: e.latlng.lat, lng: e.latlng.lng }); } });
+  return null;
+}
+
+function LocationPicker({ value, onChange }) {
+  const [busqueda, setBusqueda] = useState('');
+  const [buscando, setBuscando] = useState(false);
+  const [error, setError] = useState('');
+  const center = value || SANTIAGO;
+
+  async function buscarDireccion(e) {
+    e.preventDefault();
+    if (!busqueda.trim()) return;
+    setBuscando(true); setError('');
+    try {
+      const coords = await geocode(busqueda.trim());
+      onChange(coords);
+    } catch (err) { setError(err.message || 'No se encontró esa dirección'); }
+    finally { setBuscando(false); }
+  }
+
+  return (
+    <div style={{ margin: '6px 0 14px' }}>
+      <div className="row-form">
+        <input placeholder="Buscar dirección para ubicar en el mapa" value={busqueda} onChange={e => setBusqueda(e.target.value)} aria-label="Buscar dirección" />
+        <button type="button" onClick={buscarDireccion} disabled={buscando} className="secondary">{buscando ? 'Buscando...' : '🔎 Buscar'}</button>
+      </div>
+      {error && <p className="badge off">⚠️ {error}</p>}
+      <p style={{ fontSize: '.85rem', color: 'var(--text-muted)', margin: '0 0 6px' }}>O haz clic directamente en el mapa para fijar la ubicación exacta.</p>
+      <div style={{ borderRadius: 12, overflow: 'hidden' }}>
+        <MapContainer center={[center.lat, center.lng]} zoom={value ? 15 : 12} style={{ height: 260, width: '100%' }}>
+          <RecenterMap center={value ? [value.lat, value.lng] : null} />
+          <ClickToPick onPick={onChange} />
+          <TileLayer attribution='&copy; OpenStreetMap contributors' url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
+          {value && <Marker position={[value.lat, value.lng]} icon={icon} />}
+        </MapContainer>
+      </div>
+      {value && <p className="badge ok" style={{ marginTop: 8 }}>📍 {value.lat.toFixed(6)}, {value.lng.toFixed(6)}</p>}
+    </div>
+  );
+}
 
 function Tabs({ tab, setTab }) {
   const tabs = [['usuarios', '👤 Usuarios'], ['parking', '🅿️ Estacionamientos'], ['parametros', '⚙️ Parámetros']];
@@ -13,21 +77,25 @@ function Tabs({ tab, setTab }) {
 }
 
 function ParkingTab({ parking, reloadParking, users }) {
-  const initialForm = { cliente_id: '', nombre: '', direccion: '', latitud: '', longitud: '', precio_hora: '', cupo_maximo: '' };
+  const initialForm = { cliente_id: '', nombre: '', direccion: '', precio_hora: '', cupo_maximo: '' };
   const [form, setForm] = useState(initialForm);
+  const [ubicacion, setUbicacion] = useState(null);
   const clientes = users.filter(u => u.rol === 'CLIENTE');
+  const { pageItems, page, setPage, totalPages } = usePagination(parking, 9);
 
   async function crear(e) {
     e.preventDefault();
+    if (!ubicacion) { alert('Marca la ubicación del estacionamiento en el mapa'); return; }
     try {
       await api.post('/admin/parking', {
         ...form,
-        latitud: Number(form.latitud),
-        longitud: Number(form.longitud),
+        latitud: ubicacion.lat,
+        longitud: ubicacion.lng,
         precio_hora: Number(form.precio_hora),
         cupo_maximo: Number(form.cupo_maximo)
       });
       setForm(initialForm);
+      setUbicacion(null);
       reloadParking();
     } catch (err) { alert(err.response?.data?.error || 'Error al crear estacionamiento'); }
   }
@@ -52,15 +120,14 @@ function ParkingTab({ parking, reloadParking, users }) {
           </select>
           <input placeholder="Nombre" value={form.nombre} onChange={e => setForm({ ...form, nombre: e.target.value })} required />
           <input placeholder="Dirección" value={form.direccion} onChange={e => setForm({ ...form, direccion: e.target.value })} required />
-          <input placeholder="Latitud" value={form.latitud} onChange={e => setForm({ ...form, latitud: e.target.value })} required />
-          <input placeholder="Longitud" value={form.longitud} onChange={e => setForm({ ...form, longitud: e.target.value })} required />
+          <LocationPicker value={ubicacion} onChange={setUbicacion} />
           <input placeholder="Precio por hora" value={form.precio_hora} onChange={e => setForm({ ...form, precio_hora: e.target.value })} required />
           <input placeholder="Cupo máximo" value={form.cupo_maximo} onChange={e => setForm({ ...form, cupo_maximo: e.target.value })} required />
           <button>Crear estacionamiento</button>
         </form>
       </div>
       <div className="grid">
-        {parking.map(p => (
+        {pageItems.map(p => (
           <div className="card" key={p.id}>
             <h3>{p.nombre}</h3>
             <p>{p.direccion}</p>
@@ -70,11 +137,14 @@ function ParkingTab({ parking, reloadParking, users }) {
         ))}
         {parking.length===0 && <div className="empty-state">No hay estacionamientos registrados todavía.</div>}
       </div>
+      <Pagination page={page} totalPages={totalPages} onChange={setPage} />
     </>
   );
 }
 
 function UsersTab({ users, reloadUsers, currentUserId }) {
+  const { pageItems, page, setPage, totalPages } = usePagination(users, 10);
+
   async function toggleActivo(u) {
     try {
       await api.patch(`/admin/users/${u.id}/status`, { activo: !u.activo });
@@ -95,7 +165,7 @@ function UsersTab({ users, reloadUsers, currentUserId }) {
       <table className="table">
         <thead><tr><th>Nombre</th><th>Email</th><th>Rol</th><th>Estado</th><th></th></tr></thead>
         <tbody>
-          {users.map(u => (
+          {pageItems.map(u => (
             <tr key={u.id}>
               <td>{u.nombre}</td>
               <td>{u.email}</td>
@@ -113,6 +183,7 @@ function UsersTab({ users, reloadUsers, currentUserId }) {
         </tbody>
       </table>
       </div>
+      <Pagination page={page} totalPages={totalPages} onChange={setPage} />
     </div>
   );
 }

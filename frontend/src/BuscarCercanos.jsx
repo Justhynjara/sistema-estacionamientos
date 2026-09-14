@@ -4,6 +4,8 @@ import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { io } from 'socket.io-client';
 import { api, API_ORIGIN } from './services/api.js';
+import QRCodeCanvas from './QRCode.jsx';
+import { geocode } from './utils/geo.js';
 
 const SOCKET_URL = API_ORIGIN;
 const RADIUS_KM = 5;
@@ -28,14 +30,6 @@ function haversineMeters(a, b) {
   const dLng = toRad(b.lng - a.lng);
   const s = Math.sin(dLat / 2) ** 2 + Math.cos(toRad(a.lat)) * Math.cos(toRad(b.lat)) * Math.sin(dLng / 2) ** 2;
   return 2 * R * Math.asin(Math.sqrt(s));
-}
-
-async function geocode(texto) {
-  const url = `https://nominatim.openstreetmap.org/search?format=json&limit=1&q=${encodeURIComponent(texto)}`;
-  const r = await fetch(url, { headers: { Accept: 'application/json' } });
-  const data = await r.json();
-  if (!data.length) throw new Error('No se encontró esa dirección');
-  return { lat: Number(data[0].lat), lng: Number(data[0].lon) };
 }
 
 async function routeSummary(from, to) {
@@ -268,10 +262,13 @@ export default function BuscarCercanos() {
       </div>
 
       {reserva && (
-        <div className="card">
+        <div className="card" style={{ textAlign: 'center' }}>
           <h3>🎫 Reserva confirmada en {reserva.nombre}</h3>
-          <p>Muestra este código al llegar para validar tu cupo:</p>
-          <p style={{ fontSize: '1.6rem', fontWeight: 800, letterSpacing: '.05em' }}>{reserva.codigo}</p>
+          <p>Muestra este código QR al llegar para validar tu cupo:</p>
+          <div style={{ display: 'flex', justifyContent: 'center', margin: '12px 0' }}>
+            <QRCodeCanvas value={reserva.codigo} />
+          </div>
+          <p style={{ fontFamily: 'monospace', color: 'var(--text-muted)', fontSize: '.8rem', wordBreak: 'break-all' }}>{reserva.codigo}</p>
           <Countdown expira={reserva.expira} />
           <div style={{ marginTop: 10 }}>
             <button type="button" className="secondary" onClick={() => setReserva(null)}>Cerrar</button>
