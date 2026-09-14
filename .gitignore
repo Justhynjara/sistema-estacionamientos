@@ -1,0 +1,30 @@
+# dependencies
+node_modules/
+**/node_modules/
+
+# builds
+dist/
+**/dist/
+frontend/android/app/build/
+frontend/android/build/
+frontend/android/.gradle/
+frontend/android/local.properties
+frontend/android/app/.cxx/
+frontend/android/capacitor-cordova-android-plugins/build/
+
+# env / secrets
+.env*
+**/.env*
+!.env.example
+!**/.env.example
+!**/.env.mobile.example
+
+# logs
+*.log
+npm-debug.log*
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/

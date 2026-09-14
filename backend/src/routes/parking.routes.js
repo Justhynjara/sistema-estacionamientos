@@ -1,0 +1,13 @@
+import {Router} from 'express';
+import {listParking,getParking,nearbyParking,myParking} from '../controllers/parking.controller.js';
+import {auth} from '../middleware/auth.middleware.js';
+import {roles} from '../middleware/role.middleware.js';
+import {validateQuery,validateParams} from '../middleware/validate.middleware.js';
+import {nearbyQuerySchema} from '../validation/parking.schema.js';
+import {idParamSchema} from '../validation/common.schema.js';
+const r=Router();
+r.get('/',listParking);
+r.get('/nearby',validateQuery(nearbyQuerySchema),nearbyParking);
+r.get('/mine',auth,roles('CLIENTE'),myParking);
+r.get('/:id',validateParams(idParamSchema),getParking);
+export default r;

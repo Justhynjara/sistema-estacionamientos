@@ -1,0 +1,339 @@
+import { useEffect, useRef, useState } from 'react';
+import { MapContainer, TileLayer, Marker, Popup, Polyline, useMap, useMapEvents } from 'react-leaflet';
+import L from 'leaflet';
+import 'leaflet/dist/leaflet.css';
+import { io } from 'socket.io-client';
+import { api, API_ORIGIN } from './services/api.js';
+
+const SOCKET_URL = API_ORIGIN;
+const RADIUS_KM = 5;
+const REROUTE_THRESHOLD_M = 30;
+
+function emojiIcon(emoji) {
+  return L.divIcon({
+    html: `<div style="font-size:26px;line-height:26px;transform:translate(-50%,-100%)">${emoji}</div>`,
+    className: '',
+    iconSize: [26, 26],
+    iconAnchor: [0, 0]
+  });
+}
+const userIcon = emojiIcon('🔵');
+const destinoIcon = emojiIcon('🏁');
+const parkingIcon = emojiIcon('🅿️');
+
+function haversineMeters(a, b) {
+  const R = 6371000;
+  const toRad = d => (d * Math.PI) / 180;
+  const dLat = toRad(b.lat - a.lat);
+  const dLng = toRad(b.lng - a.lng);
+  const s = Math.sin(dLat / 2) ** 2 + Math.cos(toRad(a.lat)) * Math.cos(toRad(b.lat)) * Math.sin(dLng / 2) ** 2;
+  return 2 * R * Math.asin(Math.sqrt(s));
+}
+
+async function geocode(texto) {
+  const url = `https://nominatim.openstreetmap.org/search?format=json&limit=1&q=${encodeURIComponent(texto)}`;
+  const r = await fetch(url, { headers: { Accept: 'application/json' } });
+  const data = await r.json();
+  if (!data.length) throw new Error('No se encontró esa dirección');
+  return { lat: Number(data[0].lat), lng: Number(data[0].lon) };
+}
+
+async function routeSummary(from, to) {
+  const url = `https://router.project-osrm.org/route/v1/driving/${from.lng},${from.lat};${to.lng},${to.lat}?overview=false`;
+  const r = await fetch(url);
+  const data = await r.json();
+  if (data.code !== 'Ok') return null;
+  const route = data.routes[0];
+  return { distanciaKm: route.distance / 1000, duracionMin: route.duration / 60 };
+}
+
+async function routeGeometry(from, to) {
+  const url = `https://router.project-osrm.org/route/v1/driving/${from.lng},${from.lat};${to.lng},${to.lat}?overview=full&geometries=geojson`;
+  const r = await fetch(url);
+  const data = await r.json();
+  if (data.code !== 'Ok') throw new Error('No se pudo calcular la ruta');
+  const route = data.routes[0];
+  return {
+    coords: route.geometry.coordinates.map(([lng, lat]) => [lat, lng]),
+    distanciaKm: route.distance / 1000,
+    duracionMin: route.duration / 60
+  };
+}
+
+function RecenterMap({ center }) {
+  const map = useMap();
+  useEffect(() => { if (center) map.setView(center, map.getZoom()); }, [center, map]);
+  return null;
+}
+
+function ClickToSetLocation({ onSelect }) {
+  useMapEvents({ click(e) { onSelect({ lat: e.latlng.lat, lng: e.latlng.lng }); } });
+  return null;
+}
+
+function Countdown({ expira }) {
+  const [restanteMs, setRestanteMs] = useState(new Date(expira) - new Date());
+  useEffect(() => {
+    const id = setInterval(() => setRestanteMs(new Date(expira) - new Date()), 1000);
+    return () => clearInterval(id);
+  }, [expira]);
+  if (restanteMs <= 0) return <span className="badge off">La reserva expiró</span>;
+  const min = Math.floor(restanteMs / 60000);
+  const seg = Math.floor((restanteMs % 60000) / 1000);
+  return <span className="badge ok">⏱️ Válida por {min}:{String(seg).padStart(2, '0')} min</span>;
+}
+
+export default function BuscarCercanos() {
+  const [userPos, setUserPos] = useState(null);
+  const [geoError, setGeoError] = useState('');
+  const [manualMode, setManualMode] = useState(false);
+  const [origen, setOrigen] = useState('');
+  const [origenLoading, setOrigenLoading] = useState(false);
+  const [destino, setDestino] = useState('');
+  const [destinoCoords, setDestinoCoords] = useState(null);
+  const [parkings, setParkings] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  const [selectedId, setSelectedId] = useState(null);
+  const [selectedRoute, setSelectedRoute] = useState(null);
+  const [reserva, setReserva] = useState(null);
+  const [reservaError, setReservaError] = useState('');
+  const [reservandoId, setReservandoId] = useState(null);
+  const lastRoutedFrom = useRef(null);
+  const socketRef = useRef(null);
+  const joinedRoomsRef = useRef(new Set());
+  const manualModeRef = useRef(false);
+
+  useEffect(() => { manualModeRef.current = manualMode; }, [manualMode]);
+
+  useEffect(() => {
+    if (!navigator.geolocation) { setGeoError('Tu navegador no soporta geolocalización'); return; }
+    const watchId = navigator.geolocation.watchPosition(
+      pos => { if (!manualModeRef.current) setUserPos({ lat: pos.coords.latitude, lng: pos.coords.longitude }); },
+      () => { if (!manualModeRef.current) setGeoError('No se pudo obtener tu ubicación automáticamente. Escribe tu dirección o haz clic en el mapa para marcarla.'); },
+      { enableHighAccuracy: true, maximumAge: 5000 }
+    );
+    return () => navigator.geolocation.clearWatch(watchId);
+  }, []);
+
+  function setManualLocation(coords) {
+    setUserPos(coords);
+    setManualMode(true);
+    setGeoError('');
+  }
+
+  function usarGPS() {
+    setManualMode(false);
+    setGeoError('');
+    navigator.geolocation.getCurrentPosition(
+      pos => setUserPos({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
+      () => setGeoError('No se pudo obtener tu ubicación automáticamente. Escribe tu dirección o haz clic en el mapa para marcarla.'),
+      { enableHighAccuracy: true }
+    );
+  }
+
+  async function usarOrigenEscrito(e) {
+    e.preventDefault();
+    if (!origen.trim()) return;
+    setOrigenLoading(true); setError('');
+    try {
+      const coords = await geocode(origen.trim());
+      setManualLocation(coords);
+    } catch (err) {
+      setError(err.message || 'No se encontró esa dirección');
+    } finally {
+      setOrigenLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    const socket = io(SOCKET_URL);
+    socket.on('cuposActualizados', data => {
+      setParkings(prev => prev.map(x => x.id === data.estacionamiento_id
+        ? { ...x, cupos_disponibles: data.cupos_disponibles, cupo_maximo: data.cupo_maximo }
+        : x));
+    });
+    socketRef.current = socket;
+    return () => socket.disconnect();
+  }, []);
+
+  function subscribeCupos(list) {
+    const socket = socketRef.current;
+    if (!socket) return;
+    const nuevos = new Set(list.map(p => p.id));
+    joinedRoomsRef.current.forEach(id => { if (!nuevos.has(id)) socket.emit('leaveParking', id); });
+    nuevos.forEach(id => { if (!joinedRoomsRef.current.has(id)) socket.emit('joinParking', id); });
+    joinedRoomsRef.current = nuevos;
+  }
+
+  async function buscar(e) {
+    e.preventDefault();
+    setError(''); setLoading(true); setSelectedId(null); setSelectedRoute(null);
+    try {
+      const destCoords = destino.trim() ? await geocode(destino.trim()) : userPos;
+      if (!destCoords) throw new Error('Aún no se ha obtenido tu ubicación actual');
+      setDestinoCoords(destCoords);
+
+      const r = await api.get('/parking/nearby', { params: { lat: destCoords.lat, lng: destCoords.lng, radiusKm: RADIUS_KM } });
+      const candidatos = r.data.slice(0, 8);
+
+      if (userPos) {
+        const conRuta = await Promise.all(candidatos.map(async p => {
+          try {
+            const resumen = await routeSummary(userPos, { lat: Number(p.latitud), lng: Number(p.longitud) });
+            return { ...p, ruta: resumen };
+          } catch { return { ...p, ruta: null }; }
+        }));
+        setParkings(conRuta);
+        subscribeCupos(conRuta);
+      } else {
+        setParkings(candidatos);
+        subscribeCupos(candidatos);
+      }
+    } catch (err) {
+      setError(err.message || 'Error al buscar estacionamientos');
+      setParkings([]);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function verRuta(p) {
+    if (!userPos) { setError('Aún no se ha obtenido tu ubicación actual'); return; }
+    setSelectedId(p.id);
+    try {
+      const ruta = await routeGeometry(userPos, { lat: Number(p.latitud), lng: Number(p.longitud) });
+      setSelectedRoute(ruta);
+      lastRoutedFrom.current = userPos;
+    } catch (err) {
+      setError(err.message || 'No se pudo trazar la ruta');
+    }
+  }
+
+  async function reservarCupo(p) {
+    setReservandoId(p.id); setReservaError('');
+    try {
+      const r = await api.post('/tickets/reserve', { estacionamiento_id: p.id });
+      setReserva({ codigo: r.data.codigo_qr, nombre: p.nombre, expira: r.data.reserva_expira });
+    } catch (err) {
+      setReservaError(err.response?.data?.error || 'No se pudo reservar el cupo');
+    } finally {
+      setReservandoId(null);
+    }
+  }
+
+  useEffect(() => {
+    if (!selectedId || !userPos || !lastRoutedFrom.current) return;
+    if (haversineMeters(lastRoutedFrom.current, userPos) < REROUTE_THRESHOLD_M) return;
+    const p = parkings.find(x => x.id === selectedId);
+    if (!p) return;
+    routeGeometry(userPos, { lat: Number(p.latitud), lng: Number(p.longitud) })
+      .then(ruta => { setSelectedRoute(ruta); lastRoutedFrom.current = userPos; })
+      .catch(() => {});
+  }, [userPos, selectedId, parkings]);
+
+  const center = destinoCoords || userPos || { lat: -33.4489, lng: -70.6693 };
+
+  return (
+    <div>
+      <div className="card">
+        <h2><span className="step">1</span>Tu ubicación de partida</h2>
+        <p>Se usa tu GPS automáticamente. Si falla o prefieres otra, escribe una dirección o haz clic directamente en el mapa.</p>
+        {geoError && <p className="badge off">⚠️ {geoError}</p>}
+        <form onSubmit={usarOrigenEscrito} className="row-form">
+          <input
+            placeholder="Tu dirección de partida (ej: Av. Providencia 1234, Santiago)"
+            aria-label="Tu dirección de partida"
+            value={origen}
+            onChange={e => setOrigen(e.target.value)}
+          />
+          <button disabled={origenLoading}>{origenLoading && <span className="spinner"/>}{origenLoading ? 'Ubicando...' : 'Usar esta dirección'}</button>
+          <button type="button" onClick={usarGPS} className="secondary">📍 Usar mi GPS</button>
+        </form>
+        <p className={'badge ' + (userPos ? 'ok' : 'off')}>{userPos ? (manualMode ? '📌 Ubicación fijada manualmente' : '🛰️ Ubicación por GPS') : '⏳ Sin ubicación aún'}</p>
+      </div>
+
+      <div className="card">
+        <h2><span className="step">2</span>Destino</h2>
+        {error && <p className="badge off">⚠️ {error}</p>}
+        <form onSubmit={buscar} className="row-form">
+          <input
+            placeholder="Destino (ej: Plaza de Armas, Curicó) — vacío = buscar cerca de mí"
+            aria-label="Destino"
+            value={destino}
+            onChange={e => setDestino(e.target.value)}
+          />
+          <button disabled={loading}>{loading && <span className="spinner"/>}{loading ? 'Buscando...' : '🔎 Buscar estacionamientos'}</button>
+        </form>
+      </div>
+
+      {reserva && (
+        <div className="card">
+          <h3>🎫 Reserva confirmada en {reserva.nombre}</h3>
+          <p>Muestra este código al llegar para validar tu cupo:</p>
+          <p style={{ fontSize: '1.6rem', fontWeight: 800, letterSpacing: '.05em' }}>{reserva.codigo}</p>
+          <Countdown expira={reserva.expira} />
+          <div style={{ marginTop: 10 }}>
+            <button type="button" className="secondary" onClick={() => setReserva(null)}>Cerrar</button>
+          </div>
+        </div>
+      )}
+      {reservaError && <p className="badge off">⚠️ {reservaError}</p>}
+
+      <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
+        <MapContainer center={[center.lat, center.lng]} zoom={14} style={{ height: 360, width: '100%' }}>
+          <RecenterMap center={[center.lat, center.lng]} />
+          <ClickToSetLocation onSelect={setManualLocation} />
+          <TileLayer
+            attribution='&copy; OpenStreetMap contributors'
+            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+          />
+          {userPos && (
+            <Marker position={[userPos.lat, userPos.lng]} icon={userIcon}>
+              <Popup>Tu ubicación {manualMode ? '(fijada manualmente)' : '(GPS)'}<br />Haz clic en otro punto del mapa para moverla</Popup>
+            </Marker>
+          )}
+          {destinoCoords && (
+            <Marker position={[destinoCoords.lat, destinoCoords.lng]} icon={destinoIcon}>
+              <Popup>Destino</Popup>
+            </Marker>
+          )}
+          {parkings.map(p => (
+            <Marker key={p.id} position={[Number(p.latitud), Number(p.longitud)]} icon={parkingIcon}>
+              <Popup>
+                <strong>{p.nombre}</strong><br />
+                {p.cupos_disponibles} / {p.cupo_maximo} disponibles<br />
+                <button onClick={() => verRuta(p)}>Ver ruta</button>
+              </Popup>
+            </Marker>
+          ))}
+          {selectedRoute && <Polyline positions={selectedRoute.coords} color="#1f6feb" weight={5} />}
+        </MapContainer>
+      </div>
+
+      <div className="grid">
+        {parkings.map(p => (
+          <div className={'card' + (selectedId === p.id ? ' selected' : '')} key={p.id}>
+            <h3>{p.nombre}</h3>
+            <p>{p.direccion}</p>
+            <p>💰 ${Number(p.precio_hora).toLocaleString('es-CL')} / hora</p>
+            <p className={'badge ' + (p.cupos_disponibles > 0 ? 'ok' : 'off')}>🅿️ {p.cupos_disponibles} / {p.cupo_maximo} disponibles</p>
+            <p>📍 {p.distancia_km.toFixed(2)} km del destino</p>
+            {p.ruta && <p>🚗 {p.ruta.distanciaKm.toFixed(1)} km · ⏱️ {Math.round(p.ruta.duracionMin)} min desde tu ubicación</p>}
+            <div className="row-form">
+              <button onClick={() => verRuta(p)} disabled={p.cupos_disponibles <= 0}>
+                {selectedId === p.id ? '✅ Ruta trazada' : '🗺️ Ver ruta'}
+              </button>
+              <button type="button" className="secondary" onClick={() => reservarCupo(p)} disabled={p.cupos_disponibles <= 0 || reservandoId === p.id}>
+                {reservandoId === p.id && <span className="spinner" />}🎫 Reservar cupo
+              </button>
+            </div>
+          </div>
+        ))}
+        {!loading && parkings.length === 0 && !error && (
+          <div className="empty-state">Ingresa un destino y presiona "Buscar estacionamientos" para ver opciones cercanas.</div>
+        )}
+      </div>
+    </div>
+  );
+}

@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mockup Cliente - Sistema de Estacionamientos</title>
+<link rel="stylesheet" href="mockup.css">
+</head>
+<body>
+<div class="app">
+
+  <div class="tabs">
+    <a class="tab" href="usuario.html">Usuario</a>
+    <a class="tab active" href="cliente.html">Cliente</a>
+    <a class="tab" href="admin.html">Administrador</a>
+  </div>
+
+  <div class="card">
+    <h1>Estacionamiento Centro</h1>
+    <p class="sub">Panel de operación diaria</p>
+    <div class="counter">
+      <div>
+        <div class="big">18</div>
+        <div class="of">disponibles</div>
+      </div>
+      <div style="color:var(--muted); font-size:20px;">/</div>
+      <div>
+        <div class="big" style="color:var(--muted)">25</div>
+        <div class="of">cupos totales</div>
+      </div>
+    </div>
+    <p class="sub" style="text-align:center; margin-top:6px;">El tope de 25 lo define el administrador</p>
+    <button class="btn">Emitir ticket y generar QR</button>
+  </div>
+
+  <div class="card">
+    <h2>Cobrar salida</h2>
+    <div class="qr-box"></div>
+    <p class="sub" style="text-align:center;">Escanea el QR del cliente para cerrar el ticket</p>
+    <button class="btn amber">Escanear QR de salida</button>
+  </div>
+
+  <div class="card">
+    <h2>Tickets activos</h2>
+    <div class="ticket-row">
+      <span class="code">#TCK-8841</span>
+      <span>Entrada 14:32</span>
+      <span style="color:var(--green-dark); font-weight:600;">Activo</span>
+    </div>
+    <div class="ticket-row">
+      <span class="code">#TCK-8842</span>
+      <span>Entrada 14:50</span>
+      <span style="color:var(--green-dark); font-weight:600;">Activo</span>
+    </div>
+    <div class="ticket-row">
+      <span class="code">#TCK-8839</span>
+      <span>Entrada 13:10 · Salida 14:05</span>
+      <span style="color:var(--muted);">Cerrado · $700</span>
+    </div>
+  </div>
+
+</div>
+</body>
+</html>

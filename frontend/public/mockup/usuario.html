@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mockup Usuario - Sistema de Estacionamientos</title>
+<link rel="stylesheet" href="mockup.css">
+</head>
+<body>
+<div class="app">
+
+  <div class="tabs">
+    <a class="tab active" href="usuario.html">Usuario</a>
+    <a class="tab" href="cliente.html">Cliente</a>
+    <a class="tab" href="admin.html">Administrador</a>
+  </div>
+
+  <div class="card">
+    <h1>Buscar estacionamiento</h1>
+    <p class="sub">Indica tu ruta y te mostramos disponibilidad en tiempo real</p>
+    <label class="field-label">Origen</label>
+    <div class="row"><input value="Mi ubicación actual" readonly></div>
+    <label class="field-label">Destino</label>
+    <div class="row"><input placeholder="Ej: Plaza de Armas, Curicó"></div>
+    <button class="btn">Buscar estacionamientos</button>
+  </div>
+
+  <div class="card">
+    <h2>Ruta y estacionamientos cercanos</h2>
+    <div class="map">
+      <div class="route-line"></div>
+      <div class="pin green" style="top:30%; left:20%;"><span>A</span></div>
+      <div class="pin red" style="top:55%; left:65%;"><span>B</span></div>
+      <div class="pin amber" style="top:40%; left:45%;"><span>P</span></div>
+    </div>
+    <div class="parking-item">
+      <div>
+        <div class="parking-name">Estacionamiento Centro</div>
+        <div class="parking-meta">350 m de tu ruta · $800/hora</div>
+      </div>
+      <span class="badge ok">18 libres</span>
+    </div>
+    <div class="parking-item">
+      <div>
+        <div class="parking-name">Parking Plaza</div>
+        <div class="parking-meta">600 m de tu ruta · $700/hora</div>
+      </div>
+      <span class="badge low">3 libres</span>
+    </div>
+    <div class="parking-item">
+      <div>
+        <div class="parking-name">Estacionamiento Sur</div>
+        <div class="parking-meta">900 m de tu ruta · $600/hora</div>
+      </div>
+      <span class="badge full">0 libres</span>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Mi ticket activo</h2>
+    <div class="qr-box"></div>
+    <p class="sub" style="text-align:center;">Muestra este QR al salir para pagar</p>
+    <div class="ticket-row">
+      <span class="code">#TCK-8841</span>
+      <span>Entrada 14:32</span>
+      <span style="color:var(--green-dark); font-weight:600;">Activo</span>
+    </div>
+  </div>
+
+</div>
+</body>
+</html>

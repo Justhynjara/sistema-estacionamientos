@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mockup Administrador - Sistema de Estacionamientos</title>
+<link rel="stylesheet" href="mockup.css">
+</head>
+<body>
+<div class="app">
+
+  <div class="tabs">
+    <a class="tab" href="usuario.html">Usuario</a>
+    <a class="tab" href="cliente.html">Cliente</a>
+    <a class="tab active" href="admin.html">Administrador</a>
+  </div>
+
+  <div class="card">
+    <h1>Panel de administración</h1>
+    <p class="sub">Gestión general de la plataforma</p>
+    <div class="stat-grid">
+      <div class="stat"><div class="num">42</div><div class="label">Estacionamientos activos</div></div>
+      <div class="stat"><div class="num">3</div><div class="label">Solicitudes pendientes</div></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Solicitudes de nuevos estacionamientos</h2>
+    <div class="pending-row">
+      <div>
+        <div class="parking-name">Parking Norte</div>
+        <div class="parking-meta">Solicita 40 cupos · $650/hora</div>
+      </div>
+      <div class="actions">
+        <button class="icon-btn approve">Aprobar</button>
+        <button class="icon-btn reject">Rechazar</button>
+      </div>
+    </div>
+    <div class="pending-row">
+      <div>
+        <div class="parking-name">Estacionamiento Rengo</div>
+        <div class="parking-meta">Solicita 15 cupos · $500/hora</div>
+      </div>
+      <div class="actions">
+        <button class="icon-btn approve">Aprobar</button>
+        <button class="icon-btn reject">Rechazar</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Usuarios de la plataforma</h2>
+    <div class="pending-row">
+      <div>
+        <div class="parking-name">Cliente Demo</div>
+        <div class="parking-meta">cliente@demo.cl · Rol CLIENTE</div>
+      </div>
+      <span class="badge ok">Activo</span>
+    </div>
+    <div class="pending-row">
+      <div>
+        <div class="parking-name">Usuario Demo</div>
+        <div class="parking-meta">usuario@demo.cl · Rol USUARIO</div>
+      </div>
+      <span class="badge ok">Activo</span>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Editar cupos de un estacionamiento</h2>
+    <label class="field-label">Estacionamiento</label>
+    <div class="row"><select><option>Estacionamiento Centro</option><option>Parking Plaza</option></select></div>
+    <label class="field-label">Cupos totales aprobados</label>
+    <div class="row"><input type="number" value="25"></div>
+    <button class="btn secondary">Guardar cambios</button>
+  </div>
+
+  <div class="card">
+    <h2>Parámetros del sistema</h2>
+    <label class="field-label">Comisión de la plataforma (%)</label>
+    <div class="row"><input type="number" value="10"></div>
+    <label class="field-label">Moneda</label>
+    <div class="row"><input value="CLP"></div>
+    <button class="btn secondary">Guardar parámetros</button>
+  </div>
+
+</div>
+</body>
+</html>

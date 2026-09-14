@@ -1,0 +1,9 @@
+{
+  "appId": "cl.inacap.estacionamientos",
+  "appName": "Estacionamientos",
+  "webDir": "dist",
+  "server": {
+    "androidScheme": "https",
+    "cleartext": true
+  }
+}

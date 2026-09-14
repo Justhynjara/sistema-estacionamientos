@@ -1,0 +1,18 @@
+import {Router} from 'express';
+import {auth} from '../middleware/auth.middleware.js';
+import {roles} from '../middleware/role.middleware.js';
+import {validateBody,validateParams} from '../middleware/validate.middleware.js';
+import {createParking,updateCapacity} from '../controllers/parking.controller.js';
+import {listUsers,updateUserStatus,updateUserRole,listParams,updateParam} from '../controllers/admin.controller.js';
+import {createParkingSchema,updateCapacitySchema} from '../validation/parking.schema.js';
+import {updateUserStatusSchema,updateUserRoleSchema,updateParamSchema} from '../validation/admin.schema.js';
+import {idParamSchema} from '../validation/common.schema.js';
+const r=Router(); r.use(auth,roles('ADMIN'));
+r.post('/parking',validateBody(createParkingSchema),createParking);
+r.put('/parking/:id/capacity',validateParams(idParamSchema),validateBody(updateCapacitySchema),updateCapacity);
+r.get('/users',listUsers);
+r.patch('/users/:id/status',validateParams(idParamSchema),validateBody(updateUserStatusSchema),updateUserStatus);
+r.patch('/users/:id/role',validateParams(idParamSchema),validateBody(updateUserRoleSchema),updateUserRole);
+r.get('/params',listParams);
+r.put('/params/:clave',validateBody(updateParamSchema),updateParam);
+export default r;
