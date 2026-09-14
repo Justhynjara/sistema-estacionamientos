@@ -72,6 +72,32 @@ export async function closeTicket(qr, clienteId){
   finally { client.release(); }
 }
 
+export async function quoteTicket(qr, clienteId){
+  const t=await pool.query(
+    `SELECT t.*, e.precio_hora, e.cliente_id, e.nombre AS estacionamiento_nombre, e.direccion AS estacionamiento_direccion
+     FROM tickets t JOIN estacionamientos e ON e.id=t.estacionamiento_id
+     WHERE t.codigo_qr=$1 AND t.estado='ACTIVO'`, [qr]
+  );
+  if(!t.rowCount) throw new Error('Ticket activo no encontrado');
+  const row=t.rows[0];
+  if(row.cliente_id !== clienteId) throw new Error('Este ticket no pertenece a uno de tus estacionamientos');
+  const hours=Math.max(1, Math.ceil((Date.now()-new Date(row.fecha_entrada).getTime())/3600000));
+  const monto=hours*Number(row.precio_hora);
+  return {...row, monto};
+}
+
+export async function activeTickets(clienteId, estacionamientoId){
+  const r=await pool.query(
+    `SELECT t.id,t.codigo_qr,t.patente,t.fecha_entrada,e.id AS estacionamiento_id,e.nombre AS estacionamiento_nombre,e.precio_hora
+     FROM tickets t JOIN estacionamientos e ON e.id=t.estacionamiento_id
+     WHERE e.cliente_id=$1 AND t.estado='ACTIVO'
+       AND ($2::uuid IS NULL OR t.estacionamiento_id=$2)
+     ORDER BY t.fecha_entrada ASC`,
+    [clienteId, estacionamientoId || null]
+  );
+  return r.rows;
+}
+
 export async function reserveTicket(estacionamientoId, patente){
   const client=await pool.connect();
   try {

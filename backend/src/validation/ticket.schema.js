@@ -25,3 +25,7 @@ export const dashboardQuerySchema = z.object({
   estacionamiento_id: uuid.optional(),
   fecha: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Fecha debe tener formato YYYY-MM-DD').optional()
 });
+
+export const activeQuerySchema = z.object({
+  estacionamiento_id: uuid.optional()
+});

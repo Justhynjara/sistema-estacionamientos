@@ -39,31 +39,74 @@ function redirectToWebpay(url, token) {
   form.submit();
 }
 
+function tiempoTranscurrido(iso) {
+  const min = Math.max(0, Math.floor((Date.now() - new Date(iso).getTime()) / 60000));
+  if (min < 60) return `${min} min`;
+  return `${Math.floor(min / 60)}h ${min % 60}min`;
+}
+
 function GestionTicketPanel({ reloadParking }) {
   const [codigo, setCodigo] = useState('');
   const [loading, setLoading] = useState('');
   const [mensaje, setMensaje] = useState(null);
+  const [cobro, setCobro] = useState(null);
+  const [activos, setActivos] = useState([]);
 
-  async function validarReserva() {
-    if (!codigo.trim()) return;
-    setLoading('checkin'); setMensaje(null);
+  function cargarActivos() {
+    api.get('/tickets/active').then(r => setActivos(r.data)).catch(() => {});
+  }
+  useEffect(() => {
+    cargarActivos();
+    const id = setInterval(cargarActivos, 20000);
+    return () => clearInterval(id);
+  }, []);
+
+  async function validarReserva(qr) {
+    const c = qr || codigo.trim();
+    if (!c) return;
+    setLoading('checkin'); setMensaje(null); setCobro(null);
     try {
-      await api.post('/tickets/checkin', { codigo_qr: codigo.trim() });
+      await api.post('/tickets/checkin', { codigo_qr: c });
       setMensaje({ tipo: 'ok', texto: 'Reserva validada: el vehículo ya está activo dentro del estacionamiento.' });
-      reloadParking();
+      setCodigo('');
+      reloadParking(); cargarActivos();
     } catch (err) { setMensaje({ tipo: 'off', texto: err.response?.data?.error || 'No se pudo validar la reserva' }); }
     finally { setLoading(''); }
   }
 
-  async function cobrarEfectivo() {
-    if (!codigo.trim()) return;
-    setLoading('efectivo'); setMensaje(null);
+  async function iniciarCobroEfectivo(qr) {
+    const c = qr || codigo.trim();
+    if (!c) return;
+    setLoading('efectivo'); setMensaje(null); setCobro(null);
     try {
-      const r = await api.post('/tickets/close', { codigo_qr: codigo.trim() });
+      const q = await api.post('/tickets/quote', { codigo_qr: c });
+      setCobro({
+        codigo: c,
+        monto: Number(q.data.monto),
+        patente: q.data.patente,
+        estacionamiento_nombre: q.data.estacionamiento_nombre,
+        direccion: q.data.estacionamiento_direccion,
+        fecha_entrada: q.data.fecha_entrada,
+        recibido: ''
+      });
+    } catch (err) { setMensaje({ tipo: 'off', texto: err.response?.data?.error || 'No se pudo calcular el cobro' }); }
+    finally { setLoading(''); }
+  }
+
+  async function confirmarCobroEfectivo() {
+    if (!cobro) return;
+    const recibido = Number(cobro.recibido);
+    if (!recibido || recibido < cobro.monto) return;
+    setLoading('efectivo-confirm');
+    try {
+      const r = await api.post('/tickets/close', { codigo_qr: cobro.codigo });
       const monto = Number(r.data.monto);
+      const vuelto = recibido - monto;
       setMensaje({
         tipo: 'ok',
-        texto: `Cobro registrado en efectivo: $${monto.toLocaleString('es-CL')}`,
+        texto: vuelto >= 0
+          ? `Cobro registrado: $${monto.toLocaleString('es-CL')} — Vuelto: $${vuelto.toLocaleString('es-CL')}`
+          : `Cobro registrado: $${monto.toLocaleString('es-CL')} — Faltan $${Math.abs(vuelto).toLocaleString('es-CL')} (el tiempo avanzó a la hora siguiente)`,
         imprimir: () => imprimirTicket({
           nombreEstacionamiento: r.data.estacionamiento_nombre,
           direccion: r.data.estacionamiento_direccion,
@@ -72,21 +115,25 @@ function GestionTicketPanel({ reloadParking }) {
             ['Patente', r.data.patente || '—'],
             ['Entrada', new Date(r.data.fecha_entrada).toLocaleString('es-CL')],
             ['Salida', new Date().toLocaleString('es-CL')],
-            ['Total pagado', `$${monto.toLocaleString('es-CL')}`]
+            ['Total a pagar', `$${monto.toLocaleString('es-CL')}`],
+            ['Recibido', `$${recibido.toLocaleString('es-CL')}`],
+            ['Vuelto', `$${Math.max(0, vuelto).toLocaleString('es-CL')}`]
           ],
           pie: 'Comprobante de pago — Gracias por su preferencia'
         })
       });
-      reloadParking();
+      setCobro(null); setCodigo('');
+      reloadParking(); cargarActivos();
     } catch (err) { setMensaje({ tipo: 'off', texto: err.response?.data?.error || 'No se pudo cerrar el ticket' }); }
     finally { setLoading(''); }
   }
 
-  async function cobrarWebpay() {
-    if (!codigo.trim()) return;
-    setLoading('webpay'); setMensaje(null);
+  async function cobrarWebpay(qr) {
+    const c = qr || codigo.trim();
+    if (!c) return;
+    setLoading('webpay'); setMensaje(null); setCobro(null);
     try {
-      const r = await api.post('/payments/webpay/start', { codigo_qr: codigo.trim() });
+      const r = await api.post('/payments/webpay/start', { codigo_qr: c });
       redirectToWebpay(r.data.url, r.data.token);
     } catch (err) {
       setMensaje({ tipo: 'off', texto: err.response?.data?.error || 'No se pudo iniciar el pago' });
@@ -94,25 +141,87 @@ function GestionTicketPanel({ reloadParking }) {
     }
   }
 
+  const vuelto = cobro && cobro.recibido ? Number(cobro.recibido) - cobro.monto : null;
+
   return (
-    <div className="card">
-      <h3>Validar reserva o cobrar un ticket</h3>
-      <p>Ingresa el código que muestra el conductor (reserva o ticket activo).</p>
-      {mensaje && (
-        <p className={'badge ' + mensaje.tipo}>
-          {mensaje.texto}
-          {mensaje.imprimir && <button type="button" className="secondary" style={{ marginLeft: 10 }} onClick={mensaje.imprimir}>🖨️ Imprimir comprobante</button>}
-        </p>
+    <>
+      <div className="card">
+        <h3>Vehículos activos</h3>
+        {activos.length === 0 && <p style={{ color: 'var(--text-muted)' }}>No hay vehículos dentro en este momento.</p>}
+        {activos.length > 0 && (
+          <div className="table-wrap">
+            <table className="table">
+              <thead><tr><th>Patente</th><th>Estacionamiento</th><th>Entrada</th><th>Tiempo</th><th></th></tr></thead>
+              <tbody>
+                {activos.map(t => (
+                  <tr key={t.id}>
+                    <td>{t.patente || '—'}</td>
+                    <td>{t.estacionamiento_nombre}</td>
+                    <td>{fmtHora(t.fecha_entrada)}</td>
+                    <td>{tiempoTranscurrido(t.fecha_entrada)}</td>
+                    <td>
+                      <div className="row-form" style={{ margin: 0 }}>
+                        <button type="button" className="secondary" disabled={!!loading} onClick={() => iniciarCobroEfectivo(t.codigo_qr)}>💵 Efectivo</button>
+                        <button type="button" disabled={!!loading} onClick={() => cobrarWebpay(t.codigo_qr)}>💳 Webpay</button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+
+      {cobro && (
+        <div className="card">
+          <h3>Cobro en efectivo — {cobro.patente || 'sin patente'}</h3>
+          <p>{cobro.estacionamiento_nombre}</p>
+          <p style={{ fontSize: '1.3rem', fontWeight: 800 }}>Total a pagar: ${cobro.monto.toLocaleString('es-CL')}</p>
+          <div className="row-form">
+            <input
+              type="number"
+              min={0}
+              placeholder="¿Con cuánto le pagan?"
+              value={cobro.recibido}
+              onChange={e => setCobro({ ...cobro, recibido: e.target.value })}
+              aria-label="Monto recibido"
+              autoFocus
+            />
+          </div>
+          {vuelto !== null && (
+            <p className={'badge ' + (vuelto >= 0 ? 'ok' : 'off')}>
+              {vuelto >= 0 ? `Vuelto: $${vuelto.toLocaleString('es-CL')}` : `Falta: $${Math.abs(vuelto).toLocaleString('es-CL')}`}
+            </p>
+          )}
+          <div className="row-form">
+            <button type="button" onClick={confirmarCobroEfectivo} disabled={!cobro.recibido || vuelto < 0 || loading === 'efectivo-confirm'}>
+              {loading === 'efectivo-confirm' && <span className="spinner" />}✅ Confirmar cobro
+            </button>
+            <button type="button" className="secondary" onClick={() => setCobro(null)}>Cancelar</button>
+          </div>
+        </div>
       )}
-      <div className="row-form">
-        <input placeholder="Código del ticket o reserva" value={codigo} onChange={e => setCodigo(e.target.value)} aria-label="Código del ticket o reserva" />
+
+      <div className="card">
+        <h3>Validar reserva o cobrar con código</h3>
+        <p>Si el conductor te muestra el código (QR escaneado o reserva), ingrésalo aquí.</p>
+        {mensaje && (
+          <p className={'badge ' + mensaje.tipo}>
+            {mensaje.texto}
+            {mensaje.imprimir && <button type="button" className="secondary" style={{ marginLeft: 10 }} onClick={mensaje.imprimir}>🖨️ Imprimir comprobante</button>}
+          </p>
+        )}
+        <div className="row-form">
+          <input placeholder="Código del ticket o reserva" value={codigo} onChange={e => setCodigo(e.target.value)} aria-label="Código del ticket o reserva" />
+        </div>
+        <div className="row-form">
+          <button type="button" onClick={() => validarReserva()} disabled={!!loading}>{loading === 'checkin' && <span className="spinner" />}✅ Validar reserva</button>
+          <button type="button" onClick={() => iniciarCobroEfectivo()} disabled={!!loading} className="secondary">💵 Cobrar en efectivo</button>
+          <button type="button" onClick={() => cobrarWebpay()} disabled={!!loading}>{loading === 'webpay' && <span className="spinner" />}💳 Cobrar con Webpay</button>
+        </div>
       </div>
-      <div className="row-form">
-        <button type="button" onClick={validarReserva} disabled={!!loading}>{loading === 'checkin' && <span className="spinner" />}✅ Validar reserva</button>
-        <button type="button" onClick={cobrarEfectivo} disabled={!!loading} className="secondary">💵 Cobrar en efectivo</button>
-        <button type="button" onClick={cobrarWebpay} disabled={!!loading}>{loading === 'webpay' && <span className="spinner" />}💳 Cobrar con Webpay</button>
-      </div>
-    </div>
+    </>
   );
 }
 

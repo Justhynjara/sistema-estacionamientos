@@ -2,8 +2,8 @@ import {Router} from 'express';
 import {auth} from '../middleware/auth.middleware.js';
 import {roles} from '../middleware/role.middleware.js';
 import {validateBody,validateQuery} from '../middleware/validate.middleware.js';
-import {createTicket,closeTicket,reserveTicket,checkinTicket,ticketsDashboard} from '../services/ticket.service.js';
-import {createTicketSchema,reserveTicketSchema,closeTicketSchema,checkinSchema,dashboardQuerySchema} from '../validation/ticket.schema.js';
+import {createTicket,closeTicket,reserveTicket,checkinTicket,ticketsDashboard,quoteTicket,activeTickets} from '../services/ticket.service.js';
+import {createTicketSchema,reserveTicketSchema,closeTicketSchema,checkinSchema,dashboardQuerySchema,activeQuerySchema} from '../validation/ticket.schema.js';
 
 const r=Router();
 
@@ -15,6 +15,15 @@ r.post('/',auth,roles('CLIENTE'),validateBody(createTicketSchema),async(req,res)
 r.post('/close',auth,roles('CLIENTE'),validateBody(closeTicketSchema),async(req,res)=>{
   try{res.json(await closeTicket(req.body.codigo_qr,req.user.id));}
   catch(e){res.status(400).json({error:e.message});}
+});
+
+r.post('/quote',auth,roles('CLIENTE'),validateBody(closeTicketSchema),async(req,res)=>{
+  try{res.json(await quoteTicket(req.body.codigo_qr,req.user.id));}
+  catch(e){res.status(400).json({error:e.message});}
+});
+
+r.get('/active',auth,roles('CLIENTE'),validateQuery(activeQuerySchema),async(req,res)=>{
+  res.json(await activeTickets(req.user.id, req.query.estacionamiento_id || null));
 });
 
 // Reserva anticipada de cupo: pública, no requiere que el usuario final tenga cuenta.
