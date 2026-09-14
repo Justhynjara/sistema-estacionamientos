@@ -284,7 +284,7 @@ export default function BuscarCercanos() {
               placeholder="Patente (ej: AB1234)"
               aria-label="Patente del vehículo"
               value={patenteReserva}
-              onChange={e => setPatenteReserva(e.target.value)}
+              onChange={e => setPatenteReserva(e.target.value.toUpperCase())}
               autoFocus
               required
             />

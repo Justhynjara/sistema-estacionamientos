@@ -146,23 +146,29 @@ function GestionTicketPanel({ reloadParking }) {
   return (
     <>
       <div className="card">
-        <h3>Vehículos activos</h3>
-        {activos.length === 0 && <p style={{ color: 'var(--text-muted)' }}>No hay vehículos dentro en este momento.</p>}
+        <h3>Vehículos y reservas</h3>
+        <p style={{ color: 'var(--text-muted)', fontSize: '.85rem' }}>Busca por patente — no necesitas el código QR para validar o cobrar.</p>
+        {activos.length === 0 && <p style={{ color: 'var(--text-muted)' }}>No hay vehículos ni reservas pendientes en este momento.</p>}
         {activos.length > 0 && (
           <div className="table-wrap">
             <table className="table">
-              <thead><tr><th>Patente</th><th>Estacionamiento</th><th>Entrada</th><th>Tiempo</th><th></th></tr></thead>
+              <thead><tr><th>Patente</th><th>Estacionamiento</th><th>Estado</th><th>Entrada</th><th>Tiempo</th><th></th></tr></thead>
               <tbody>
                 {activos.map(t => (
                   <tr key={t.id}>
                     <td>{t.patente || '—'}</td>
                     <td>{t.estacionamiento_nombre}</td>
+                    <td><span className={'badge ' + (t.estado === 'ACTIVO' ? 'ok' : 'off')}>{t.estado === 'ACTIVO' ? 'Dentro' : 'Reservado'}</span></td>
                     <td>{fmtHora(t.fecha_entrada)}</td>
                     <td>{tiempoTranscurrido(t.fecha_entrada)}</td>
                     <td>
                       <div className="row-form" style={{ margin: 0 }}>
-                        <button type="button" className="secondary" disabled={!!loading} onClick={() => iniciarCobroEfectivo(t.codigo_qr)}>💵 Efectivo</button>
-                        <button type="button" disabled={!!loading} onClick={() => cobrarWebpay(t.codigo_qr)}>💳 Webpay</button>
+                        {t.estado === 'RESERVADO'
+                          ? <button type="button" disabled={!!loading} onClick={() => validarReserva(t.codigo_qr)}>✅ Validar</button>
+                          : <>
+                              <button type="button" className="secondary" disabled={!!loading} onClick={() => iniciarCobroEfectivo(t.codigo_qr)}>💵 Efectivo</button>
+                              <button type="button" disabled={!!loading} onClick={() => cobrarWebpay(t.codigo_qr)}>💳 Webpay</button>
+                            </>}
                       </div>
                     </td>
                   </tr>
@@ -229,7 +235,7 @@ function EstacionamientosTab({ parking, reloadParking }) {
   const [ticketEmitido, setTicketEmitido] = useState(null);
 
   async function emitirTicket(p) {
-    const patente = prompt('Patente del vehículo (opcional)') || null;
+    const patente = prompt('Patente del vehículo (opcional)')?.trim().toUpperCase() || null;
     try {
       const r = await api.post('/tickets', { estacionamiento_id: p.id, patente });
       setTicketEmitido({ codigo: r.data.codigo_qr, nombre: p.nombre, direccion: p.direccion, patente: r.data.patente, fechaEntrada: r.data.fecha_entrada, precioHora: p.precio_hora });

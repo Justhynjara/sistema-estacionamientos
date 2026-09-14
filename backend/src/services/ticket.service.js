@@ -88,11 +88,12 @@ export async function quoteTicket(qr, clienteId){
 
 export async function activeTickets(clienteId, estacionamientoId){
   const r=await pool.query(
-    `SELECT t.id,t.codigo_qr,t.patente,t.fecha_entrada,e.id AS estacionamiento_id,e.nombre AS estacionamiento_nombre,e.precio_hora
+    `SELECT t.id,t.codigo_qr,t.patente,t.fecha_entrada,t.estado,t.reserva_expira,
+            e.id AS estacionamiento_id,e.nombre AS estacionamiento_nombre,e.precio_hora
      FROM tickets t JOIN estacionamientos e ON e.id=t.estacionamiento_id
-     WHERE e.cliente_id=$1 AND t.estado='ACTIVO'
+     WHERE e.cliente_id=$1 AND t.estado IN ('ACTIVO','RESERVADO')
        AND ($2::uuid IS NULL OR t.estacionamiento_id=$2)
-     ORDER BY t.fecha_entrada ASC`,
+     ORDER BY t.estado DESC, t.fecha_entrada ASC`,
     [clienteId, estacionamientoId || null]
   );
   return r.rows;
