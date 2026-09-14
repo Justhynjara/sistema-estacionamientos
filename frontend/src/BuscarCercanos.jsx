@@ -6,6 +6,7 @@ import { io } from 'socket.io-client';
 import { api, API_ORIGIN } from './services/api.js';
 import QRCodeCanvas from './QRCode.jsx';
 import { geocode } from './utils/geo.js';
+import { imprimirTicket } from './utils/print.js';
 
 const SOCKET_URL = API_ORIGIN;
 const RADIUS_KM = 5;
@@ -93,6 +94,8 @@ export default function BuscarCercanos() {
   const [reserva, setReserva] = useState(null);
   const [reservaError, setReservaError] = useState('');
   const [reservandoId, setReservandoId] = useState(null);
+  const [reservaPendiente, setReservaPendiente] = useState(null);
+  const [patenteReserva, setPatenteReserva] = useState('');
   const lastRoutedFrom = useRef(null);
   const socketRef = useRef(null);
   const joinedRoomsRef = useRef(new Set());
@@ -204,11 +207,21 @@ export default function BuscarCercanos() {
     }
   }
 
-  async function reservarCupo(p) {
+  function iniciarReserva(p) {
+    setReservaPendiente(p);
+    setPatenteReserva('');
+    setReservaError('');
+  }
+
+  async function confirmarReserva(e) {
+    e.preventDefault();
+    const p = reservaPendiente;
+    if (!p) return;
     setReservandoId(p.id); setReservaError('');
     try {
-      const r = await api.post('/tickets/reserve', { estacionamiento_id: p.id });
-      setReserva({ codigo: r.data.codigo_qr, nombre: p.nombre, expira: r.data.reserva_expira });
+      const r = await api.post('/tickets/reserve', { estacionamiento_id: p.id, patente: patenteReserva.trim() || null });
+      setReserva({ codigo: r.data.codigo_qr, nombre: p.nombre, direccion: p.direccion, expira: r.data.reserva_expira });
+      setReservaPendiente(null);
     } catch (err) {
       setReservaError(err.response?.data?.error || 'No se pudo reservar el cupo');
     } finally {
@@ -261,16 +274,43 @@ export default function BuscarCercanos() {
         </form>
       </div>
 
+      {reservaPendiente && (
+        <div className="card">
+          <h3>🎫 Reservar cupo en {reservaPendiente.nombre}</h3>
+          <p>Ingresa la patente del vehículo que va a estacionar:</p>
+          {reservaError && <p className="badge off">⚠️ {reservaError}</p>}
+          <form onSubmit={confirmarReserva} className="row-form">
+            <input
+              placeholder="Patente (ej: AB1234)"
+              aria-label="Patente del vehículo"
+              value={patenteReserva}
+              onChange={e => setPatenteReserva(e.target.value)}
+              autoFocus
+              required
+            />
+            <button disabled={reservandoId === reservaPendiente.id}>{reservandoId === reservaPendiente.id && <span className="spinner" />}Confirmar reserva</button>
+            <button type="button" className="secondary" onClick={() => setReservaPendiente(null)}>Cancelar</button>
+          </form>
+        </div>
+      )}
+
       {reserva && (
         <div className="card" style={{ textAlign: 'center' }}>
           <h3>🎫 Reserva confirmada en {reserva.nombre}</h3>
-          <p>Muestra este código QR al llegar para validar tu cupo:</p>
+          <p>Muestra este código QR al llegar para validar tu cupo, o descárgalo:</p>
           <div style={{ display: 'flex', justifyContent: 'center', margin: '12px 0' }}>
-            <QRCodeCanvas value={reserva.codigo} />
+            <QRCodeCanvas value={reserva.codigo} downloadable filename={`reserva-${reserva.codigo.slice(0, 8)}`} />
           </div>
           <p style={{ fontFamily: 'monospace', color: 'var(--text-muted)', fontSize: '.8rem', wordBreak: 'break-all' }}>{reserva.codigo}</p>
           <Countdown expira={reserva.expira} />
-          <div style={{ marginTop: 10 }}>
+          <div className="row-form" style={{ justifyContent: 'center', marginTop: 10 }}>
+            <button type="button" onClick={() => imprimirTicket({
+              nombreEstacionamiento: reserva.nombre,
+              direccion: reserva.direccion,
+              codigo: reserva.codigo,
+              detalle: [['Válido hasta', new Date(reserva.expira).toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit' })]],
+              pie: 'Presenta este comprobante al llegar'
+            })}>🖨️ Imprimir</button>
             <button type="button" className="secondary" onClick={() => setReserva(null)}>Cerrar</button>
           </div>
         </div>
@@ -321,8 +361,8 @@ export default function BuscarCercanos() {
               <button onClick={() => verRuta(p)} disabled={p.cupos_disponibles <= 0}>
                 {selectedId === p.id ? '✅ Ruta trazada' : '🗺️ Ver ruta'}
               </button>
-              <button type="button" className="secondary" onClick={() => reservarCupo(p)} disabled={p.cupos_disponibles <= 0 || reservandoId === p.id}>
-                {reservandoId === p.id && <span className="spinner" />}🎫 Reservar cupo
+              <button type="button" className="secondary" onClick={() => iniciarReserva(p)} disabled={p.cupos_disponibles <= 0}>
+                🎫 Reservar cupo
               </button>
             </div>
           </div>

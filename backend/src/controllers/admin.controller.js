@@ -1,3 +1,4 @@
+import bcrypt from 'bcryptjs';
 import { pool } from '../config/database.js';
 
 const ROLES_VALIDOS = ['USUARIO', 'CLIENTE', 'ADMIN'];
@@ -7,6 +8,19 @@ export async function listUsers(req, res) {
     `SELECT id,nombre,email,rol,activo,created_at FROM usuarios ORDER BY created_at DESC`
   );
   res.json(r.rows);
+}
+
+export async function createUser(req, res) {
+  const { nombre, email, password, rol } = req.body;
+  const hash = await bcrypt.hash(password, 10);
+  try {
+    const r = await pool.query(
+      `INSERT INTO usuarios(nombre,email,password_hash,rol) VALUES($1,$2,$3,$4)
+       RETURNING id,nombre,email,rol,activo,created_at`,
+      [nombre, email, hash, rol]
+    );
+    res.status(201).json(r.rows[0]);
+  } catch { res.status(409).json({ error: 'Email ya registrado' }); }
 }
 
 export async function updateUserStatus(req, res) {

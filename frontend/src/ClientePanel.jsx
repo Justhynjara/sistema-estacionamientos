@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { api } from './services/api.js';
 import QRCodeCanvas from './QRCode.jsx';
 import Pagination, { usePagination } from './Pagination.jsx';
+import { imprimirTicket } from './utils/print.js';
 
 function Tabs({ tab, setTab }) {
   const tabs = [['estacionamientos', '🅿️ Mis estacionamientos'], ['dashboard', '📊 Dashboard de tickets']];
@@ -59,7 +60,23 @@ function GestionTicketPanel({ reloadParking }) {
     setLoading('efectivo'); setMensaje(null);
     try {
       const r = await api.post('/tickets/close', { codigo_qr: codigo.trim() });
-      setMensaje({ tipo: 'ok', texto: `Cobro registrado en efectivo: $${Number(r.data.monto).toLocaleString('es-CL')}` });
+      const monto = Number(r.data.monto);
+      setMensaje({
+        tipo: 'ok',
+        texto: `Cobro registrado en efectivo: $${monto.toLocaleString('es-CL')}`,
+        imprimir: () => imprimirTicket({
+          nombreEstacionamiento: r.data.estacionamiento_nombre,
+          direccion: r.data.estacionamiento_direccion,
+          codigo: r.data.codigo_qr,
+          detalle: [
+            ['Patente', r.data.patente || '—'],
+            ['Entrada', new Date(r.data.fecha_entrada).toLocaleString('es-CL')],
+            ['Salida', new Date().toLocaleString('es-CL')],
+            ['Total pagado', `$${monto.toLocaleString('es-CL')}`]
+          ],
+          pie: 'Comprobante de pago — Gracias por su preferencia'
+        })
+      });
       reloadParking();
     } catch (err) { setMensaje({ tipo: 'off', texto: err.response?.data?.error || 'No se pudo cerrar el ticket' }); }
     finally { setLoading(''); }
@@ -81,7 +98,12 @@ function GestionTicketPanel({ reloadParking }) {
     <div className="card">
       <h3>Validar reserva o cobrar un ticket</h3>
       <p>Ingresa el código que muestra el conductor (reserva o ticket activo).</p>
-      {mensaje && <p className={'badge ' + mensaje.tipo}>{mensaje.texto}</p>}
+      {mensaje && (
+        <p className={'badge ' + mensaje.tipo}>
+          {mensaje.texto}
+          {mensaje.imprimir && <button type="button" className="secondary" style={{ marginLeft: 10 }} onClick={mensaje.imprimir}>🖨️ Imprimir comprobante</button>}
+        </p>
+      )}
       <div className="row-form">
         <input placeholder="Código del ticket o reserva" value={codigo} onChange={e => setCodigo(e.target.value)} aria-label="Código del ticket o reserva" />
       </div>
@@ -97,11 +119,11 @@ function GestionTicketPanel({ reloadParking }) {
 function EstacionamientosTab({ parking, reloadParking }) {
   const [ticketEmitido, setTicketEmitido] = useState(null);
 
-  async function emitirTicket(id, nombre) {
+  async function emitirTicket(p) {
     const patente = prompt('Patente del vehículo (opcional)') || null;
     try {
-      const r = await api.post('/tickets', { estacionamiento_id: id, patente });
-      setTicketEmitido({ codigo: r.data.codigo_qr, nombre });
+      const r = await api.post('/tickets', { estacionamiento_id: p.id, patente });
+      setTicketEmitido({ codigo: r.data.codigo_qr, nombre: p.nombre, direccion: p.direccion, patente: r.data.patente, fechaEntrada: r.data.fecha_entrada, precioHora: p.precio_hora });
       reloadParking();
     } catch (err) { alert(err.response?.data?.error || 'Error al emitir ticket'); }
   }
@@ -112,10 +134,23 @@ function EstacionamientosTab({ parking, reloadParking }) {
           <h3>🎫 Ticket emitido en {ticketEmitido.nombre}</h3>
           <p>Entrega este código QR al conductor:</p>
           <div style={{ display: 'flex', justifyContent: 'center', margin: '12px 0' }}>
-            <QRCodeCanvas value={ticketEmitido.codigo} />
+            <QRCodeCanvas value={ticketEmitido.codigo} downloadable filename={`ticket-${ticketEmitido.codigo.slice(0, 8)}`} />
           </div>
           <p style={{ fontFamily: 'monospace', color: 'var(--text-muted)', fontSize: '.8rem', wordBreak: 'break-all' }}>{ticketEmitido.codigo}</p>
-          <button type="button" className="secondary" onClick={() => setTicketEmitido(null)}>Cerrar</button>
+          <div className="row-form" style={{ justifyContent: 'center' }}>
+            <button type="button" onClick={() => imprimirTicket({
+              nombreEstacionamiento: ticketEmitido.nombre,
+              direccion: ticketEmitido.direccion,
+              codigo: ticketEmitido.codigo,
+              detalle: [
+                ['Patente', ticketEmitido.patente || '—'],
+                ['Entrada', new Date(ticketEmitido.fechaEntrada).toLocaleString('es-CL')],
+                ['Precio/hora', `$${Number(ticketEmitido.precioHora).toLocaleString('es-CL')}`]
+              ],
+              pie: 'Conserve este ticket para retirar su vehículo'
+            })}>🖨️ Imprimir ticket</button>
+            <button type="button" className="secondary" onClick={() => setTicketEmitido(null)}>Cerrar</button>
+          </div>
         </div>
       )}
       <div className="grid">
@@ -125,7 +160,7 @@ function EstacionamientosTab({ parking, reloadParking }) {
             <p>{p.direccion}</p>
             <p>💰 ${Number(p.precio_hora).toLocaleString('es-CL')} / hora</p>
             <p className={'badge ' + (p.cupos_disponibles > 0 ? 'ok' : 'off')}>🅿️ {p.cupos_disponibles} / {p.cupo_maximo} disponibles</p>
-            <button onClick={() => emitirTicket(p.id, p.nombre)} disabled={p.cupos_disponibles <= 0}>🎫 Emitir ticket</button>
+            <button onClick={() => emitirTicket(p)} disabled={p.cupos_disponibles <= 0}>🎫 Emitir ticket</button>
           </div>
         ))}
         {parking.length === 0 && <div className="empty-state">Aún no tienes estacionamientos asignados. Pide al administrador que registre uno a tu nombre.</div>}

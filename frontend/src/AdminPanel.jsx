@@ -142,6 +142,42 @@ function ParkingTab({ parking, reloadParking, users }) {
   );
 }
 
+function CrearUsuarioForm({ reloadUsers }) {
+  const initialForm = { nombre: '', email: '', password: '', rol: 'USUARIO' };
+  const [form, setForm] = useState(initialForm);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+
+  async function crear(e) {
+    e.preventDefault();
+    setLoading(true); setError('');
+    try {
+      await api.post('/admin/users', form);
+      setForm(initialForm);
+      reloadUsers();
+    } catch (err) { setError(err.response?.data?.error || 'Error al crear usuario'); }
+    finally { setLoading(false); }
+  }
+
+  return (
+    <div className="card">
+      <h3>Crear usuario</h3>
+      {error && <p className="badge off">⚠️ {error}</p>}
+      <form onSubmit={crear} className="row-form">
+        <input placeholder="Nombre" value={form.nombre} onChange={e => setForm({ ...form, nombre: e.target.value })} required />
+        <input type="email" placeholder="Email" value={form.email} onChange={e => setForm({ ...form, email: e.target.value })} required />
+        <input type="password" placeholder="Contraseña (mín. 8 caracteres)" value={form.password} onChange={e => setForm({ ...form, password: e.target.value })} required minLength={8} />
+        <select value={form.rol} onChange={e => setForm({ ...form, rol: e.target.value })} aria-label="Rol del nuevo usuario">
+          <option value="USUARIO">USUARIO</option>
+          <option value="CLIENTE">CLIENTE</option>
+          <option value="ADMIN">ADMIN</option>
+        </select>
+        <button disabled={loading}>{loading && <span className="spinner" />}Crear usuario</button>
+      </form>
+    </div>
+  );
+}
+
 function UsersTab({ users, reloadUsers, currentUserId }) {
   const { pageItems, page, setPage, totalPages } = usePagination(users, 10);
 
@@ -159,6 +195,8 @@ function UsersTab({ users, reloadUsers, currentUserId }) {
     } catch (err) { alert(err.response?.data?.error || 'Error al cambiar rol'); }
   }
   return (
+    <>
+    <CrearUsuarioForm reloadUsers={reloadUsers} />
     <div className="card">
       <h3>Usuarios</h3>
       <div className="table-wrap">
@@ -185,6 +223,7 @@ function UsersTab({ users, reloadUsers, currentUserId }) {
       </div>
       <Pagination page={page} totalPages={totalPages} onChange={setPage} />
     </div>
+    </>
   );
 }
 

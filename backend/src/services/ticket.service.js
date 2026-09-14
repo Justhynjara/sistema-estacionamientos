@@ -47,7 +47,7 @@ export async function closeTicket(qr, clienteId){
   try {
     await client.query('BEGIN');
     const t=await client.query(
-      `SELECT t.*, e.precio_hora, e.cupo_maximo, e.cliente_id
+      `SELECT t.*, e.precio_hora, e.cupo_maximo, e.cliente_id, e.nombre AS estacionamiento_nombre, e.direccion AS estacionamiento_direccion
        FROM tickets t JOIN estacionamientos e ON e.id=t.estacionamiento_id
        WHERE t.codigo_qr=$1 AND t.estado='ACTIVO' FOR UPDATE`, [qr]
     );
