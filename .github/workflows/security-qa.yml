@@ -1,0 +1,99 @@
+name: QA de seguridad automatizado
+
+on:
+  schedule:
+    # Cada 6 horas (00:00, 06:00, 12:00, 18:00 UTC)
+    - cron: '0 */6 * * *'
+  workflow_dispatch: {}
+  push:
+    branches: [main]
+    paths:
+      - 'backend/**'
+      - '.github/workflows/security-qa.yml'
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  dependency-audit:
+    name: Auditoría de dependencias (npm audit)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 20 }
+      - name: Auditar backend
+        working-directory: backend
+        run: npm audit --audit-level=moderate
+      - name: Auditar frontend
+        working-directory: frontend
+        run: npm audit --audit-level=moderate
+
+  backend-tests:
+    name: Suite de tests del backend
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: estacionamientos
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/estacionamientos
+      JWT_SECRET: ci_test_secret_no_usar_en_produccion
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 20 }
+      - name: Instalar dependencias
+        working-directory: backend
+        run: npm ci
+      - name: Aplicar migraciones
+        working-directory: backend
+        run: npm run migrate:up
+      - name: Correr tests (incluye regresión de escalación de privilegios)
+        working-directory: backend
+        run: npm test
+
+  production-security-smoke-test:
+    name: Pruebas de seguridad contra producción
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 20 }
+      - name: Ejecutar pruebas de caja negra contra la API en vivo
+        working-directory: backend
+        env:
+          QA_API_URL: https://estacionamientos-api.onrender.com
+          # admin@demo.cl/password son credenciales demo públicas (README), no secretos reales.
+          # Si más adelante se cambian, sobreescribir acá con secrets.QA_ADMIN_EMAIL / secrets.QA_ADMIN_PASSWORD.
+        run: node scripts/security-qa.mjs
+
+  reportar-falla:
+    name: Crear issue si algo falló
+    needs: [dependency-audit, backend-tests, production-security-smoke-test]
+    if: failure()
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+    steps:
+      - uses: actions/github-script@v7
+        with:
+          script: |
+            const runUrl = `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
+            await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: `🚨 QA de seguridad falló — ${new Date().toISOString().slice(0,16).replace('T',' ')} UTC`,
+              body: `Una o más verificaciones automáticas de seguridad fallaron.\n\nRevisa el log del workflow: ${runUrl}`,
+              labels: ['security', 'automated']
+            });
