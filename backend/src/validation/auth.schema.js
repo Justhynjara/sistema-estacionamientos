@@ -9,7 +9,7 @@ export const registerSchema = z.object({
   nombre: z.string().trim().min(2, 'Nombre muy corto').max(120),
   email: z.string().trim().toLowerCase().email('Email inválido'),
   password: z.string().min(8, 'La contraseña debe tener al menos 8 caracteres'),
-  rol: z.enum(['USUARIO', 'CLIENTE', 'ADMIN']).optional()
+  rol: z.enum(['USUARIO', 'CLIENTE', 'ADMIN', 'SOPORTE']).optional()
 });
 
 export const forgotPasswordSchema = z.object({

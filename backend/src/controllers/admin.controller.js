@@ -1,7 +1,7 @@
 import bcrypt from 'bcryptjs';
 import { pool } from '../config/database.js';
 
-const ROLES_VALIDOS = ['USUARIO', 'CLIENTE', 'ADMIN'];
+const ROLES_VALIDOS = ['USUARIO', 'CLIENTE', 'ADMIN', 'SOPORTE'];
 
 export async function listUsers(req, res) {
   const r = await pool.query(

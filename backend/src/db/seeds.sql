@@ -2,6 +2,7 @@ INSERT INTO usuarios (nombre,email,password_hash,rol)
 VALUES
 ('Administrador Demo','admin@demo.cl','$2a$10$ZI2oSr6QiW5ZWndZjUfVOOo3IV3gsXSkeSCO7/KxOxXf6iNoSNqiy','ADMIN'),
 ('Cliente Demo','cliente@demo.cl','$2a$10$ZI2oSr6QiW5ZWndZjUfVOOo3IV3gsXSkeSCO7/KxOxXf6iNoSNqiy','CLIENTE'),
+('Soporte Demo','soporte@demo.cl','$2a$10$ZI2oSr6QiW5ZWndZjUfVOOo3IV3gsXSkeSCO7/KxOxXf6iNoSNqiy','SOPORTE'),
 ('Usuario Demo','usuario@demo.cl','$2a$10$ZI2oSr6QiW5ZWndZjUfVOOo3IV3gsXSkeSCO7/KxOxXf6iNoSNqiy','USUARIO')
 ON CONFLICT (email) DO NOTHING;
 

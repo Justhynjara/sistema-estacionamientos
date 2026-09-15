@@ -37,9 +37,10 @@ const FAQ = [
     respuesta: 'Si eres dueño de un estacionamiento o administrador, en la pantalla de inicio de sesión presiona "¿Olvidaste tu contraseña?" e ingresa tu email — te enviaremos un enlace para definir una nueva.'
   },
   {
-    pregunta: 'Quiero registrar mi estacionamiento',
-    keywords: ['registrar', 'dueño', 'dueno', 'ser cliente', 'agregar estacionamiento', 'publicar mi estacionamiento'],
-    respuesta: 'Los estacionamientos son registrados por un administrador del sistema. Contacta al equipo del sistema para que te den acceso como cliente (dueño) y así puedas administrar tus cupos, precios y tickets.'
+    id: 'ser_cliente',
+    pregunta: '¿Quieres ser cliente?',
+    keywords: ['registrar', 'dueño', 'dueno', 'ser cliente', 'quiero ser cliente', 'agregar estacionamiento', 'publicar mi estacionamiento', 'sumar mi estacionamiento'],
+    respuesta: 'Puedes postular tu estacionamiento para sumarlo al sistema. Nuestro equipo de soporte revisará tus datos y fotos para validar que cumple los requisitos; si es aprobado, un administrador te creará un usuario y correo de acceso, y luego un equipo coordinará contigo la instalación y configuración en terreno.'
   },
   {
     pregunta: '¿Necesito crear una cuenta para reservar?',
@@ -57,7 +58,7 @@ function normalizar(texto) {
     .normalize('NFD').replace(/[̀-ͯ]/g, '');
 }
 
-function responder(texto) {
+function buscarMejorMatch(texto) {
   const t = normalizar(texto);
   let mejor = null, mejorScore = 0;
   for (const item of FAQ) {
@@ -67,10 +68,10 @@ function responder(texto) {
     }
     if (score > mejorScore) { mejorScore = score; mejor = item; }
   }
-  return mejor ? mejor.respuesta : FALLBACK;
+  return mejor;
 }
 
-export default function ChatBot() {
+export default function ChatBot({ onAbrirSolicitud }) {
   const [abierto, setAbierto] = useState(false);
   const [mensajes, setMensajes] = useState([SALUDO]);
   const [texto, setTexto] = useState('');
@@ -83,8 +84,11 @@ export default function ChatBot() {
   function enviar(pregunta) {
     const p = (pregunta ?? texto).trim();
     if (!p) return;
-    const respuesta = responder(p);
-    setMensajes(m => [...m, { rol: 'user', texto: p }, { rol: 'bot', texto: respuesta }]);
+    const match = buscarMejorMatch(p);
+    const botMsg = match
+      ? { rol: 'bot', texto: match.respuesta, accion: match.id === 'ser_cliente' ? 'ser_cliente' : null }
+      : { rol: 'bot', texto: FALLBACK };
+    setMensajes(m => [...m, { rol: 'user', texto: p }, botMsg]);
     setTexto('');
   }
 
@@ -113,12 +117,18 @@ export default function ChatBot() {
           </div>
           <div className="chatbot-messages">
             {mensajes.map((m, i) => (
-              <div key={i} className={'chatbot-msg ' + m.rol}>{m.texto}</div>
+              <div key={i}>
+                <div className={'chatbot-msg ' + m.rol}>{m.texto}</div>
+                {m.accion === 'ser_cliente' && (
+                  <button type="button" style={{ marginTop: 6 }} onClick={onAbrirSolicitud}>📋 Completar solicitud</button>
+                )}
+              </div>
             ))}
             <div ref={finRef} />
           </div>
           <div className="chatbot-suggestions">
-            {FAQ.slice(0, 4).map((f, i) => (
+            <button type="button" onClick={() => enviar('¿Quieres ser cliente?')}>🏢 ¿Quieres ser cliente?</button>
+            {FAQ.filter(f => f.id !== 'ser_cliente').slice(0, 3).map((f, i) => (
               <button key={i} type="button" onClick={() => enviar(f.pregunta)}>{f.pregunta}</button>
             ))}
           </div>

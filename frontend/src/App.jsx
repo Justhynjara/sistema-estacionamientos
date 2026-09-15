@@ -4,6 +4,8 @@ import AdminPanel from './AdminPanel.jsx';
 import ClientePanel from './ClientePanel.jsx';
 import BuscarCercanos from './BuscarCercanos.jsx';
 import ChatBot from './ChatBot.jsx';
+import SolicitudClienteForm from './SolicitudClienteForm.jsx';
+import SoportePanel from './SoportePanel.jsx';
 
 function Login({onLogin,onCancel,onForgot}){
   const [email,setEmail]=useState(''),[password,setPassword]=useState('');
@@ -27,6 +29,7 @@ function Login({onLogin,onCancel,onForgot}){
     <button type="button" onClick={onForgot} className="link-button">¿Olvidaste tu contraseña?</button>
     <p>Demo cliente (dueño): cliente@demo.cl / password</p>
     <p>Demo administrador: admin@demo.cl / password</p>
+    <p>Demo soporte: soporte@demo.cl / password</p>
     <button type="button" onClick={onCancel} className="link-button">← Volver a la búsqueda</button>
   </div></div>
 }
@@ -110,6 +113,7 @@ function App(){
  const [resetToken,setResetToken]=useState(null);
  const [pago,setPago]=useState(null);
  const [reservaCodigo,setReservaCodigo]=useState(null);
+ const [mostrarSolicitud,setMostrarSolicitud]=useState(false);
 
  useEffect(()=>{
    const params=new URLSearchParams(window.location.search);
@@ -147,6 +151,17 @@ function App(){
    return <ResetPassword token={resetToken} onDone={()=>{setResetToken(null); setShowLogin(true); setAuthView('login');}}/>;
  }
 
+ if(mostrarSolicitud){
+   return <>
+     <nav>
+       <div className="brand"><span className="logo">🅿️</span> Sistema de Estacionamientos</div>
+     </nav>
+     <main className="container">
+       <SolicitudClienteForm onCerrar={()=>setMostrarSolicitud(false)}/>
+     </main>
+   </>;
+ }
+
  if(!user && showLogin){
    if(authView==='forgot') return <ForgotPassword onBack={()=>setAuthView('login')}/>;
    return <Login onLogin={u=>{setUser(u);setShowLogin(false);}} onCancel={()=>setShowLogin(false)} onForgot={()=>setAuthView('forgot')}/>;
@@ -180,7 +195,7 @@ function App(){
        </div>
        <BuscarCercanos reservaCodigoInicial={reservaCodigo}/>
      </main>
-     <ChatBot/>
+     <ChatBot onAbrirSolicitud={()=>setMostrarSolicitud(true)}/>
    </>;
  }
 
@@ -195,9 +210,11 @@ function App(){
     ? <AdminPanel user={user}/>
     : user.rol==='CLIENTE'
     ? <ClientePanel/>
+    : user.rol==='SOPORTE'
+    ? <SoportePanel/>
     : <BuscarCercanos reservaCodigoInicial={reservaCodigo}/>}
  </main>
- <ChatBot/>
+ <ChatBot onAbrirSolicitud={()=>setMostrarSolicitud(true)}/>
  </>
 }
 export default App;

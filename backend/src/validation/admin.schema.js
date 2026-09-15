@@ -4,7 +4,7 @@ export const createUserSchema = z.object({
   nombre: z.string().trim().min(2, 'Nombre muy corto').max(120),
   email: z.string().trim().toLowerCase().email('Email inválido'),
   password: z.string().min(8, 'La contraseña debe tener al menos 8 caracteres'),
-  rol: z.enum(['USUARIO', 'CLIENTE', 'ADMIN'])
+  rol: z.enum(['USUARIO', 'CLIENTE', 'ADMIN', 'SOPORTE'])
 });
 
 export const updateUserStatusSchema = z.object({
@@ -12,7 +12,7 @@ export const updateUserStatusSchema = z.object({
 });
 
 export const updateUserRoleSchema = z.object({
-  rol: z.enum(['USUARIO', 'CLIENTE', 'ADMIN'])
+  rol: z.enum(['USUARIO', 'CLIENTE', 'ADMIN', 'SOPORTE'])
 });
 
 export const updateParamSchema = z.object({
