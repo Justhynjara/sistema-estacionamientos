@@ -5,7 +5,7 @@ import {validateBody,validateParams} from '../middleware/validate.middleware.js'
 import {createParking,updateCapacity} from '../controllers/parking.controller.js';
 import {listUsers,createUser,updateUserStatus,updateUserRole,listParams,updateParam} from '../controllers/admin.controller.js';
 import {createParkingSchema,updateCapacitySchema} from '../validation/parking.schema.js';
-import {createUserSchema,updateUserStatusSchema,updateUserRoleSchema,updateParamSchema} from '../validation/admin.schema.js';
+import {createUserSchema,updateUserStatusSchema,updateUserRoleSchema,updateParamSchema,paramClaveSchema} from '../validation/admin.schema.js';
 import {idParamSchema} from '../validation/common.schema.js';
 const r=Router(); r.use(auth,roles('ADMIN'));
 r.post('/parking',validateBody(createParkingSchema),createParking);
@@ -15,5 +15,5 @@ r.post('/users',validateBody(createUserSchema),createUser);
 r.patch('/users/:id/status',validateParams(idParamSchema),validateBody(updateUserStatusSchema),updateUserStatus);
 r.patch('/users/:id/role',validateParams(idParamSchema),validateBody(updateUserRoleSchema),updateUserRole);
 r.get('/params',listParams);
-r.put('/params/:clave',validateBody(updateParamSchema),updateParam);
+r.put('/params/:clave',validateParams(paramClaveSchema),validateBody(updateParamSchema),updateParam);
 export default r;

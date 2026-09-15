@@ -23,13 +23,15 @@ export async function me(req,res){
   res.json(r.rows[0]);
 }
 
+// Registro público: siempre crea cuentas rol USUARIO (buscar/reservar).
+// Roles con privilegios (CLIENTE, SOPORTE, ADMIN) solo los crea un ADMIN vía /api/admin/users.
 export async function register(req,res){
-  const {nombre,email,password,rol='USUARIO'}=req.body;
+  const {nombre,email,password}=req.body;
   const hash=await bcrypt.hash(password,10);
   try {
     const r=await pool.query(
-      `INSERT INTO usuarios(nombre,email,password_hash,rol) VALUES($1,$2,$3,$4)
-       RETURNING id,nombre,email,rol`,[nombre,email,hash,rol==='USUARIO'?'USUARIO':rol]
+      `INSERT INTO usuarios(nombre,email,password_hash,rol) VALUES($1,$2,$3,'USUARIO')
+       RETURNING id,nombre,email,rol`,[nombre,email,hash]
     );
     res.status(201).json(r.rows[0]);
   } catch { res.status(409).json({error:'Email ya registrado'}); }

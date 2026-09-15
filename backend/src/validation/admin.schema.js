@@ -18,3 +18,9 @@ export const updateUserRoleSchema = z.object({
 export const updateParamSchema = z.object({
   valor: z.string().trim().min(1).max(255)
 });
+
+// Allowlist de claves editables: evita que un bug de frontend (o un llamado directo a la API)
+// cree o pise filas de parametros_sistema fuera de las que el sistema realmente usa.
+export const paramClaveSchema = z.object({
+  clave: z.enum(['comision_plataforma', 'tarifa_hora_minima', 'moneda', 'reserva_monto_clp', 'reserva_ttl_min'])
+});

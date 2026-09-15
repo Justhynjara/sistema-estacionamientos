@@ -1,6 +1,7 @@
 import 'express-async-errors';
 import express from 'express';
 import cors from 'cors';
+import helmet from 'helmet';
 import pinoHttp from 'pino-http';
 import {env} from './config/env.js';
 import {logger} from './config/logger.js';
@@ -19,6 +20,11 @@ export function corsOrigin(origin,callback){
 
 export const app=express();
 
+// Render sirve la API detrás de un proxy/edge (Cloudflare); sin esto, express-rate-limit
+// y cualquier lógica basada en req.ip no vería la IP real del cliente.
+app.set('trust proxy', 1);
+
+app.use(helmet());
 app.use(pinoHttp({logger, autoLogging:{ignore:req=>req.url==='/health'}}));
 app.use(cors({origin:corsOrigin}));
 app.use(express.json({limit:'12mb'})); // las solicitudes de nuevos clientes incluyen fotos en base64
