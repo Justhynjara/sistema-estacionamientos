@@ -2,10 +2,37 @@ import crypto from 'crypto';
 import { pool } from '../config/database.js';
 import { env } from '../config/env.js';
 import { webpayTransaction } from './webpay.service.js';
-import { emitCupos } from './ticket.service.js';
+import { emitCupos, reserveTicket, calcularMonto } from './ticket.service.js';
 
 function buyOrderFor(ticketId) {
   return ('T' + ticketId.replace(/-/g, '')).slice(0, 26);
+}
+
+async function getReservaMontoClp() {
+  const r = await pool.query(`SELECT valor FROM parametros_sistema WHERE clave='reserva_monto_clp'`);
+  const monto = Number(r.rows[0]?.valor);
+  return Number.isFinite(monto) && monto >= 100 ? monto : 100;
+}
+
+export async function startReservationPayment(estacionamientoId, patente) {
+  const p = await pool.query('SELECT id,cupos_disponibles,estado FROM estacionamientos WHERE id=$1', [estacionamientoId]);
+  if (!p.rowCount || !p.rows[0].estado) throw new Error('Estacionamiento no encontrado');
+  if (p.rows[0].cupos_disponibles <= 0) throw new Error('Sin cupos disponibles');
+
+  const monto = await getReservaMontoClp();
+  const buyOrder = ('R' + crypto.randomUUID().replace(/-/g, '')).slice(0, 26);
+  const sessionId = crypto.randomUUID().replace(/-/g, '').slice(0, 26);
+
+  const tx = webpayTransaction();
+  const resp = await tx.create(buyOrder, sessionId, monto, env.webpay.returnUrl);
+
+  await pool.query(
+    `INSERT INTO payments(tipo,estacionamiento_id,patente,buy_order,token,monto,estado)
+     VALUES('RESERVA',$1,$2,$3,$4,$5,'INICIADO')`,
+    [estacionamientoId, patente || null, buyOrder, resp.token, monto]
+  );
+
+  return { url: resp.url, token: resp.token, monto };
 }
 
 export async function startPayment(codigoQr, clienteId) {
@@ -20,8 +47,8 @@ export async function startPayment(codigoQr, clienteId) {
   if (ticket.cliente_id !== clienteId) throw new Error('Este ticket no pertenece a uno de tus estacionamientos');
   if (ticket.estado !== 'ACTIVO') throw new Error('Solo se pueden cobrar tickets activos');
 
-  const horas = Math.max(1, Math.ceil((Date.now() - new Date(ticket.fecha_entrada).getTime()) / 3600000));
-  const monto = horas * Number(ticket.precio_hora);
+  const { monto } = await calcularMonto(ticket.id, ticket.fecha_entrada, ticket.precio_hora);
+  if (monto <= 0) throw new Error('El descuento de tu reserva ya cubre el total. Usa "Cobrar en efectivo" para cerrar el ticket sin cobro adicional.');
   const buyOrder = buyOrderFor(ticket.id);
   const sessionId = crypto.randomUUID().replace(/-/g, '').slice(0, 26);
 
@@ -50,6 +77,19 @@ export async function confirmPayment(token) {
     [aprobado ? 'APROBADO' : 'RECHAZADO', result.response_code, result.authorization_code, payment.id]
   );
 
+  if (payment.tipo === 'RESERVA') {
+    if (!aprobado) return { aprobado, tipo: 'RESERVA', monto: Number(payment.monto) };
+    let reserva;
+    try {
+      reserva = await reserveTicket(payment.estacionamiento_id, payment.patente);
+    } catch (e) {
+      // El pago se aprobó pero el cupo se agotó justo antes de confirmar (carrera poco frecuente).
+      return { aprobado: false, tipo: 'RESERVA', monto: Number(payment.monto), error: e.message };
+    }
+    await pool.query(`UPDATE payments SET ticket_id=$1 WHERE id=$2`, [reserva.id, payment.id]);
+    return { aprobado, tipo: 'RESERVA', monto: Number(payment.monto), codigoQr: reserva.codigo_qr };
+  }
+
   if (aprobado) {
     const client = await pool.connect();
     try {
@@ -71,5 +111,5 @@ export async function confirmPayment(token) {
     finally { client.release(); }
   }
 
-  return { aprobado, ticketId: payment.ticket_id, monto: Number(payment.monto) };
+  return { aprobado, tipo: 'COBRO', ticketId: payment.ticket_id, monto: Number(payment.monto) };
 }

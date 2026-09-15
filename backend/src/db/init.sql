@@ -57,7 +57,10 @@ CREATE TABLE IF NOT EXISTS password_resets (
 
 CREATE TABLE IF NOT EXISTS payments (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  ticket_id UUID NOT NULL REFERENCES tickets(id),
+  ticket_id UUID REFERENCES tickets(id),
+  tipo VARCHAR(20) NOT NULL DEFAULT 'COBRO' CHECK (tipo IN ('COBRO','RESERVA')),
+  estacionamiento_id UUID REFERENCES estacionamientos(id),
+  patente VARCHAR(12),
   buy_order VARCHAR(26) NOT NULL,
   token TEXT,
   monto NUMERIC(10,2) NOT NULL,

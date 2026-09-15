@@ -66,9 +66,12 @@ describe('tickets: propiedad y flujo', () => {
     assert.equal(res.body.estado, 'ACTIVO');
   });
 
-  test('reservar un cupo público (sin auth) reduce la disponibilidad y genera un código', async () => {
+  test('el dueño puede reservar manualmente un cupo en su estacionamiento (ej. reserva telefónica)', async () => {
     const before = await pool.query('SELECT cupos_disponibles FROM estacionamientos WHERE id=$1', [parkingA]);
-    const res = await request(app).post('/api/tickets/reserve').send({ estacionamiento_id: parkingA });
+    const res = await request(app)
+      .post('/api/tickets/reserve')
+      .set('Authorization', `Bearer ${tokenA}`)
+      .send({ estacionamiento_id: parkingA });
     assert.equal(res.status, 201);
     assert.equal(res.body.estado, 'RESERVADO');
     assert.ok(res.body.codigo_qr);
@@ -77,7 +80,10 @@ describe('tickets: propiedad y flujo', () => {
   });
 
   test('el dueño de otro estacionamiento no puede validar una reserva ajena', async () => {
-    const reserva = await request(app).post('/api/tickets/reserve').send({ estacionamiento_id: parkingA });
+    const reserva = await request(app)
+      .post('/api/tickets/reserve')
+      .set('Authorization', `Bearer ${tokenA}`)
+      .send({ estacionamiento_id: parkingA });
     const res = await request(app)
       .post('/api/tickets/checkin')
       .set('Authorization', `Bearer ${tokenB}`)
@@ -87,7 +93,10 @@ describe('tickets: propiedad y flujo', () => {
   });
 
   test('el dueño correcto sí puede validar su reserva', async () => {
-    const reserva = await request(app).post('/api/tickets/reserve').send({ estacionamiento_id: parkingA });
+    const reserva = await request(app)
+      .post('/api/tickets/reserve')
+      .set('Authorization', `Bearer ${tokenA}`)
+      .send({ estacionamiento_id: parkingA });
     const res = await request(app)
       .post('/api/tickets/checkin')
       .set('Authorization', `Bearer ${tokenA}`)
@@ -107,5 +116,20 @@ describe('tickets: propiedad y flujo', () => {
   test('sin token, el dashboard responde 401', async () => {
     const res = await request(app).get('/api/tickets/dashboard');
     assert.equal(res.status, 401);
+  });
+
+  test('el micropago de reserva pública exige patente', async () => {
+    const res = await request(app)
+      .post('/api/payments/webpay/reserve-start')
+      .send({ estacionamiento_id: parkingA });
+    assert.equal(res.status, 400);
+  });
+
+  test('el micropago de reserva pública rechaza un estacionamiento inexistente', async () => {
+    const res = await request(app)
+      .post('/api/payments/webpay/reserve-start')
+      .send({ estacionamiento_id: '11111111-1111-4111-8111-111111111111', patente: 'ZZ9999' });
+    assert.equal(res.status, 400);
+    assert.match(res.body.error, /no encontrado/i);
   });
 });

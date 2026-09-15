@@ -2,8 +2,9 @@ import {Router} from 'express';
 import {auth} from '../middleware/auth.middleware.js';
 import {roles} from '../middleware/role.middleware.js';
 import {validateBody} from '../middleware/validate.middleware.js';
-import {startPayment,confirmPayment} from '../services/payment.service.js';
-import {startPaymentSchema} from '../validation/payment.schema.js';
+import {startPayment,startReservationPayment,confirmPayment} from '../services/payment.service.js';
+import {startPaymentSchema,startReservationPaymentSchema} from '../validation/payment.schema.js';
+import {reservaLimiter} from '../middleware/rateLimit.middleware.js';
 import {env} from '../config/env.js';
 import {logger} from '../config/logger.js';
 
@@ -11,6 +12,12 @@ const r=Router();
 
 r.post('/webpay/start',auth,roles('CLIENTE'),validateBody(startPaymentSchema),async(req,res)=>{
   try{res.json(await startPayment(req.body.codigo_qr,req.user.id));}
+  catch(e){res.status(400).json({error:e.message});}
+});
+
+// Micropago público (sin autenticación) para confirmar una reserva y evitar reservas falsas.
+r.post('/webpay/reserve-start',reservaLimiter,validateBody(startReservationPaymentSchema),async(req,res)=>{
+  try{res.json(await startReservationPayment(req.body.estacionamiento_id,req.body.patente));}
   catch(e){res.status(400).json({error:e.message});}
 });
 
@@ -23,7 +30,11 @@ async function handleWebpayReturn(req,res){
     return res.redirect(`${env.frontendUrl}/?pago=cancelado`);
   }
   try{
-    const {aprobado,monto}=await confirmPayment(token);
+    const {aprobado,tipo,monto,codigoQr,error}=await confirmPayment(token);
+    if(tipo==='RESERVA'){
+      if(aprobado) return res.redirect(`${env.frontendUrl}/?pago=aprobado&reserva=${codigoQr}`);
+      return res.redirect(`${env.frontendUrl}/?pago=${error?'sin_cupo':'rechazado'}&monto=${Math.round(monto)}`);
+    }
     res.redirect(`${env.frontendUrl}/?pago=${aprobado?'aprobado':'rechazado'}&monto=${Math.round(monto)}`);
   }catch(e){
     logger.error({err:e},'Error confirmando pago Webpay');

@@ -31,5 +31,7 @@ AND NOT EXISTS (SELECT 1 FROM tickets);
 INSERT INTO parametros_sistema (clave,valor,descripcion) VALUES
 ('comision_plataforma','10','Porcentaje que retiene la plataforma por ticket cobrado'),
 ('tarifa_hora_minima','1','Cantidad mínima de horas cobradas por ticket'),
-('moneda','CLP','Moneda utilizada para mostrar precios')
+('moneda','CLP','Moneda utilizada para mostrar precios'),
+('reserva_monto_clp','100','Monto del micropago (CLP) que se cobra para confirmar una reserva y evitar reservas falsas'),
+('reserva_ttl_min','10','Minutos de validez de una reserva antes de liberar el cupo automáticamente')
 ON CONFLICT (clave) DO NOTHING;

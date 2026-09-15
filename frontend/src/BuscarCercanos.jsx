@@ -5,8 +5,10 @@ import 'leaflet/dist/leaflet.css';
 import { io } from 'socket.io-client';
 import { api, API_ORIGIN } from './services/api.js';
 import QRCodeCanvas from './QRCode.jsx';
+import AddressAutocomplete from './AddressAutocomplete.jsx';
 import { geocode } from './utils/geo.js';
 import { imprimirTicket } from './utils/print.js';
+import { redirectToWebpay } from './utils/webpay.js';
 
 const SOCKET_URL = API_ORIGIN;
 const RADIUS_KM = 5;
@@ -78,7 +80,7 @@ function Countdown({ expira }) {
   return <span className="badge ok">⏱️ Válida por {min}:{String(seg).padStart(2, '0')} min</span>;
 }
 
-export default function BuscarCercanos() {
+export default function BuscarCercanos({ reservaCodigoInicial } = {}) {
   const [userPos, setUserPos] = useState(null);
   const [geoError, setGeoError] = useState('');
   const [manualMode, setManualMode] = useState(false);
@@ -112,6 +114,20 @@ export default function BuscarCercanos() {
     );
     return () => navigator.geolocation.clearWatch(watchId);
   }, []);
+
+  useEffect(() => {
+    if (!reservaCodigoInicial) return;
+    api.get(`/tickets/reserva/${reservaCodigoInicial}`)
+      .then(r => setReserva({
+        codigo: r.data.codigo_qr,
+        nombre: r.data.estacionamiento_nombre,
+        direccion: r.data.estacionamiento_direccion,
+        expira: r.data.reserva_expira,
+        latitud: r.data.latitud,
+        longitud: r.data.longitud
+      }))
+      .catch(() => setReservaError('Tu pago se procesó, pero no pudimos recuperar el comprobante de la reserva. Si el pago fue aprobado, contacta al estacionamiento.'));
+  }, [reservaCodigoInicial]);
 
   function setManualLocation(coords) {
     setUserPos(coords);
@@ -163,11 +179,9 @@ export default function BuscarCercanos() {
     joinedRoomsRef.current = nuevos;
   }
 
-  async function buscar(e) {
-    e.preventDefault();
+async function buscarCercaDe(destCoords) {
     setError(''); setLoading(true); setSelectedId(null); setSelectedRoute(null);
     try {
-      const destCoords = destino.trim() ? await geocode(destino.trim()) : userPos;
       if (!destCoords) throw new Error('Aún no se ha obtenido tu ubicación actual');
       setDestinoCoords(destCoords);
 
@@ -195,6 +209,24 @@ export default function BuscarCercanos() {
     }
   }
 
+  async function buscar(e) {
+    e.preventDefault();
+    if (!destino.trim()) { await buscarCercaDe(userPos); return; }
+    setError(''); setLoading(true);
+    try {
+      const destCoords = await geocode(destino.trim());
+      await buscarCercaDe(destCoords);
+    } catch (err) {
+      setError(err.message || 'No se encontró esa dirección');
+      setParkings([]);
+      setLoading(false);
+    }
+  }
+
+  function onDestinoSeleccionado(coords) {
+    buscarCercaDe(coords);
+  }
+
   async function verRuta(p) {
     if (!userPos) { setError('Aún no se ha obtenido tu ubicación actual'); return; }
     setSelectedId(p.id);
@@ -207,6 +239,11 @@ export default function BuscarCercanos() {
     }
   }
 
+  function abrirWaze(p) {
+    const url = `https://waze.com/ul?ll=${p.latitud},${p.longitud}&navigate=yes`;
+    window.open(url, '_blank', 'noopener');
+  }
+
   function iniciarReserva(p) {
     setReservaPendiente(p);
     setPatenteReserva('');
@@ -216,15 +253,13 @@ export default function BuscarCercanos() {
   async function confirmarReserva(e) {
     e.preventDefault();
     const p = reservaPendiente;
-    if (!p) return;
+    if (!p || !patenteReserva.trim()) return;
     setReservandoId(p.id); setReservaError('');
     try {
-      const r = await api.post('/tickets/reserve', { estacionamiento_id: p.id, patente: patenteReserva.trim() || null });
-      setReserva({ codigo: r.data.codigo_qr, nombre: p.nombre, direccion: p.direccion, expira: r.data.reserva_expira });
-      setReservaPendiente(null);
+      const r = await api.post('/payments/webpay/reserve-start', { estacionamiento_id: p.id, patente: patenteReserva.trim() });
+      redirectToWebpay(r.data.url, r.data.token);
     } catch (err) {
-      setReservaError(err.response?.data?.error || 'No se pudo reservar el cupo');
-    } finally {
+      setReservaError(err.response?.data?.error || 'No se pudo iniciar el pago de la reserva');
       setReservandoId(null);
     }
   }
@@ -248,11 +283,12 @@ export default function BuscarCercanos() {
         <p>Se usa tu GPS automáticamente. Si falla o prefieres otra, escribe una dirección o haz clic directamente en el mapa.</p>
         {geoError && <p className="badge off">⚠️ {geoError}</p>}
         <form onSubmit={usarOrigenEscrito} className="row-form">
-          <input
+          <AddressAutocomplete
             placeholder="Tu dirección de partida (ej: Av. Providencia 1234, Santiago)"
-            aria-label="Tu dirección de partida"
+            ariaLabel="Tu dirección de partida"
             value={origen}
-            onChange={e => setOrigen(e.target.value)}
+            onChange={setOrigen}
+            onSelect={setManualLocation}
           />
           <button disabled={origenLoading}>{origenLoading && <span className="spinner"/>}{origenLoading ? 'Ubicando...' : 'Usar esta dirección'}</button>
           <button type="button" onClick={usarGPS} className="secondary">📍 Usar mi GPS</button>
@@ -264,11 +300,12 @@ export default function BuscarCercanos() {
         <h2><span className="step">2</span>Destino</h2>
         {error && <p className="badge off">⚠️ {error}</p>}
         <form onSubmit={buscar} className="row-form">
-          <input
+          <AddressAutocomplete
             placeholder="Destino (ej: Plaza de Armas, Curicó) — vacío = buscar cerca de mí"
-            aria-label="Destino"
+            ariaLabel="Destino"
             value={destino}
-            onChange={e => setDestino(e.target.value)}
+            onChange={setDestino}
+            onSelect={onDestinoSeleccionado}
           />
           <button disabled={loading}>{loading && <span className="spinner"/>}{loading ? 'Buscando...' : '🔎 Buscar estacionamientos'}</button>
         </form>
@@ -277,7 +314,7 @@ export default function BuscarCercanos() {
       {reservaPendiente && (
         <div className="card">
           <h3>🎫 Reservar cupo en {reservaPendiente.nombre}</h3>
-          <p>Ingresa la patente del vehículo que va a estacionar:</p>
+          <p>Ingresa la patente del vehículo que va a estacionar. Para confirmar, se te pedirá un micropago de <strong>$100 CLP</strong> por Webpay — evita reservas falsas y tu cupo queda apartado por <strong>10 minutos</strong>.</p>
           {reservaError && <p className="badge off">⚠️ {reservaError}</p>}
           <form onSubmit={confirmarReserva} className="row-form">
             <input
@@ -288,7 +325,7 @@ export default function BuscarCercanos() {
               autoFocus
               required
             />
-            <button disabled={reservandoId === reservaPendiente.id}>{reservandoId === reservaPendiente.id && <span className="spinner" />}Confirmar reserva</button>
+            <button disabled={reservandoId === reservaPendiente.id}>{reservandoId === reservaPendiente.id && <span className="spinner" />}💳 Pagar $100 y reservar</button>
             <button type="button" className="secondary" onClick={() => setReservaPendiente(null)}>Cancelar</button>
           </form>
         </div>
@@ -304,6 +341,9 @@ export default function BuscarCercanos() {
           <p style={{ fontFamily: 'monospace', color: 'var(--text-muted)', fontSize: '.8rem', wordBreak: 'break-all' }}>{reserva.codigo}</p>
           <Countdown expira={reserva.expira} />
           <div className="row-form" style={{ justifyContent: 'center', marginTop: 10 }}>
+            {reserva.latitud && reserva.longitud && (
+              <button type="button" className="secondary" onClick={() => abrirWaze({ latitud: reserva.latitud, longitud: reserva.longitud })}>🧭 Navegar con Waze</button>
+            )}
             <button type="button" onClick={() => imprimirTicket({
               nombreEstacionamiento: reserva.nombre,
               direccion: reserva.direccion,
@@ -360,6 +400,9 @@ export default function BuscarCercanos() {
             <div className="row-form">
               <button onClick={() => verRuta(p)} disabled={p.cupos_disponibles <= 0}>
                 {selectedId === p.id ? '✅ Ruta trazada' : '🗺️ Ver ruta'}
+              </button>
+              <button type="button" className="secondary" onClick={() => abrirWaze(p)}>
+                🧭 Navegar con Waze
               </button>
               <button type="button" className="secondary" onClick={() => iniciarReserva(p)} disabled={p.cupos_disponibles <= 0}>
                 🎫 Reservar cupo

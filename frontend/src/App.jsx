@@ -3,6 +3,7 @@ import {api} from './services/api.js';
 import AdminPanel from './AdminPanel.jsx';
 import ClientePanel from './ClientePanel.jsx';
 import BuscarCercanos from './BuscarCercanos.jsx';
+import ChatBot from './ChatBot.jsx';
 
 function Login({onLogin,onCancel,onForgot}){
   const [email,setEmail]=useState(''),[password,setPassword]=useState('');
@@ -91,6 +92,7 @@ function PagoBanner({estado,monto,onClose}){
     aprobado:{cls:'ok',texto:`✅ Pago aprobado${monto?` por $${Number(monto).toLocaleString('es-CL')}`:''}.`},
     rechazado:{cls:'off',texto:'❌ El pago fue rechazado. Intenta con otra tarjeta.'},
     cancelado:{cls:'off',texto:'⚠️ Pago cancelado.'},
+    sin_cupo:{cls:'off',texto:'⚠️ Tu pago se procesó, pero el cupo se agotó justo antes de confirmar tu reserva. Contacta al estacionamiento para resolverlo.'},
     error:{cls:'off',texto:'⚠️ Ocurrió un error al confirmar el pago.'}
   };
   const info=textos[estado];
@@ -107,14 +109,17 @@ function App(){
  const [authView,setAuthView]=useState('login');
  const [resetToken,setResetToken]=useState(null);
  const [pago,setPago]=useState(null);
+ const [reservaCodigo,setReservaCodigo]=useState(null);
 
  useEffect(()=>{
    const params=new URLSearchParams(window.location.search);
    const reset=params.get('reset');
    const pagoEstado=params.get('pago');
+   const reserva=params.get('reserva');
    if(reset) setResetToken(reset);
    if(pagoEstado) setPago({estado:pagoEstado, monto:params.get('monto')});
-   if(reset || pagoEstado){
+   if(reserva) setReservaCodigo(reserva);
+   if(reset || pagoEstado || reserva){
      const url=new URL(window.location.href);
      url.search='';
      window.history.replaceState({},'',url);
@@ -159,8 +164,23 @@ function App(){
          <h1>Encuentra estacionamiento cerca de tu destino</h1>
          <p>Sin registro, sin espera: ubica cupos disponibles y traza tu ruta en segundos.</p>
        </div>
-       <BuscarCercanos/>
+       <div className="landing-choice-grid">
+         <div className="card landing-choice usuario">
+           <div className="landing-icon">🚗</div>
+           <h2>Busco estacionamiento</h2>
+           <p>Encuentra cupos cerca de tu destino y reserva tu lugar en segundos, sin crear cuenta.</p>
+           <span className="badge ok">👇 Justo aquí abajo</span>
+         </div>
+         <div className="card landing-choice admin" onClick={()=>{setShowLogin(true);setAuthView('login');}}>
+           <div className="landing-icon">🔑</div>
+           <h2>Soy dueño o administrador</h2>
+           <p>Gestiona tus estacionamientos, cobra tickets y revisa tus reportes de flujo y recaudación.</p>
+           <button type="button">Iniciar sesión →</button>
+         </div>
+       </div>
+       <BuscarCercanos reservaCodigoInicial={reservaCodigo}/>
      </main>
+     <ChatBot/>
    </>;
  }
 
@@ -175,7 +195,9 @@ function App(){
     ? <AdminPanel user={user}/>
     : user.rol==='CLIENTE'
     ? <ClientePanel/>
-    : <BuscarCercanos/>}
- </main></>
+    : <BuscarCercanos reservaCodigoInicial={reservaCodigo}/>}
+ </main>
+ <ChatBot/>
+ </>
 }
 export default App;

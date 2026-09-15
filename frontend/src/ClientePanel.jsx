@@ -3,6 +3,8 @@ import { api } from './services/api.js';
 import QRCodeCanvas from './QRCode.jsx';
 import Pagination, { usePagination } from './Pagination.jsx';
 import { imprimirTicket } from './utils/print.js';
+import { redirectToWebpay } from './utils/webpay.js';
+import QRScanner from './QRScanner.jsx';
 
 function Tabs({ tab, setTab }) {
   const tabs = [['estacionamientos', '🅿️ Mis estacionamientos'], ['dashboard', '📊 Dashboard de tickets']];
@@ -26,19 +28,6 @@ function fmtHora(iso) {
   return new Date(iso).toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit' });
 }
 
-function redirectToWebpay(url, token) {
-  const form = document.createElement('form');
-  form.method = 'POST';
-  form.action = url;
-  const input = document.createElement('input');
-  input.type = 'hidden';
-  input.name = 'token_ws';
-  input.value = token;
-  form.appendChild(input);
-  document.body.appendChild(form);
-  form.submit();
-}
-
 function tiempoTranscurrido(iso) {
   const min = Math.max(0, Math.floor((Date.now() - new Date(iso).getTime()) / 60000));
   if (min < 60) return `${min} min`;
@@ -51,6 +40,7 @@ function GestionTicketPanel({ reloadParking }) {
   const [mensaje, setMensaje] = useState(null);
   const [cobro, setCobro] = useState(null);
   const [activos, setActivos] = useState([]);
+  const [escaneando, setEscaneando] = useState(false);
 
   function cargarActivos() {
     api.get('/tickets/active').then(r => setActivos(r.data)).catch(() => {});
@@ -83,6 +73,7 @@ function GestionTicketPanel({ reloadParking }) {
       setCobro({
         codigo: c,
         monto: Number(q.data.monto),
+        descuento: Number(q.data.descuentoReserva || 0),
         patente: q.data.patente,
         estacionamiento_nombre: q.data.estacionamiento_nombre,
         direccion: q.data.estacionamiento_direccion,
@@ -115,6 +106,7 @@ function GestionTicketPanel({ reloadParking }) {
             ['Patente', r.data.patente || '—'],
             ['Entrada', new Date(r.data.fecha_entrada).toLocaleString('es-CL')],
             ['Salida', new Date().toLocaleString('es-CL')],
+            ...(r.data.descuentoReserva > 0 ? [['Descuento reserva pagada', `-$${Number(r.data.descuentoReserva).toLocaleString('es-CL')}`]] : []),
             ['Total a pagar', `$${monto.toLocaleString('es-CL')}`],
             ['Recibido', `$${recibido.toLocaleString('es-CL')}`],
             ['Vuelto', `$${Math.max(0, vuelto).toLocaleString('es-CL')}`]
@@ -183,6 +175,9 @@ function GestionTicketPanel({ reloadParking }) {
         <div className="card">
           <h3>Cobro en efectivo — {cobro.patente || 'sin patente'}</h3>
           <p>{cobro.estacionamiento_nombre}</p>
+          {cobro.descuento > 0 && (
+            <p className="badge ok">🎟️ Descuento por reserva ya pagada: -${cobro.descuento.toLocaleString('es-CL')}</p>
+          )}
           <p style={{ fontSize: '1.3rem', fontWeight: 800 }}>Total a pagar: ${cobro.monto.toLocaleString('es-CL')}</p>
           <div className="row-form">
             <input
@@ -209,9 +204,16 @@ function GestionTicketPanel({ reloadParking }) {
         </div>
       )}
 
+      {escaneando && (
+        <QRScanner
+          onResult={qr => { setEscaneando(false); setCodigo(qr); }}
+          onClose={() => setEscaneando(false)}
+        />
+      )}
+
       <div className="card">
         <h3>Validar reserva o cobrar con código</h3>
-        <p>Si el conductor te muestra el código (QR escaneado o reserva), ingrésalo aquí.</p>
+        <p>Escanea el QR del conductor con la cámara, o ingrésalo manualmente.</p>
         {mensaje && (
           <p className={'badge ' + mensaje.tipo}>
             {mensaje.texto}
@@ -220,6 +222,7 @@ function GestionTicketPanel({ reloadParking }) {
         )}
         <div className="row-form">
           <input placeholder="Código del ticket o reserva" value={codigo} onChange={e => setCodigo(e.target.value)} aria-label="Código del ticket o reserva" />
+          <button type="button" className="secondary" onClick={() => setEscaneando(true)}>📷 Escanear QR</button>
         </div>
         <div className="row-form">
           <button type="button" onClick={() => validarReserva()} disabled={!!loading}>{loading === 'checkin' && <span className="spinner" />}✅ Validar reserva</button>

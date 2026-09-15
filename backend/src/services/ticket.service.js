@@ -2,7 +2,25 @@ import { pool } from '../config/database.js';
 import { generateQR } from '../utils/generateQR.js';
 import { getIO } from '../sockets/io.js';
 
-const RESERVATION_TTL_MIN = 15;
+const RESERVATION_TTL_MIN_DEFAULT = 10;
+
+async function getReservationTtlMin(){
+  const r=await pool.query(`SELECT valor FROM parametros_sistema WHERE clave='reserva_ttl_min'`);
+  const min=Number(r.rows[0]?.valor);
+  return Number.isFinite(min) && min>0 ? min : RESERVATION_TTL_MIN_DEFAULT;
+}
+
+export async function calcularMonto(ticketId, fechaEntrada, precioHora){
+  const hours=Math.max(1, Math.ceil((Date.now()-new Date(fechaEntrada).getTime())/3600000));
+  const bruto=hours*Number(precioHora);
+  const dep=await pool.query(
+    `SELECT monto FROM payments WHERE ticket_id=$1 AND tipo='RESERVA' AND estado='APROBADO' LIMIT 1`,
+    [ticketId]
+  );
+  const descuento=dep.rowCount ? Number(dep.rows[0].monto) : 0;
+  const monto=Math.max(0, bruto-descuento);
+  return { horas:hours, bruto, descuento, monto };
+}
 
 export function emitCupos(estacionamientoId, cuposDisponibles, cupoMaximo){
   const io = getIO();
@@ -54,8 +72,7 @@ export async function closeTicket(qr, clienteId){
     if(!t.rowCount) throw new Error('Ticket activo no encontrado');
     const row=t.rows[0];
     if(row.cliente_id !== clienteId) throw new Error('Este ticket no pertenece a uno de tus estacionamientos');
-    const hours=Math.max(1, Math.ceil((Date.now()-new Date(row.fecha_entrada).getTime())/3600000));
-    const monto=hours*Number(row.precio_hora);
+    const {monto,descuento}=await calcularMonto(row.id,row.fecha_entrada,row.precio_hora);
     await client.query(
       `UPDATE tickets SET fecha_salida=NOW(), estado='CERRADO', monto=$1 WHERE id=$2`,
       [monto,row.id]
@@ -67,7 +84,7 @@ export async function closeTicket(qr, clienteId){
     );
     await client.query('COMMIT');
     emitCupos(row.estacionamiento_id, upd.rows[0].cupos_disponibles, upd.rows[0].cupo_maximo);
-    return {...row,monto,estado:'CERRADO'};
+    return {...row,monto,descuentoReserva:descuento,estado:'CERRADO'};
   } catch(e){ await client.query('ROLLBACK'); throw e; }
   finally { client.release(); }
 }
@@ -81,9 +98,8 @@ export async function quoteTicket(qr, clienteId){
   if(!t.rowCount) throw new Error('Ticket activo no encontrado');
   const row=t.rows[0];
   if(row.cliente_id !== clienteId) throw new Error('Este ticket no pertenece a uno de tus estacionamientos');
-  const hours=Math.max(1, Math.ceil((Date.now()-new Date(row.fecha_entrada).getTime())/3600000));
-  const monto=hours*Number(row.precio_hora);
-  return {...row, monto};
+  const {monto,descuento}=await calcularMonto(row.id,row.fecha_entrada,row.precio_hora);
+  return {...row, monto, descuentoReserva:descuento};
 }
 
 export async function activeTickets(clienteId, estacionamientoId){
@@ -100,6 +116,7 @@ export async function activeTickets(clienteId, estacionamientoId){
 }
 
 export async function reserveTicket(estacionamientoId, patente){
+  const ttlMin=await getReservationTtlMin();
   const client=await pool.connect();
   try {
     await client.query('BEGIN');
@@ -111,7 +128,7 @@ export async function reserveTicket(estacionamientoId, patente){
     if(p.rows[0].cupos_disponibles <= 0) throw new Error('Sin cupos disponibles');
 
     const qr=generateQR();
-    const expira=new Date(Date.now()+RESERVATION_TTL_MIN*60000);
+    const expira=new Date(Date.now()+ttlMin*60000);
     const t=await client.query(
       `INSERT INTO tickets(estacionamiento_id,codigo_qr,patente,estado,reserva_expira)
        VALUES($1,$2,$3,'RESERVADO',$4) RETURNING *`, [estacionamientoId,qr,patente || null,expira]
@@ -125,6 +142,18 @@ export async function reserveTicket(estacionamientoId, patente){
     return t.rows[0];
   } catch(e){ await client.query('ROLLBACK'); throw e; }
   finally { client.release(); }
+}
+
+export async function getReservaPublica(qr){
+  const r=await pool.query(
+    `SELECT t.codigo_qr,t.patente,t.estado,t.reserva_expira,
+            e.nombre AS estacionamiento_nombre,e.direccion AS estacionamiento_direccion,
+            e.latitud,e.longitud
+     FROM tickets t JOIN estacionamientos e ON e.id=t.estacionamiento_id
+     WHERE t.codigo_qr=$1 AND t.estado IN ('RESERVADO','ACTIVO')`, [qr]
+  );
+  if(!r.rowCount) throw new Error('Reserva no encontrada o ya expiró');
+  return r.rows[0];
 }
 
 export async function checkinTicket(qr, clienteId){
