@@ -23,12 +23,15 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with: { node-version: 20 }
+      # --omit=dev: nos interesa lo que realmente se despliega (web en Render, API en Render).
+      # @capacitor/cli (devDependency, solo para compilar el APK Android a mano) queda fuera:
+      # su cadena de dependencias (xcode->uuid) no forma parte del sistema en producción.
       - name: Auditar backend
         working-directory: backend
-        run: npm audit --audit-level=moderate
+        run: npm audit --omit=dev --audit-level=moderate
       - name: Auditar frontend
         working-directory: frontend
-        run: npm audit --audit-level=moderate
+        run: npm audit --omit=dev --audit-level=moderate
 
   backend-tests:
     name: Suite de tests del backend
