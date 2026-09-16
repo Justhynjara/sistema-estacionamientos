@@ -259,7 +259,7 @@ async function buscarCercaDe(destCoords) {
       const r = await api.post('/payments/webpay/reserve-start', { estacionamiento_id: p.id, patente: patenteReserva.trim() });
       redirectToWebpay(r.data.url, r.data.token);
     } catch (err) {
-      setReservaError(err.response?.data?.error || 'No se pudo iniciar el pago de la reserva');
+      setReservaError(err.response?.data?.detalles?.[0]?.mensaje || err.response?.data?.error || 'No se pudo iniciar el pago de la reserva');
       setReservandoId(null);
     }
   }

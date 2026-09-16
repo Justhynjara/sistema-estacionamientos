@@ -8,7 +8,10 @@ const FAQ = [
   },
   {
     pregunta: '¿Cómo reservo un cupo?',
-    keywords: ['reservar', 'reserva', 'cupo', 'apartar'],
+    // 'reserv' (raíz) en vez de 'reservar'/'reserva' sueltos: así también matchea "reservo",
+    // "reservando", etc. Sin esto, preguntar literalmente "¿Cómo reservo un cupo?" empataba
+    // en puntaje con la FAQ de "buscar" (por la keyword 'cupo') y ganaba la que aparece primero.
+    keywords: ['reserv', 'cupo', 'apartar'],
     respuesta: 'En la tarjeta del estacionamiento presiona "Reservar cupo", ingresa la patente de tu vehículo y confirma. Se te pedirá un micropago de $100 CLP por Webpay para validar que la reserva es real — una vez aprobado, tu reserva queda activa por 10 minutos.'
   },
   {

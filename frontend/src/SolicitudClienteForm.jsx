@@ -107,9 +107,9 @@ export default function SolicitudClienteForm({ onCerrar }) {
           style={{ width: '100%', padding: 12, borderRadius: 10, border: '1.5px solid var(--border)', margin: '6px 0 14px', font: 'inherit' }}
         />
 
-        <label style={{ fontWeight: 600, fontSize: '.9rem' }}>Fotos de la ubicación y el establecimiento (hasta {MAX_FOTOS})</label>
+        <label htmlFor="solicitud-fotos" style={{ fontWeight: 600, fontSize: '.9rem' }}>Fotos de la ubicación y el establecimiento (hasta {MAX_FOTOS})</label>
         <div className="row-form" style={{ marginTop: 6 }}>
-          <input type="file" accept="image/*" multiple onChange={agregarFotos} disabled={comprimiendo || fotos.length >= MAX_FOTOS} />
+          <input id="solicitud-fotos" type="file" accept="image/*" multiple onChange={agregarFotos} disabled={comprimiendo || fotos.length >= MAX_FOTOS} />
           {comprimiendo && <span className="spinner" style={{ borderTopColor: 'var(--primary)', borderColor: 'rgba(67,56,202,.2)' }} />}
         </div>
         {fotos.length > 0 && (
@@ -117,7 +117,7 @@ export default function SolicitudClienteForm({ onCerrar }) {
             {fotos.map((f, i) => (
               <div key={i} style={{ position: 'relative' }}>
                 <img src={f} alt={`Foto ${i + 1}`} style={{ width: '100%', borderRadius: 10, border: '1px solid var(--border)', display: 'block' }} />
-                <button type="button" className="secondary" onClick={() => quitarFoto(i)} style={{ position: 'absolute', top: 4, right: 4, padding: '2px 8px', fontSize: '.75rem' }}>✕</button>
+                <button type="button" className="secondary" onClick={() => quitarFoto(i)} aria-label={`Quitar foto ${i + 1}`} title={`Quitar foto ${i + 1}`} style={{ position: 'absolute', top: 4, right: 4, padding: '2px 8px', fontSize: '.75rem' }}>✕</button>
               </div>
             ))}
           </div>
