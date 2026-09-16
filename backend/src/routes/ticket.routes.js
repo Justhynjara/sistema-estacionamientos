@@ -3,7 +3,7 @@ import {auth} from '../middleware/auth.middleware.js';
 import {roles} from '../middleware/role.middleware.js';
 import {validateBody,validateQuery} from '../middleware/validate.middleware.js';
 import {createTicket,closeTicket,reserveTicket,checkinTicket,ticketsDashboard,quoteTicket,activeTickets,getReservaPublica} from '../services/ticket.service.js';
-import {createTicketSchema,reserveTicketSchema,closeTicketSchema,checkinSchema,dashboardQuerySchema,activeQuerySchema} from '../validation/ticket.schema.js';
+import {createTicketSchema,reserveTicketSchema,closeTicketSchema,closeTicketWithMethodSchema,checkinSchema,dashboardQuerySchema,activeQuerySchema} from '../validation/ticket.schema.js';
 
 const r=Router();
 
@@ -12,8 +12,8 @@ r.post('/',auth,roles('CLIENTE'),validateBody(createTicketSchema),async(req,res)
   catch(e){res.status(400).json({error:e.message});}
 });
 
-r.post('/close',auth,roles('CLIENTE'),validateBody(closeTicketSchema),async(req,res)=>{
-  try{res.json(await closeTicket(req.body.codigo_qr,req.user.id));}
+r.post('/close',auth,roles('CLIENTE'),validateBody(closeTicketWithMethodSchema),async(req,res)=>{
+  try{res.json(await closeTicket(req.body.codigo_qr,req.user.id,req.body.metodo_pago));}
   catch(e){res.status(400).json({error:e.message});}
 });
 

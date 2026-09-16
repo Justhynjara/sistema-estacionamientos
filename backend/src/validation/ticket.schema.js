@@ -22,6 +22,12 @@ export const closeTicketSchema = z.object({
   codigo_qr: z.string().trim().min(4)
 });
 
+// El cobro real (a diferencia de la cotización) siempre debe registrar con qué medio pagó el
+// conductor: efectivo, o tarjeta de débito/crédito cobrada en el POS físico del local.
+export const closeTicketWithMethodSchema = closeTicketSchema.extend({
+  metodo_pago: z.enum(['EFECTIVO', 'DEBITO', 'CREDITO'], { message: 'Selecciona el método de pago' })
+});
+
 export const checkinSchema = z.object({
   codigo_qr: z.string().trim().min(4)
 });

@@ -105,6 +105,40 @@ describe('tickets: propiedad y flujo', () => {
     assert.equal(res.body.estado, 'ACTIVO');
   });
 
+  test('cerrar un ticket exige indicar el método de pago', async () => {
+    const emitido = await request(app)
+      .post('/api/tickets')
+      .set('Authorization', `Bearer ${tokenA}`)
+      .send({ estacionamiento_id: parkingA, patente: 'CC3333' });
+    const res = await request(app)
+      .post('/api/tickets/close')
+      .set('Authorization', `Bearer ${tokenA}`)
+      .send({ codigo_qr: emitido.body.codigo_qr });
+    assert.equal(res.status, 400);
+  });
+
+  test('cerrar un ticket con tarjeta registra el método de pago (sin pasar por Webpay)', async () => {
+    const emitido = await request(app)
+      .post('/api/tickets')
+      .set('Authorization', `Bearer ${tokenA}`)
+      .send({ estacionamiento_id: parkingA, patente: 'DD4444' });
+    const res = await request(app)
+      .post('/api/tickets/close')
+      .set('Authorization', `Bearer ${tokenA}`)
+      .send({ codigo_qr: emitido.body.codigo_qr, metodo_pago: 'DEBITO' });
+    assert.equal(res.status, 200);
+    assert.equal(res.body.estado, 'CERRADO');
+    assert.equal(res.body.metodo_pago, 'DEBITO');
+  });
+
+  test('ya no existe el cobro de tickets por Webpay del lado del dueño', async () => {
+    const res = await request(app)
+      .post('/api/payments/webpay/start')
+      .set('Authorization', `Bearer ${tokenA}`)
+      .send({ codigo_qr: 'lo-que-sea' });
+    assert.equal(res.status, 404);
+  });
+
   test('el dashboard solo cuenta tickets del cliente autenticado', async () => {
     const res = await request(app)
       .get('/api/tickets/dashboard')

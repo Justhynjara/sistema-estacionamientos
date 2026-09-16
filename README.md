@@ -15,7 +15,7 @@ Desplegado en Render (backend + frontend) con base de datos Postgres en [Neon](h
 - PostgreSQL (con migraciones versionadas vía `node-pg-migrate`)
 - Socket.IO (disponibilidad en tiempo real)
 - Docker Compose
-- Webpay Plus (Transbank) para pagos
+- Webpay Plus (Transbank) para el micropago anti-fraude de reservas ($100 CLP). El cobro al cerrar un ticket lo hace el cajero directamente (efectivo o tarjeta en su propio POS), sin pasar por Webpay.
 - Nodemailer para recuperación de contraseña
 
 ## Roles

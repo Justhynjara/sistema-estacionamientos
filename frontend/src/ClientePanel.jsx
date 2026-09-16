@@ -3,8 +3,9 @@ import { api } from './services/api.js';
 import QRCodeCanvas from './QRCode.jsx';
 import Pagination, { usePagination } from './Pagination.jsx';
 import { imprimirTicket } from './utils/print.js';
-import { redirectToWebpay } from './utils/webpay.js';
 import QRScanner from './QRScanner.jsx';
+
+const METODO_LABEL = { EFECTIVO: 'Efectivo', DEBITO: 'Débito', CREDITO: 'Crédito' };
 
 function Tabs({ tab, setTab }) {
   const tabs = [['estacionamientos', '🅿️ Mis estacionamientos'], ['dashboard', '📊 Dashboard de tickets']];
@@ -64,10 +65,10 @@ function GestionTicketPanel({ reloadParking }) {
     finally { setLoading(''); }
   }
 
-  async function iniciarCobroEfectivo(qr) {
+  async function iniciarCobro(qr) {
     const c = qr || codigo.trim();
     if (!c) return;
-    setLoading('efectivo'); setMensaje(null); setCobro(null);
+    setLoading('cobro'); setMensaje(null); setCobro(null);
     try {
       const q = await api.post('/tickets/quote', { codigo_qr: c });
       setCobro({
@@ -78,26 +79,30 @@ function GestionTicketPanel({ reloadParking }) {
         estacionamiento_nombre: q.data.estacionamiento_nombre,
         direccion: q.data.estacionamiento_direccion,
         fecha_entrada: q.data.fecha_entrada,
+        metodo: null,
         recibido: ''
       });
     } catch (err) { setMensaje({ tipo: 'off', texto: err.response?.data?.error || 'No se pudo calcular el cobro' }); }
     finally { setLoading(''); }
   }
 
-  async function confirmarCobroEfectivo() {
-    if (!cobro) return;
-    const recibido = Number(cobro.recibido);
-    if (!recibido || recibido < cobro.monto) return;
-    setLoading('efectivo-confirm');
+  async function confirmarCobro() {
+    if (!cobro || !cobro.metodo) return;
+    const esEfectivo = cobro.metodo === 'EFECTIVO';
+    const recibido = esEfectivo ? Number(cobro.recibido) : cobro.monto;
+    if (esEfectivo && (!recibido || recibido < cobro.monto)) return;
+    setLoading('cobro-confirm');
     try {
-      const r = await api.post('/tickets/close', { codigo_qr: cobro.codigo });
+      const r = await api.post('/tickets/close', { codigo_qr: cobro.codigo, metodo_pago: cobro.metodo });
       const monto = Number(r.data.monto);
       const vuelto = recibido - monto;
       setMensaje({
         tipo: 'ok',
-        texto: vuelto >= 0
-          ? `Cobro registrado: $${monto.toLocaleString('es-CL')} — Vuelto: $${vuelto.toLocaleString('es-CL')}`
-          : `Cobro registrado: $${monto.toLocaleString('es-CL')} — Faltan $${Math.abs(vuelto).toLocaleString('es-CL')} (el tiempo avanzó a la hora siguiente)`,
+        texto: esEfectivo
+          ? (vuelto >= 0
+              ? `Cobro registrado (Efectivo): $${monto.toLocaleString('es-CL')} — Vuelto: $${vuelto.toLocaleString('es-CL')}`
+              : `Cobro registrado (Efectivo): $${monto.toLocaleString('es-CL')} — Faltan $${Math.abs(vuelto).toLocaleString('es-CL')} (el tiempo avanzó a la hora siguiente)`)
+          : `Cobro registrado (${METODO_LABEL[cobro.metodo]}): $${monto.toLocaleString('es-CL')}`,
         imprimir: () => imprimirTicket({
           nombreEstacionamiento: r.data.estacionamiento_nombre,
           direccion: r.data.estacionamiento_direccion,
@@ -108,8 +113,8 @@ function GestionTicketPanel({ reloadParking }) {
             ['Salida', new Date().toLocaleString('es-CL')],
             ...(r.data.descuentoReserva > 0 ? [['Descuento reserva pagada', `-$${Number(r.data.descuentoReserva).toLocaleString('es-CL')}`]] : []),
             ['Total a pagar', `$${monto.toLocaleString('es-CL')}`],
-            ['Recibido', `$${recibido.toLocaleString('es-CL')}`],
-            ['Vuelto', `$${Math.max(0, vuelto).toLocaleString('es-CL')}`]
+            ['Método de pago', METODO_LABEL[r.data.metodo_pago] || r.data.metodo_pago],
+            ...(esEfectivo ? [['Recibido', `$${recibido.toLocaleString('es-CL')}`], ['Vuelto', `$${Math.max(0, vuelto).toLocaleString('es-CL')}`]] : [])
           ],
           pie: 'Comprobante de pago — Gracias por su preferencia'
         })
@@ -120,20 +125,7 @@ function GestionTicketPanel({ reloadParking }) {
     finally { setLoading(''); }
   }
 
-  async function cobrarWebpay(qr) {
-    const c = qr || codigo.trim();
-    if (!c) return;
-    setLoading('webpay'); setMensaje(null); setCobro(null);
-    try {
-      const r = await api.post('/payments/webpay/start', { codigo_qr: c });
-      redirectToWebpay(r.data.url, r.data.token);
-    } catch (err) {
-      setMensaje({ tipo: 'off', texto: err.response?.data?.error || 'No se pudo iniciar el pago' });
-      setLoading('');
-    }
-  }
-
-  const vuelto = cobro && cobro.recibido ? Number(cobro.recibido) - cobro.monto : null;
+  const vuelto = cobro && cobro.metodo === 'EFECTIVO' && cobro.recibido ? Number(cobro.recibido) - cobro.monto : null;
 
   return (
     <>
@@ -157,10 +149,7 @@ function GestionTicketPanel({ reloadParking }) {
                       <div className="row-form" style={{ margin: 0 }}>
                         {t.estado === 'RESERVADO'
                           ? <button type="button" disabled={!!loading} onClick={() => validarReserva(t.codigo_qr)}>✅ Validar</button>
-                          : <>
-                              <button type="button" className="secondary" disabled={!!loading} onClick={() => iniciarCobroEfectivo(t.codigo_qr)}>💵 Efectivo</button>
-                              <button type="button" disabled={!!loading} onClick={() => cobrarWebpay(t.codigo_qr)}>💳 Webpay</button>
-                            </>}
+                          : <button type="button" disabled={!!loading} onClick={() => iniciarCobro(t.codigo_qr)}>💰 Cobrar</button>}
                       </div>
                     </td>
                   </tr>
@@ -173,32 +162,64 @@ function GestionTicketPanel({ reloadParking }) {
 
       {cobro && (
         <div className="card">
-          <h3>Cobro en efectivo — {cobro.patente || 'sin patente'}</h3>
+          <h3>Cobro — {cobro.patente || 'sin patente'}</h3>
           <p>{cobro.estacionamiento_nombre}</p>
           {cobro.descuento > 0 && (
             <p className="badge ok">🎟️ Descuento por reserva ya pagada: -${cobro.descuento.toLocaleString('es-CL')}</p>
           )}
           <p style={{ fontSize: '1.3rem', fontWeight: 800 }}>Total a pagar: ${cobro.monto.toLocaleString('es-CL')}</p>
-          <div className="row-form">
-            <input
-              type="number"
-              min={0}
-              placeholder="¿Con cuánto le pagan?"
-              value={cobro.recibido}
-              onChange={e => setCobro({ ...cobro, recibido: e.target.value })}
-              aria-label="Monto recibido"
-              autoFocus
-            />
-          </div>
-          {vuelto !== null && (
-            <p className={'badge ' + (vuelto >= 0 ? 'ok' : 'off')}>
-              {vuelto >= 0 ? `Vuelto: $${vuelto.toLocaleString('es-CL')}` : `Falta: $${Math.abs(vuelto).toLocaleString('es-CL')}`}
-            </p>
+
+          {!cobro.metodo && (
+            <>
+              <p style={{ color: 'var(--text-muted)' }}>¿Con qué medio pagó el conductor?</p>
+              <div className="row-form">
+                <button type="button" onClick={() => setCobro({ ...cobro, metodo: 'EFECTIVO' })}>💵 Efectivo</button>
+                <button type="button" onClick={() => setCobro({ ...cobro, metodo: 'DEBITO' })}>💳 Débito</button>
+                <button type="button" onClick={() => setCobro({ ...cobro, metodo: 'CREDITO' })}>💳 Crédito</button>
+              </div>
+            </>
           )}
+
+          {cobro.metodo === 'EFECTIVO' && (
+            <>
+              <div className="row-form">
+                <input
+                  type="number"
+                  min={0}
+                  placeholder="¿Con cuánto le pagan?"
+                  value={cobro.recibido}
+                  onChange={e => setCobro({ ...cobro, recibido: e.target.value })}
+                  aria-label="Monto recibido"
+                  autoFocus
+                />
+              </div>
+              {vuelto !== null && (
+                <p className={'badge ' + (vuelto >= 0 ? 'ok' : 'off')}>
+                  {vuelto >= 0 ? `Vuelto: $${vuelto.toLocaleString('es-CL')}` : `Falta: $${Math.abs(vuelto).toLocaleString('es-CL')}`}
+                </p>
+              )}
+              <div className="row-form">
+                <button type="button" onClick={confirmarCobro} disabled={!cobro.recibido || vuelto < 0 || loading === 'cobro-confirm'}>
+                  {loading === 'cobro-confirm' && <span className="spinner" />}✅ Confirmar cobro
+                </button>
+                <button type="button" className="secondary" onClick={() => setCobro({ ...cobro, metodo: null })}>← Cambiar método</button>
+              </div>
+            </>
+          )}
+
+          {(cobro.metodo === 'DEBITO' || cobro.metodo === 'CREDITO') && (
+            <>
+              <p className="badge ok">Cobra ${cobro.monto.toLocaleString('es-CL')} en el POS ({METODO_LABEL[cobro.metodo]}) y confirma aquí.</p>
+              <div className="row-form">
+                <button type="button" onClick={confirmarCobro} disabled={loading === 'cobro-confirm'}>
+                  {loading === 'cobro-confirm' && <span className="spinner" />}✅ Confirmar cobro con {METODO_LABEL[cobro.metodo]}
+                </button>
+                <button type="button" className="secondary" onClick={() => setCobro({ ...cobro, metodo: null })}>← Cambiar método</button>
+              </div>
+            </>
+          )}
+
           <div className="row-form">
-            <button type="button" onClick={confirmarCobroEfectivo} disabled={!cobro.recibido || vuelto < 0 || loading === 'efectivo-confirm'}>
-              {loading === 'efectivo-confirm' && <span className="spinner" />}✅ Confirmar cobro
-            </button>
             <button type="button" className="secondary" onClick={() => setCobro(null)}>Cancelar</button>
           </div>
         </div>
@@ -226,8 +247,7 @@ function GestionTicketPanel({ reloadParking }) {
         </div>
         <div className="row-form">
           <button type="button" onClick={() => validarReserva()} disabled={!!loading}>{loading === 'checkin' && <span className="spinner" />}✅ Validar reserva</button>
-          <button type="button" onClick={() => iniciarCobroEfectivo()} disabled={!!loading} className="secondary">💵 Cobrar en efectivo</button>
-          <button type="button" onClick={() => cobrarWebpay()} disabled={!!loading}>{loading === 'webpay' && <span className="spinner" />}💳 Cobrar con Webpay</button>
+          <button type="button" onClick={() => iniciarCobro()} disabled={!!loading}>{loading === 'cobro' && <span className="spinner" />}💰 Cobrar</button>
         </div>
       </div>
     </>
@@ -289,13 +309,14 @@ function EstacionamientosTab({ parking, reloadParking }) {
 }
 
 function exportarCSV(tickets, fecha) {
-  const encabezado = ['Estacionamiento', 'Patente', 'Entrada', 'Salida', 'Estado', 'Cobro'];
+  const encabezado = ['Estacionamiento', 'Patente', 'Entrada', 'Salida', 'Estado', 'Método', 'Cobro'];
   const filas = tickets.map(t => [
     t.estacionamiento_nombre,
     t.patente || '',
     t.fecha_entrada ? new Date(t.fecha_entrada).toLocaleString('es-CL') : '',
     t.fecha_salida ? new Date(t.fecha_salida).toLocaleString('es-CL') : '',
     t.estado,
+    METODO_LABEL[t.metodo_pago] || '',
     t.monto != null ? Number(t.monto) : ''
   ]);
   const csv = [encabezado, ...filas]
@@ -392,7 +413,7 @@ function DashboardTab({ parking }) {
             </div>
             <div className="table-wrap">
               <table className="table">
-                <thead><tr><th>Estacionamiento</th><th>Patente</th><th>Entrada</th><th>Salida</th><th>Estado</th><th>Cobro</th></tr></thead>
+                <thead><tr><th>Estacionamiento</th><th>Patente</th><th>Entrada</th><th>Salida</th><th>Estado</th><th>Método</th><th>Cobro</th></tr></thead>
                 <tbody>
                   {ticketsPagina.map(t => (
                     <tr key={t.id}>
@@ -401,6 +422,7 @@ function DashboardTab({ parking }) {
                       <td>{fmtHora(t.fecha_entrada)}</td>
                       <td>{fmtHora(t.fecha_salida)}</td>
                       <td><span className={'badge ' + (t.estado === 'ACTIVO' ? 'ok' : 'off')} style={t.estado !== 'ACTIVO' ? { color: 'var(--text-muted)', background: '#f0f0f5' } : {}}>{t.estado}</span></td>
+                      <td>{METODO_LABEL[t.metodo_pago] || '—'}</td>
                       <td>{t.monto != null ? `$${Number(t.monto).toLocaleString('es-CL')}` : '—'}</td>
                     </tr>
                   ))}

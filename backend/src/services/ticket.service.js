@@ -60,7 +60,7 @@ export async function createTicket(estacionamientoId, patente, clienteId){
   finally { client.release(); }
 }
 
-export async function closeTicket(qr, clienteId){
+export async function closeTicket(qr, clienteId, metodoPago){
   const client=await pool.connect();
   try {
     await client.query('BEGIN');
@@ -74,8 +74,8 @@ export async function closeTicket(qr, clienteId){
     if(row.cliente_id !== clienteId) throw new Error('Este ticket no pertenece a uno de tus estacionamientos');
     const {monto,descuento}=await calcularMonto(row.id,row.fecha_entrada,row.precio_hora);
     await client.query(
-      `UPDATE tickets SET fecha_salida=NOW(), estado='CERRADO', monto=$1 WHERE id=$2`,
-      [monto,row.id]
+      `UPDATE tickets SET fecha_salida=NOW(), estado='CERRADO', monto=$1, metodo_pago=$2 WHERE id=$3`,
+      [monto,metodoPago,row.id]
     );
     const upd=await client.query(
       `UPDATE estacionamientos
@@ -84,7 +84,7 @@ export async function closeTicket(qr, clienteId){
     );
     await client.query('COMMIT');
     emitCupos(row.estacionamiento_id, upd.rows[0].cupos_disponibles, upd.rows[0].cupo_maximo);
-    return {...row,monto,descuentoReserva:descuento,estado:'CERRADO'};
+    return {...row,monto,descuentoReserva:descuento,estado:'CERRADO',metodo_pago:metodoPago};
   } catch(e){ await client.query('ROLLBACK'); throw e; }
   finally { client.release(); }
 }
@@ -219,7 +219,7 @@ export async function ticketsDashboard(clienteId, estacionamientoId, fecha){
   const params=[clienteId, estacionamientoId || null, fecha || null];
 
   const tickets=await pool.query(
-    `SELECT t.id,t.codigo_qr,t.patente,t.fecha_entrada,t.fecha_salida,t.estado,t.monto,e.nombre AS estacionamiento_nombre
+    `SELECT t.id,t.codigo_qr,t.patente,t.fecha_entrada,t.fecha_salida,t.estado,t.monto,t.metodo_pago,e.nombre AS estacionamiento_nombre
      FROM tickets t JOIN estacionamientos e ON e.id=t.estacionamiento_id
      WHERE e.cliente_id=$1
        AND ($2::uuid IS NULL OR t.estacionamiento_id=$2)

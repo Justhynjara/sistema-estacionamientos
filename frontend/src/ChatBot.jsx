@@ -26,8 +26,8 @@ const FAQ = [
   },
   {
     pregunta: '¿Cómo pago al salir del estacionamiento?',
-    keywords: ['pagar', 'pago', 'salir', 'cobro', 'efectivo', 'tarjeta', 'webpay', 'cuanto cuesta'],
-    respuesta: 'Al salir, el encargado del estacionamiento puede cobrarte en efectivo (te calculará el vuelto) o con tarjeta vía Webpay. El monto se calcula según las horas que estuviste dentro y el precio por hora del lugar.'
+    keywords: ['pagar', 'pago', 'salir', 'cobro', 'efectivo', 'tarjeta', 'debito', 'credito', 'cuanto cuesta'],
+    respuesta: 'Al salir, el encargado del estacionamiento te cobra directamente: en efectivo (te calculará el vuelto) o con tarjeta de débito/crédito en su propio POS. El monto se calcula según las horas que estuviste dentro y el precio por hora del lugar.'
   },
   {
     pregunta: '¿Cómo descargo o imprimo mi ticket/comprobante?',

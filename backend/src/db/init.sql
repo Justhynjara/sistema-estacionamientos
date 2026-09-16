@@ -36,6 +36,7 @@ CREATE TABLE IF NOT EXISTS tickets (
     CHECK (estado IN ('RESERVADO','ACTIVO','PAGADO','CERRADO','CANCELADO')),
   monto NUMERIC(10,2),
   reserva_expira TIMESTAMPTZ,
+  metodo_pago VARCHAR(20) CHECK (metodo_pago IN ('EFECTIVO','DEBITO','CREDITO')),
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
