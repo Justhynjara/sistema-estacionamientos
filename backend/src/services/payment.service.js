@@ -4,8 +4,30 @@ import { env } from '../config/env.js';
 import { webpayTransaction } from './webpay.service.js';
 import { emitCupos, reserveTicket, calcularMonto } from './ticket.service.js';
 
+const STALE_PAYMENT_MIN = 30; // Transbank invalida el token bastante antes de esto.
+
 function buyOrderFor(ticketId) {
   return ('T' + ticketId.replace(/-/g, '')).slice(0, 26);
+}
+
+// Un pago queda en INICIADO si el usuario nunca vuelve de Webpay (cerró la pestaña, perdió
+// conexión, etc.). Sin este barrido esos registros quedan "colgados" para siempre y ensucian
+// cualquier reporte/panel que revise pagos pendientes. No libera cupos: startPayment/
+// startReservationPayment nunca reservan un cupo antes de que Transbank confirme el pago.
+export async function releaseStalePayments() {
+  const r = await pool.query(
+    `UPDATE payments SET estado='EXPIRADO'
+     WHERE estado='INICIADO' AND created_at < NOW() - ($1 || ' minutes')::interval
+     RETURNING id`,
+    [STALE_PAYMENT_MIN]
+  );
+  return r.rowCount;
+}
+
+export function startPaymentSweeper(logger) {
+  setInterval(() => {
+    releaseStalePayments().catch(err => logger?.error({ err }, 'Error liberando pagos vencidos'));
+  }, 5 * 60000);
 }
 
 async function getReservaMontoClp() {

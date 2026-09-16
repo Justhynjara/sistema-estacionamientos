@@ -6,5 +6,6 @@ export const startPaymentSchema = z.object({
 
 export const startReservationPaymentSchema = z.object({
   estacionamiento_id: z.string().uuid('Id inválido'),
-  patente: z.string().trim().toUpperCase().min(2, 'Ingresa la patente del vehículo').max(12)
+  patente: z.string().trim().toUpperCase()
+    .regex(/^[A-Z0-9]{5,8}$/, 'Ingresa una patente válida (5 a 8 caracteres alfanuméricos)')
 });

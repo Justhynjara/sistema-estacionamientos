@@ -7,6 +7,7 @@ import {runMigrations} from './db/migrate.js';
 import {registerSockets} from './sockets/parking.socket.js';
 import {setIO} from './sockets/io.js';
 import {startReservationSweeper} from './services/ticket.service.js';
+import {startPaymentSweeper} from './services/payment.service.js';
 
 const server=http.createServer(app);
 const io=new Server(server,{cors:{origin:corsOrigin}});
@@ -22,6 +23,7 @@ async function start(){
     process.exit(1);
   }
   startReservationSweeper(logger);
+  startPaymentSweeper(logger);
   server.listen(env.port,()=>logger.info(`API en puerto ${env.port}`));
 }
 

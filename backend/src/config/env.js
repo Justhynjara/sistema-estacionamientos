@@ -22,6 +22,9 @@ export const env = {
     pass: process.env.SMTP_PASS || '',
     from: process.env.SMTP_FROM || 'Sistema de Estacionamientos <no-reply@estacionamientos.local>'
   },
+  // Alerta opcional de errores 500: URL de un webhook entrante de Slack, o de Discord
+  // agregando "/slack" al final de su URL de webhook (Discord entiende el formato de Slack).
+  errorWebhookUrl: process.env.ERROR_WEBHOOK_URL || '',
   webpay: {
     commerceCode: process.env.WEBPAY_COMMERCE_CODE || '',
     apiKey: process.env.WEBPAY_API_KEY || '',

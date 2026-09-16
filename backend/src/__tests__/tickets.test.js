@@ -125,6 +125,13 @@ describe('tickets: propiedad y flujo', () => {
     assert.equal(res.status, 400);
   });
 
+  test('el micropago de reserva pública rechaza una patente con formato inválido', async () => {
+    const res = await request(app)
+      .post('/api/payments/webpay/reserve-start')
+      .send({ estacionamiento_id: parkingA, patente: 'A' });
+    assert.equal(res.status, 400);
+  });
+
   test('el micropago de reserva pública rechaza un estacionamiento inexistente', async () => {
     const res = await request(app)
       .post('/api/payments/webpay/reserve-start')

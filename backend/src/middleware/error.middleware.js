@@ -1,8 +1,21 @@
 import { ZodError } from 'zod';
 import { logger } from '../config/logger.js';
+import { env } from '../config/env.js';
 
 export function notFoundHandler(req, res) {
   res.status(404).json({ error: 'Recurso no encontrado' });
+}
+
+// Alerta best-effort a Slack/Discord para errores 500 no controlados. No bloquea la respuesta
+// al cliente ni falla el request si el webhook no está configurado o no responde.
+function notifyErrorWebhook(err, req) {
+  if (!env.errorWebhookUrl) return;
+  const text = `🚨 Error 500 en estacionamientos-api\n*${req.method} ${req.originalUrl}*\n\`\`\`${String(err?.stack || err?.message || err).slice(0, 1500)}\`\`\``;
+  fetch(env.errorWebhookUrl, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ text })
+  }).catch(() => {});
 }
 
 export function errorHandler(err, req, res, next) {
@@ -22,5 +35,6 @@ export function errorHandler(err, req, res, next) {
   if (err.code === '22P02') return res.status(400).json({ error: 'Formato de dato inválido' });
 
   req.log?.error({ err }, 'Error no controlado') ?? logger.error({ err }, 'Error no controlado');
+  notifyErrorWebhook(err, req);
   res.status(err.status || 500).json({ error: 'Ocurrió un error inesperado en el servidor' });
 }

@@ -1,7 +1,12 @@
 import { z } from 'zod';
 
 const uuid = z.string().uuid('Id inválido');
-const patente = z.string().trim().toUpperCase().max(12).optional().nullable();
+// Formato de patente chilena, antigua (BB1234) o nueva (BBBB12), tolerante a otros formatos
+// (motos, remolques, diplomáticas). Vacío/null se deja pasar: no todos los tickets manuales
+// registran patente al momento de emitir.
+const patente = z.string().trim().toUpperCase()
+  .refine(v => v === '' || /^[A-Z0-9]{5,8}$/.test(v), 'Patente inválida (5 a 8 caracteres alfanuméricos)')
+  .max(12).optional().nullable();
 
 export const createTicketSchema = z.object({
   estacionamiento_id: uuid,
