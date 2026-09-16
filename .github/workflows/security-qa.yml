@@ -9,6 +9,7 @@ on:
     branches: [main]
     paths:
       - 'backend/**'
+      - 'frontend/**'
       - '.github/workflows/security-qa.yml'
 
 permissions:
@@ -66,6 +67,20 @@ jobs:
         working-directory: backend
         run: npm test
 
+  frontend-tests:
+    name: Suite de tests del frontend
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 20 }
+      - name: Instalar dependencias
+        working-directory: frontend
+        run: npm ci
+      - name: Correr tests
+        working-directory: frontend
+        run: npm test
+
   production-security-smoke-test:
     name: Pruebas de seguridad contra producción
     runs-on: ubuntu-latest
@@ -83,7 +98,7 @@ jobs:
 
   reportar-falla:
     name: Crear issue si algo falló
-    needs: [dependency-audit, backend-tests, production-security-smoke-test]
+    needs: [dependency-audit, backend-tests, frontend-tests, production-security-smoke-test]
     if: failure()
     runs-on: ubuntu-latest
     permissions:
