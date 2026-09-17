@@ -1,17 +1,24 @@
 import { test, describe, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import request from 'supertest';
+import bcrypt from 'bcryptjs';
 import { app } from '../app.js';
 import { pool } from '../config/database.js';
 
 const suffix = Date.now();
+const adminEmail = `admin_test_${suffix}@demo.cl`;
 const noAdminEmail = `no_admin_${suffix}@demo.cl`;
 const nuevoUsuarioEmail = `creado_por_admin_${suffix}@demo.cl`;
 let tokenAdmin, tokenNoAdmin, nuevoUsuarioId;
 
 describe('admin: auditoría y control de acceso', () => {
   before(async () => {
-    const loginAdmin = await request(app).post('/api/auth/login').send({ email: 'admin@demo.cl', password: 'password' });
+    const hash = await bcrypt.hash('clave12345', 10);
+    await pool.query(
+      `INSERT INTO usuarios(nombre,email,password_hash,rol) VALUES('Admin Test',$1,$2,'ADMIN')`,
+      [adminEmail, hash]
+    );
+    const loginAdmin = await request(app).post('/api/auth/login').send({ email: adminEmail, password: 'clave12345' });
     tokenAdmin = loginAdmin.body.token;
 
     await request(app).post('/api/auth/register').send({ nombre: 'No Admin', email: noAdminEmail, password: 'clave12345' });
@@ -21,7 +28,7 @@ describe('admin: auditoría y control de acceso', () => {
 
   after(async () => {
     if (nuevoUsuarioId) await pool.query('DELETE FROM audit_log WHERE entidad_id=$1', [nuevoUsuarioId]);
-    await pool.query('DELETE FROM usuarios WHERE email=ANY($1)', [[noAdminEmail, nuevoUsuarioEmail]]);
+    await pool.query('DELETE FROM usuarios WHERE email=ANY($1)', [[adminEmail, noAdminEmail, nuevoUsuarioEmail]]);
     await pool.end();
   });
 
@@ -46,7 +53,7 @@ describe('admin: auditoría y control de acceso', () => {
     const entrada = log.body.find(e => e.entidad_id === nuevoUsuarioId);
     assert.ok(entrada, 'debe existir una entrada de auditoría para el usuario recién creado');
     assert.equal(entrada.accion, 'usuario.crear');
-    assert.equal(entrada.usuario_email, 'admin@demo.cl');
+    assert.equal(entrada.usuario_email, adminEmail);
   });
 
   test('actualizar un parámetro deja una entrada de auditoría', async () => {
