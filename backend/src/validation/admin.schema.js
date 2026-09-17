@@ -24,3 +24,9 @@ export const updateParamSchema = z.object({
 export const paramClaveSchema = z.object({
   clave: z.enum(['comision_plataforma', 'tarifa_hora_minima', 'moneda', 'reserva_monto_clp', 'reserva_ttl_min'])
 });
+
+export const auditLogQuerySchema = z.object({
+  limit: z.coerce.number().int().positive().max(200).optional().default(50),
+  entidad: z.enum(['usuario', 'parametro', 'estacionamiento', 'solicitud']).optional(),
+  accion: z.string().trim().max(60).optional()
+});

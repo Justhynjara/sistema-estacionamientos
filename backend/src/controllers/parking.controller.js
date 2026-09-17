@@ -1,4 +1,5 @@
 import { pool } from '../config/database.js';
+import { registrarAuditoria } from '../services/audit.service.js';
 export async function listParking(req,res){
   const r=await pool.query(`SELECT id,nombre,direccion,latitud,longitud,precio_hora,cupo_maximo,cupos_disponibles
     FROM estacionamientos WHERE estado=true ORDER BY nombre`);
@@ -42,6 +43,7 @@ export async function createParking(req,res){
     (cliente_id,nombre,direccion,latitud,longitud,precio_hora,cupo_maximo,cupos_disponibles)
     VALUES($1,$2,$3,$4,$5,$6,$7,$7) RETURNING *`,
     [cliente_id,nombre,direccion,latitud,longitud,precio_hora,cupo_maximo]);
+  await registrarAuditoria(req.user.id, 'estacionamiento.crear', 'estacionamiento', r.rows[0].id, { nombre, cliente_id, cupo_maximo });
   res.status(201).json(r.rows[0]);
 }
 export async function updateCapacity(req,res){
@@ -50,5 +52,6 @@ export async function updateCapacity(req,res){
     SET cupo_maximo=$1, cupos_disponibles=LEAST($1,cupos_disponibles)
     WHERE id=$2 RETURNING *`,[cupo_maximo,req.params.id]);
   if(!r.rowCount) return res.status(404).json({error:'No encontrado'});
+  await registrarAuditoria(req.user.id, 'estacionamiento.actualizar_cupo', 'estacionamiento', r.rows[0].id, { cupo_maximo });
   res.json(r.rows[0]);
 }

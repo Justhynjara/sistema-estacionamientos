@@ -1,5 +1,6 @@
 import bcrypt from 'bcryptjs';
 import { pool } from '../config/database.js';
+import { registrarAuditoria, listAuditoria } from '../services/audit.service.js';
 
 const ROLES_VALIDOS = ['USUARIO', 'CLIENTE', 'ADMIN', 'SOPORTE'];
 
@@ -19,6 +20,7 @@ export async function createUser(req, res) {
        RETURNING id,nombre,email,rol,activo,created_at`,
       [nombre, email, hash, rol]
     );
+    await registrarAuditoria(req.user.id, 'usuario.crear', 'usuario', r.rows[0].id, { email, rol });
     res.status(201).json(r.rows[0]);
   } catch { res.status(409).json({ error: 'Email ya registrado' }); }
 }
@@ -32,6 +34,7 @@ export async function updateUserStatus(req, res) {
     [activo, req.params.id]
   );
   if (!r.rowCount) return res.status(404).json({ error: 'Usuario no encontrado' });
+  await registrarAuditoria(req.user.id, 'usuario.cambiar_estado', 'usuario', r.rows[0].id, { activo });
   res.json(r.rows[0]);
 }
 
@@ -44,6 +47,7 @@ export async function updateUserRole(req, res) {
     [rol, req.params.id]
   );
   if (!r.rowCount) return res.status(404).json({ error: 'Usuario no encontrado' });
+  await registrarAuditoria(req.user.id, 'usuario.cambiar_rol', 'usuario', r.rows[0].id, { rol });
   res.json(r.rows[0]);
 }
 
@@ -63,5 +67,10 @@ export async function updateParam(req, res) {
     [String(valor), req.params.clave]
   );
   if (!r.rowCount) return res.status(404).json({ error: 'Parámetro no encontrado' });
+  await registrarAuditoria(req.user.id, 'parametro.actualizar', 'parametro', r.rows[0].clave, { valor: r.rows[0].valor });
   res.json(r.rows[0]);
+}
+
+export async function auditLog(req, res) {
+  res.json(await listAuditoria(req.query));
 }

@@ -3,9 +3,10 @@ import { api } from './services/api.js';
 import Pagination, { usePagination } from './Pagination.jsx';
 import LocationPicker from './LocationPicker.jsx';
 import SolicitudesTab from './SolicitudesTab.jsx';
+import AuditLogTab from './AuditLogTab.jsx';
 
 function Tabs({ tab, setTab }) {
-  const tabs = [['usuarios', '👤 Usuarios'], ['parking', '🅿️ Estacionamientos'], ['solicitudes', '📋 Solicitudes'], ['parametros', '⚙️ Parámetros']];
+  const tabs = [['usuarios', '👤 Usuarios'], ['parking', '🅿️ Estacionamientos'], ['solicitudes', '📋 Solicitudes'], ['parametros', '⚙️ Parámetros'], ['auditoria', '🕵️ Auditoría']];
   return (
     <div className="tabs">
       {tabs.map(([k, label]) => (
@@ -213,6 +214,7 @@ export default function AdminPanel({ user }) {
       {tab === 'parking' && <ParkingTab parking={parking} reloadParking={reloadParking} users={users} />}
       {tab === 'solicitudes' && <SolicitudesTab />}
       {tab === 'parametros' && <ParamsTab params={params} reloadParams={reloadParams} />}
+      {tab === 'auditoria' && <AuditLogTab />}
     </div>
   );
 }

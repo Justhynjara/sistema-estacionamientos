@@ -1,4 +1,5 @@
 import { pool } from '../config/database.js';
+import { registrarAuditoria } from './audit.service.js';
 
 export async function crearSolicitud(data) {
   const r = await pool.query(
@@ -42,10 +43,11 @@ export async function revisarSolicitud(id, estado, comentario, revisorId) {
     [estado, comentario || null, revisorId, id]
   );
   if (!r.rowCount) throw new Error('La solicitud ya fue revisada o no existe');
+  await registrarAuditoria(revisorId, 'solicitud.revisar', 'solicitud', id, { estado, comentario: comentario || null });
   return r.rows[0];
 }
 
-export async function marcarProcesada(id) {
+export async function marcarProcesada(id, adminId) {
   const r = await pool.query(
     `UPDATE solicitudes_cliente SET estado='PROCESADA',updated_at=NOW()
      WHERE id=$1 AND estado='APROBADA'
@@ -53,5 +55,6 @@ export async function marcarProcesada(id) {
     [id]
   );
   if (!r.rowCount) throw new Error('La solicitud no está aprobada o no existe');
+  await registrarAuditoria(adminId, 'solicitud.procesar', 'solicitud', id);
   return r.rows[0];
 }

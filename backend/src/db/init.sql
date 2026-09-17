@@ -7,6 +7,8 @@ CREATE TABLE IF NOT EXISTS usuarios (
   password_hash TEXT NOT NULL,
   rol VARCHAR(20) NOT NULL CHECK (rol IN ('USUARIO','CLIENTE','ADMIN','SOPORTE')),
   activo BOOLEAN NOT NULL DEFAULT TRUE,
+  intentos_fallidos INTEGER NOT NULL DEFAULT 0,
+  bloqueado_hasta TIMESTAMPTZ,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
@@ -92,7 +94,19 @@ CREATE TABLE IF NOT EXISTS solicitudes_cliente (
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
+CREATE TABLE IF NOT EXISTS audit_log (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  usuario_id UUID REFERENCES usuarios(id),
+  accion VARCHAR(60) NOT NULL,
+  entidad VARCHAR(60) NOT NULL,
+  entidad_id VARCHAR(100),
+  detalle JSONB,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
 CREATE INDEX IF NOT EXISTS idx_parking_location ON estacionamientos(latitud, longitud);
+CREATE INDEX IF NOT EXISTS idx_audit_log_created ON audit_log(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_audit_log_entidad ON audit_log(entidad, entidad_id);
 CREATE INDEX IF NOT EXISTS idx_solicitudes_estado ON solicitudes_cliente(estado);
 CREATE INDEX IF NOT EXISTS idx_tickets_parking ON tickets(estacionamiento_id);
 CREATE INDEX IF NOT EXISTS idx_tickets_qr ON tickets(codigo_qr);

@@ -32,7 +32,7 @@ r.patch('/:id/revision', auth, roles('SOPORTE'), validateParams(idParamSchema), 
 
 // Admin marca la solicitud como procesada una vez creó el usuario/estacionamiento correspondiente.
 r.patch('/:id/procesar', auth, roles('ADMIN'), validateParams(idParamSchema), async (req, res) => {
-  try { res.json(await marcarProcesada(req.params.id)); }
+  try { res.json(await marcarProcesada(req.params.id, req.user.id)); }
   catch (e) { res.status(400).json({ error: e.message }); }
 });
 
