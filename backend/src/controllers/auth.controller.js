@@ -6,13 +6,41 @@ import { env } from '../config/env.js';
 import { sendMail } from '../utils/mailer.js';
 
 const RESET_TOKEN_TTL_MIN = 30;
+const LOGIN_MAX_INTENTOS = 5;
+const LOGIN_BLOQUEO_MIN = 15;
 
+// El rate-limit por IP (authLimiter) no alcanza contra un atacante que reparte sus intentos
+// entre muchas IPs distintas apuntando siempre a la misma cuenta. Este bloqueo es por cuenta.
+// El mensaje de error se mantiene idéntico en todos los casos (no existe, contraseña incorrecta,
+// cuenta bloqueada) para no filtrar por respuesta si un email está registrado o no — mismo
+// criterio que ya se usa en forgot-password.
 export async function login(req,res){
   const {email,password}=req.body;
   const r=await pool.query('SELECT * FROM usuarios WHERE email=$1 AND activo=true',[email]);
-  if(!r.rowCount || !(await bcrypt.compare(password,r.rows[0].password_hash)))
-    return res.status(401).json({error:'Credenciales inválidas'});
   const u=r.rows[0];
+
+  if(u && u.bloqueado_hasta && new Date(u.bloqueado_hasta) > new Date())
+    return res.status(401).json({error:'Credenciales inválidas'});
+
+  const passwordOk = u && await bcrypt.compare(password,u.password_hash);
+  if(!u || !passwordOk){
+    if(u){
+      const intentos=u.intentos_fallidos+1;
+      if(intentos>=LOGIN_MAX_INTENTOS){
+        await pool.query(
+          `UPDATE usuarios SET intentos_fallidos=0, bloqueado_hasta=NOW() + ($1 || ' minutes')::interval WHERE id=$2`,
+          [LOGIN_BLOQUEO_MIN,u.id]
+        );
+      } else {
+        await pool.query('UPDATE usuarios SET intentos_fallidos=$1 WHERE id=$2',[intentos,u.id]);
+      }
+    }
+    return res.status(401).json({error:'Credenciales inválidas'});
+  }
+
+  if(u.intentos_fallidos>0 || u.bloqueado_hasta)
+    await pool.query('UPDATE usuarios SET intentos_fallidos=0, bloqueado_hasta=NULL WHERE id=$1',[u.id]);
+
   const token=jwt.sign({id:u.id,email:u.email,rol:u.rol},env.jwtSecret,{expiresIn:'8h'});
   res.json({token,user:{id:u.id,nombre:u.nombre,email:u.email,rol:u.rol}});
 }

@@ -1,4 +1,4 @@
-import rateLimit from 'express-rate-limit';
+import rateLimit, { ipKeyGenerator } from 'express-rate-limit';
 
 // Render sirve esta API detrás de Cloudflare. Con `trust proxy` activo, Express arma req.ip a
 // partir de X-Forwarded-For — pero X-Forwarded-For es un header que CUALQUIERA puede mandar con
@@ -7,10 +7,14 @@ import rateLimit from 'express-rate-limit';
 // completo (confirmado en pruebas). CF-Connecting-IP en cambio lo pone Cloudflare mismo con la IP
 // real de la conexión TCP, sobrescribiendo cualquier valor que el cliente haya intentado mandar
 // con ese nombre — no es falsificable desde fuera de la red de Cloudflare.
+//
+// ipKeyGenerator normaliza IPv6 (un cliente IPv6 suele tener un bloque entero para sí mismo y
+// podría "rotar" de dirección dentro de ese bloque tan fácil como rotaría X-Forwarded-For si no
+// se trunca a un prefijo de subred).
 function realIp(req) {
   const cf = req.headers['cf-connecting-ip'];
-  if (typeof cf === 'string' && /^[0-9a-fA-F:.]+$/.test(cf)) return cf;
-  return req.ip;
+  const ip = (typeof cf === 'string' && /^[0-9a-fA-F:.]+$/.test(cf)) ? cf : req.ip;
+  return ipKeyGenerator(ip);
 }
 
 export const authLimiter = rateLimit({
