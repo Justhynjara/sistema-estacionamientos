@@ -54,7 +54,7 @@ describe('ClientePanel — cobro sin Webpay', () => {
   test('cobro con tarjeta: no pide monto recibido y cierra el ticket con el método elegido', async () => {
     api.post.mockImplementation((url, body) => {
       if (url === '/tickets/quote') {
-        return Promise.resolve({ data: { monto: 3000, descuentoReserva: 0, patente: 'AB1234', estacionamiento_nombre: 'Parking Centro', estacionamiento_direccion: 'Centro', fecha_entrada: activo.fecha_entrada } });
+        return Promise.resolve({ data: { monto: 3000, descuentoReserva: 0, cotizacion: 'COT-1', patente: 'AB1234', estacionamiento_nombre: 'Parking Centro', estacionamiento_direccion: 'Centro', fecha_entrada: activo.fecha_entrada } });
       }
       if (url === '/tickets/close') {
         return Promise.resolve({ data: { estado: 'CERRADO', monto: 3000, codigo_qr: body.codigo_qr, metodo_pago: body.metodo_pago, patente: 'AB1234', estacionamiento_nombre: 'Parking Centro', estacionamiento_direccion: 'Centro', fecha_entrada: activo.fecha_entrada, descuentoReserva: 0 } });
@@ -72,7 +72,8 @@ describe('ClientePanel — cobro sin Webpay', () => {
     await user.click(confirmar);
 
     expect(await screen.findByText(/cobro registrado \(débito\): \$3\.000/i)).toBeInTheDocument();
-    expect(api.post).toHaveBeenCalledWith('/tickets/close', { codigo_qr: 'QR-1', metodo_pago: 'DEBITO' });
+    // Se manda la cotización firmada: así el servidor cobra lo que el dueño le dijo al cliente.
+    expect(api.post).toHaveBeenCalledWith('/tickets/close', { codigo_qr: 'QR-1', metodo_pago: 'DEBITO', cotizacion: 'COT-1' });
   });
 
   test('cobro en efectivo: exige un monto recibido suficiente antes de habilitar confirmar', async () => {
@@ -164,5 +165,29 @@ describe('ClientePanel — cobro sin Webpay', () => {
 
       expect(await screen.findByText(/ya fue cobrado y cerrado/i)).toBeInTheDocument();
     });
+  });
+
+  test('si pasan más de 3 minutos desde la cotización, vuelve a cotizar en vez de cobrar otro monto', async () => {
+    const T0 = new Date('2026-03-10T15:00:00Z').getTime();
+    const dateNow = vi.spyOn(Date, 'now').mockReturnValue(T0);
+    api.post.mockImplementation(url => {
+      if (url === '/tickets/quote') {
+        return Promise.resolve({ data: { monto: 3000, descuentoReserva: 0, cotizacion: 'COT-1', patente: 'AB1234', estacionamiento_nombre: 'Parking Centro', estacionamiento_direccion: 'Centro', fecha_entrada: activo.fecha_entrada } });
+      }
+    });
+    const user = userEvent.setup();
+    render(<ClientePanel />);
+
+    await clickCobrarDeLaFila(user);
+    await screen.findByText('Total a pagar: $3.000');
+    await user.click(screen.getByRole('button', { name: /💳 débito/i }));
+
+    dateNow.mockReturnValue(T0 + 4 * 60000);
+    await user.click(screen.getByRole('button', { name: /confirmar cobro con débito/i }));
+
+    expect(await screen.findByText(/el monto se actualizó/i)).toBeInTheDocument();
+    expect(api.post.mock.calls.filter(([u]) => u === '/tickets/quote')).toHaveLength(2);
+    expect(api.post.mock.calls.some(([u]) => u === '/tickets/close')).toBe(false);
+    dateNow.mockRestore();
   });
 });

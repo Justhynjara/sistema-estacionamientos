@@ -23,12 +23,18 @@ describe('calcularTarifa (espejo del backend)', () => {
     expect(calcularTarifa(T0, 12.5, 0, min(3)).bruto).toBe(38);
     expect(calcularTarifa(T0, 0.1, 0, min(30)).bruto).toBe(3);
   });
+  test('un precio por hora convertido a minuto (1000/60) no cobra pesos de más en horas enteras', () => {
+    expect(calcularTarifa(T0, 16.6667, 1000, min(120)).bruto).toBe(2000);
+    expect(calcularTarifa(T0, 16.6667, 1000, min(600)).bruto).toBe(10000);
+  });
 });
 
 describe('formatos', () => {
   test('formatTarifa muestra el mínimo solo si existe', () => {
     expect(formatTarifa({ precio_minuto: 25, tarifa_minima: 500 })).toBe('$25/min · mínimo $500');
     expect(formatTarifa({ precio_minuto: '25.00', tarifa_minima: '0.00' })).toBe('$25/min');
+    // La base guarda 4 decimales (16.6667): se muestran solo 2, sin arrastrar ceros.
+    expect(formatTarifa({ precio_minuto: '16.6667', tarifa_minima: '1000.00' })).toBe('$16,67/min · mínimo $1.000');
   });
   test('formatDuracion', () => {
     expect(formatDuracion(45)).toBe('45 min');

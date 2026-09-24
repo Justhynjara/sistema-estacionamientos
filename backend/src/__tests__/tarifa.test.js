@@ -44,4 +44,10 @@ describe('tarifa por minuto con valor base mínimo', () => {
     const r = calcularTarifa(T0, '25.00', '500.00', min(30));
     assert.equal(r.bruto, 750);
   });
+
+  test('un precio por hora convertido a minuto (1000/60) no cobra pesos de más en horas enteras', () => {
+    assert.equal(calcularTarifa(T0, 16.6667, 1000, min(60)).bruto, 1000);
+    assert.equal(calcularTarifa(T0, 16.6667, 1000, min(120)).bruto, 2000);
+    assert.equal(calcularTarifa(T0, 16.6667, 1000, min(600)).bruto, 10000);
+  });
 });

@@ -101,16 +101,35 @@ async function main() {
       record('Allowlist de parámetros rechaza clave desconocida', r.status === 400, `status ${r.status}`);
     });
 
-    if (createdUserId) {
-      await check('Limpieza: desactivar cuenta de prueba', async () => {
-        const r = await req(`/api/admin/users/${createdUserId}/status`, {
-          method: 'PATCH',
-          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${adminToken}` },
-          body: JSON.stringify({ activo: false })
-        });
-        record('Cuenta de prueba desactivada tras el chequeo', r.status === 200, `status ${r.status}`);
-      });
-    }
+    // Limpieza: esta prueba registra una cuenta cada vez que corre (cada 6 h y en cada push), así
+    // que se elimina al terminar y, de paso, se barren las que hayan quedado de corridas anteriores
+    // (solo las que siguen el patrón exacto de las cuentas de esta prueba).
+    await check('Limpieza: eliminar cuentas de prueba', async () => {
+      const auth = { Authorization: `Bearer ${adminToken}` };
+      const lista = await req('/api/admin/users', { headers: auth });
+      const usuarios = (await safeJson(lista)) || [];
+      const esDePrueba = u => /^qa-auto-\d+@security-test\.local$/.test(u.email);
+      const ids = new Set(usuarios.filter(esDePrueba).map(u => u.id));
+      if (createdUserId) ids.add(createdUserId);
+
+      let borradas = 0;
+      let sinEndpoint = false;
+      for (const id of ids) {
+        const r = await req(`/api/admin/users/${id}`, { method: 'DELETE', headers: auth });
+        if (r.status === 200) { borradas++; continue; }
+        // Si la API en producción todavía no tiene el endpoint (despliegue en curso), al menos
+        // se desactiva la cuenta; la próxima corrida la eliminará.
+        if (r.status === 404 || r.status === 405) {
+          sinEndpoint = true;
+          await req(`/api/admin/users/${id}/status`, {
+            method: 'PATCH', headers: { 'Content-Type': 'application/json', ...auth },
+            body: JSON.stringify({ activo: false })
+          });
+        }
+      }
+      record('Cuentas de prueba eliminadas tras el chequeo', sinEndpoint || borradas === ids.size,
+        sinEndpoint ? 'la API aún no tiene DELETE /admin/users (se desactivaron; se eliminarán en la próxima corrida)' : `${borradas}/${ids.size} eliminadas`);
+    });
   } else {
     record('Allowlist de parámetros rechaza clave desconocida', false, 'sin token admin (login falló)');
   }

@@ -19,7 +19,7 @@ CREATE TABLE IF NOT EXISTS estacionamientos (
   direccion VARCHAR(255) NOT NULL,
   latitud NUMERIC(10,7) NOT NULL,
   longitud NUMERIC(10,7) NOT NULL,
-  precio_minuto NUMERIC(10,2) NOT NULL CHECK (precio_minuto >= 0),
+  precio_minuto NUMERIC(12,4) NOT NULL CHECK (precio_minuto >= 0),
   tarifa_minima NUMERIC(10,2) NOT NULL DEFAULT 0 CHECK (tarifa_minima >= 0),
   cupo_maximo INTEGER NOT NULL CHECK (cupo_maximo > 0),
   cupos_disponibles INTEGER NOT NULL CHECK (cupos_disponibles >= 0),
@@ -83,7 +83,7 @@ CREATE TABLE IF NOT EXISTS solicitudes_cliente (
   direccion VARCHAR(255) NOT NULL,
   latitud NUMERIC(10,7),
   longitud NUMERIC(10,7),
-  precio_minuto NUMERIC(10,2) NOT NULL CHECK (precio_minuto >= 0),
+  precio_minuto NUMERIC(12,4) NOT NULL CHECK (precio_minuto >= 0),
   tarifa_minima NUMERIC(10,2) NOT NULL DEFAULT 0 CHECK (tarifa_minima >= 0),
   cupo_estimado INTEGER NOT NULL CHECK (cupo_estimado > 0),
   descripcion TEXT,
@@ -91,14 +91,14 @@ CREATE TABLE IF NOT EXISTS solicitudes_cliente (
   estado VARCHAR(20) NOT NULL DEFAULT 'PENDIENTE'
     CHECK (estado IN ('PENDIENTE','APROBADA','RECHAZADA','PROCESADA')),
   comentario_soporte TEXT,
-  revisado_por UUID REFERENCES usuarios(id),
+  revisado_por UUID REFERENCES usuarios(id) ON DELETE SET NULL,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
 CREATE TABLE IF NOT EXISTS audit_log (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  usuario_id UUID REFERENCES usuarios(id),
+  usuario_id UUID REFERENCES usuarios(id) ON DELETE SET NULL,
   accion VARCHAR(60) NOT NULL,
   entidad VARCHAR(60) NOT NULL,
   entidad_id VARCHAR(100),

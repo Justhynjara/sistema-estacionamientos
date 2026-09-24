@@ -12,11 +12,14 @@ export const crearSolicitudSchema = z.object({
   direccion: z.string().trim().min(4, 'Dirección muy corta').max(255),
   latitud: z.number().min(-90).max(90).optional().nullable(),
   longitud: z.number().min(-180).max(180).optional().nullable(),
-  precio_minuto: z.number().nonnegative('El precio no puede ser negativo'),
-  tarifa_minima: z.number().nonnegative('El valor mínimo no puede ser negativo').optional().default(0),
+  precio_minuto: z.number().nonnegative('El precio no puede ser negativo').max(100000, 'El precio por minuto no puede superar $100.000'),
+  tarifa_minima: z.number().nonnegative('El valor mínimo no puede ser negativo').max(10000000, 'El valor mínimo no puede superar $10.000.000').optional().default(0),
   cupo_estimado: z.number().int('Debe ser un número entero').positive('Debe ser mayor a 0'),
   descripcion: z.string().trim().max(2000).optional().nullable(),
   fotos: z.array(fotoDataUri).max(4, 'Máximo 4 fotos').optional().default([])
+}).refine(d => d.precio_minuto > 0 || d.tarifa_minima > 0, {
+  message: 'Indica un precio por minuto o un valor base mínimo mayor a 0',
+  path: ['precio_minuto']
 });
 
 export const revisarSolicitudSchema = z.object({

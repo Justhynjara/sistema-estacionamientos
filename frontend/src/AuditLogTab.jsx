@@ -6,6 +6,7 @@ const ACCION_LABEL = {
   'usuario.crear': 'Creó usuario',
   'usuario.cambiar_estado': 'Cambió estado de usuario',
   'usuario.cambiar_rol': 'Cambió rol de usuario',
+  'usuario.eliminar': 'Eliminó usuario',
   'parametro.actualizar': 'Actualizó parámetro',
   'estacionamiento.crear': 'Creó estacionamiento',
   'estacionamiento.actualizar_cupo': 'Actualizó cupo',
@@ -57,7 +58,7 @@ export default function AuditLogTab() {
               {entradas.map(e => (
                 <tr key={e.id}>
                   <td>{new Date(e.created_at).toLocaleString('es-CL')}</td>
-                  <td>{e.usuario_nombre || '—'}{e.usuario_email ? ` (${e.usuario_email})` : ''}</td>
+                  <td>{e.usuario_nombre || 'Usuario eliminado'}{e.usuario_email ? ` (${e.usuario_email})` : ''}</td>
                   <td>{ACCION_LABEL[e.accion] || e.accion}</td>
                   <td>{detalleTexto(e)}</td>
                 </tr>

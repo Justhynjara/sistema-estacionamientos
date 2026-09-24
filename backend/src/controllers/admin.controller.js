@@ -51,6 +51,27 @@ export async function updateUserRole(req, res) {
   res.json(r.rows[0]);
 }
 
+export async function deleteUser(req, res) {
+  if (req.params.id === req.user.id) return res.status(400).json({ error: 'No puedes eliminar tu propia cuenta' });
+  const u = await pool.query('SELECT id,nombre,email,rol FROM usuarios WHERE id=$1', [req.params.id]);
+  if (!u.rowCount) return res.status(404).json({ error: 'Usuario no encontrado' });
+  const user = u.rows[0];
+  if (user.rol === 'ADMIN') {
+    const otros = await pool.query(`SELECT COUNT(*)::int AS n FROM usuarios WHERE rol='ADMIN' AND activo=true AND id<>$1`, [user.id]);
+    if (otros.rows[0].n === 0) return res.status(400).json({ error: 'No puedes eliminar al único administrador activo' });
+  }
+  try {
+    await pool.query('DELETE FROM usuarios WHERE id=$1', [user.id]);
+  } catch (err) {
+    if (err.code === '23503') {
+      return res.status(409).json({ error: 'Este usuario es dueño de uno o más estacionamientos. Reasígnalos antes de eliminarlo, o desactívalo.' });
+    }
+    throw err;
+  }
+  await registrarAuditoria(req.user.id, 'usuario.eliminar', 'usuario', user.id, { email: user.email, nombre: user.nombre, rol: user.rol });
+  res.json({ ok: true });
+}
+
 export async function listParams(req, res) {
   const r = await pool.query(
     `SELECT clave,valor,descripcion,updated_at FROM parametros_sistema ORDER BY clave`

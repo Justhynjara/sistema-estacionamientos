@@ -34,3 +34,15 @@ export const reservaLimiter = rateLimit({
   keyGenerator: realIp,
   message: { error: 'Demasiadas reservas seguidas. Intenta nuevamente en unos minutos.' }
 });
+
+// La vista pública del ticket se refresca sola cada 30 s en cada teléfono con el QR abierto
+// (~30 consultas por cuarto de hora por página). El límite deja margen para varias personas detrás
+// de la misma IP (redes móviles comparten IP) y corta a quien la use para saturar la base.
+export const ticketPublicoLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 300,
+  standardHeaders: true,
+  legacyHeaders: false,
+  keyGenerator: realIp,
+  message: { error: 'Demasiadas consultas. Intenta nuevamente en unos minutos.' }
+});

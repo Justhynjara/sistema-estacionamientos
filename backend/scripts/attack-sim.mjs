@@ -39,6 +39,23 @@ async function login(email, password) {
   return r.body?.token;
 }
 
+// Las cuentas que crea la simulación se eliminan al terminar (aunque falle a la mitad) y se barren
+// las que hayan quedado de corridas anteriores, para no llenar el listado de usuarios del admin.
+async function limpiarCuentasDePrueba() {
+  const token = await login('admin@demo.cl', 'password');
+  if (!token) return console.log('   (limpieza omitida: no se pudo iniciar sesión como admin)');
+  const auth = { Authorization: `Bearer ${token}` };
+  const lista = await req('/api/admin/users', { headers: auth });
+  const propias = (Array.isArray(lista.body) ? lista.body : []).filter(u => /^atacante2?_\d+@evil\.test$/.test(u.email));
+  let borradas = 0;
+  for (const u of propias) {
+    const r = await req(`/api/admin/users/${u.id}`, { method: 'DELETE', headers: auth });
+    if (r.status === 200) borradas++;
+  }
+  console.log(`
+🧹 Limpieza: ${borradas}/${propias.length} cuentas de prueba eliminadas`);
+}
+
 async function main() {
   console.log(`\n=== Simulación de ataque contra sandbox: ${API} ===`);
   if (API.includes('onrender.com')) {
@@ -232,6 +249,8 @@ async function main() {
     record('Rate-limit', 'con CF-Connecting-IP fijo (simulando Cloudflare real), rotar X-Forwarded-For ya NO evade el límite', bloqueados > 0, `${bloqueados}/12 bloqueados con 429`);
   }
 
+  await limpiarCuentasDePrueba();
+
   console.log('\n=== RESUMEN ===');
   const vulnerables = results.filter(r => !r.ok);
   console.log(`${results.length - vulnerables.length}/${results.length} pruebas de ataque bloqueadas correctamente`);
@@ -241,4 +260,8 @@ async function main() {
   }
 }
 
-main().catch(e => { console.error('Error en la simulación:', e); process.exit(1); });
+main().catch(async e => {
+  console.error('Error en la simulación:', e);
+  await limpiarCuentasDePrueba().catch(() => {});
+  process.exit(1);
+});

@@ -39,7 +39,7 @@ function ParkingTab({ parking, reloadParking, users }) {
       setForm(initialForm);
       setUbicacion(null);
       reloadParking();
-    } catch (err) { alert(err.response?.data?.error || 'Error al crear estacionamiento'); }
+    } catch (err) { alert(err.response?.data?.detalles?.[0]?.mensaje || err.response?.data?.error || 'Error al crear estacionamiento'); }
   }
 
   async function cambiarCupo(id, cupoActual) {
@@ -74,8 +74,8 @@ function ParkingTab({ parking, reloadParking, users }) {
           <input placeholder="Nombre" value={form.nombre} onChange={e => setForm({ ...form, nombre: e.target.value })} required />
           <input placeholder="Dirección" value={form.direccion} onChange={e => setForm({ ...form, direccion: e.target.value })} required />
           <LocationPicker value={ubicacion} onChange={setUbicacion} />
-          <input type="number" min="0" step="any" placeholder="Precio por minuto (CLP)" aria-label="Precio por minuto" value={form.precio_minuto} onChange={e => setForm({ ...form, precio_minuto: e.target.value })} required />
-          <input type="number" min="0" step="any" placeholder="Valor base mínimo (CLP)" aria-label="Valor base mínimo" value={form.tarifa_minima} onChange={e => setForm({ ...form, tarifa_minima: e.target.value })} />
+          <input type="number" min="0" step="any" placeholder="Precio por minuto (CLP)" aria-label="Precio por minuto" max="100000" value={form.precio_minuto} onChange={e => setForm({ ...form, precio_minuto: e.target.value })} required />
+          <input type="number" min="0" step="any" placeholder="Valor base mínimo (CLP)" aria-label="Valor base mínimo" max="10000000" value={form.tarifa_minima} onChange={e => setForm({ ...form, tarifa_minima: e.target.value })} />
           <input placeholder="Cupo máximo" value={form.cupo_maximo} onChange={e => setForm({ ...form, cupo_maximo: e.target.value })} required />
           <button>Crear estacionamiento</button>
         </form>
@@ -153,6 +153,13 @@ function UsersTab({ users, reloadUsers, currentUserId }) {
       reloadUsers();
     } catch (err) { alert(err.response?.data?.error || 'Error al cambiar rol'); }
   }
+  async function eliminar(u) {
+    if (!confirm(`¿Eliminar a ${u.nombre} (${u.email})? Esta acción no se puede deshacer.`)) return;
+    try {
+      await api.delete(`/admin/users/${u.id}`);
+      reloadUsers();
+    } catch (err) { alert(err.response?.data?.error || 'No se pudo eliminar el usuario'); }
+  }
   return (
     <>
     <CrearUsuarioForm reloadUsers={reloadUsers} />
@@ -175,7 +182,12 @@ function UsersTab({ users, reloadUsers, currentUserId }) {
                 </select>
               </td>
               <td><span className={'badge ' + (u.activo ? 'ok' : 'off')}>{u.activo ? 'Activo' : 'Inactivo'}</span></td>
-              <td><button disabled={u.id === currentUserId} onClick={() => toggleActivo(u)}>{u.activo ? 'Desactivar' : 'Activar'}</button></td>
+              <td>
+                <div className="row-form" style={{ margin: 0 }}>
+                  <button disabled={u.id === currentUserId} onClick={() => toggleActivo(u)}>{u.activo ? 'Desactivar' : 'Activar'}</button>
+                  <button className="secondary" disabled={u.id === currentUserId} onClick={() => eliminar(u)} aria-label={`Eliminar a ${u.nombre}`}>🗑️ Eliminar</button>
+                </div>
+              </td>
             </tr>
           ))}
         </tbody>

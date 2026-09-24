@@ -1,7 +1,8 @@
 // La tarifa deja de ser "precio por hora" y pasa a ser "precio por minuto + valor base mínimo",
 // como cobran la mayoría de los estacionamientos. Se convierte lo existente sin perder datos:
-// precio_minuto = precio_hora / 60, y tarifa_minima = precio_hora (antes siempre se cobraba al
-// menos 1 hora, así que el mínimo conserva ese comportamiento hasta que el admin lo ajuste).
+// precio_minuto = precio_hora / 60 (con 4 decimales: con 2 el redondeo cambiaba el cobro, p. ej.
+// $1.000/h pasaba a costar $1.001 a los 60 min), y tarifa_minima = precio_hora (antes siempre se
+// cobraba al menos 1 hora, así que el mínimo conserva ese comportamiento hasta que el admin lo ajuste).
 // El bloque solo corre si la tabla todavía tiene precio_hora: una base creada desde init.sql ya
 // nace con las columnas nuevas.
 const TABLAS = ['estacionamientos', 'solicitudes_cliente'];
@@ -15,9 +16,9 @@ export const up = pgm => {
           SELECT 1 FROM information_schema.columns
           WHERE table_schema='public' AND table_name='${t}' AND column_name='precio_hora'
         ) THEN
-          ALTER TABLE ${t} ADD COLUMN IF NOT EXISTS precio_minuto NUMERIC(10,2) CHECK (precio_minuto >= 0);
+          ALTER TABLE ${t} ADD COLUMN IF NOT EXISTS precio_minuto NUMERIC(12,4) CHECK (precio_minuto >= 0);
           ALTER TABLE ${t} ADD COLUMN IF NOT EXISTS tarifa_minima NUMERIC(10,2) NOT NULL DEFAULT 0 CHECK (tarifa_minima >= 0);
-          UPDATE ${t} SET precio_minuto = ROUND(precio_hora / 60.0, 2), tarifa_minima = precio_hora;
+          UPDATE ${t} SET precio_minuto = ROUND(precio_hora / 60.0, 4), tarifa_minima = precio_hora;
           ALTER TABLE ${t} ALTER COLUMN precio_minuto SET NOT NULL;
           ALTER TABLE ${t} DROP COLUMN precio_hora;
         END IF;

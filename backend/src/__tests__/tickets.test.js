@@ -247,4 +247,56 @@ describe('tickets: propiedad y flujo', () => {
     const corto = await request(app).get('/api/tickets/publico/ab');
     assert.equal(corto.status, 400);
   });
+  test('el monto cotizado se mantiene al cobrar aunque pasen minutos', async () => {
+    const emitido = await request(app).post('/api/tickets').set('Authorization', `Bearer ${tokenA}`)
+      .send({ estacionamiento_id: parkingA, patente: 'QT0001' });
+    await pool.query(`UPDATE tickets SET fecha_entrada = NOW() - interval '60 minutes' WHERE codigo_qr=$1`, [emitido.body.codigo_qr]);
+
+    const quote = await request(app).post('/api/tickets/quote').set('Authorization', `Bearer ${tokenA}`)
+      .send({ codigo_qr: emitido.body.codigo_qr });
+    assert.equal(quote.status, 200);
+    assert.ok(quote.body.cotizacion && quote.body.cotizacion_expira);
+    const cotizado = Number(quote.body.monto);
+
+    // Pasan 5 minutos entre que el dueño le dice el monto al cliente y confirma el cobro.
+    await pool.query(`UPDATE tickets SET fecha_entrada = fecha_entrada - interval '5 minutes' WHERE codigo_qr=$1`, [emitido.body.codigo_qr]);
+    const cierra = await request(app).post('/api/tickets/close').set('Authorization', `Bearer ${tokenA}`)
+      .send({ codigo_qr: emitido.body.codigo_qr, metodo_pago: 'EFECTIVO', cotizacion: quote.body.cotizacion });
+    assert.equal(cierra.status, 200);
+    assert.equal(Number(cierra.body.monto), cotizado);
+  });
+
+  test('sin cotización vigente el cobro se recalcula con la hora actual', async () => {
+    const emitido = await request(app).post('/api/tickets').set('Authorization', `Bearer ${tokenA}`)
+      .send({ estacionamiento_id: parkingA, patente: 'QT0002' });
+    await pool.query(`UPDATE tickets SET fecha_entrada = NOW() - interval '60 minutes' WHERE codigo_qr=$1`, [emitido.body.codigo_qr]);
+    const quote = await request(app).post('/api/tickets/quote').set('Authorization', `Bearer ${tokenA}`)
+      .send({ codigo_qr: emitido.body.codigo_qr });
+    await pool.query(`UPDATE tickets SET fecha_entrada = fecha_entrada - interval '5 minutes' WHERE codigo_qr=$1`, [emitido.body.codigo_qr]);
+
+    const cierra = await request(app).post('/api/tickets/close').set('Authorization', `Bearer ${tokenA}`)
+      .send({ codigo_qr: emitido.body.codigo_qr, metodo_pago: 'EFECTIVO' });
+    assert.equal(cierra.status, 200);
+    assert.ok(Number(cierra.body.monto) > Number(quote.body.monto));
+  });
+
+  test('una cotización alterada o de otro ticket no se honra', async () => {
+    const t1 = await request(app).post('/api/tickets').set('Authorization', `Bearer ${tokenA}`).send({ estacionamiento_id: parkingA, patente: 'QT0003' });
+    const t2 = await request(app).post('/api/tickets').set('Authorization', `Bearer ${tokenA}`).send({ estacionamiento_id: parkingA, patente: 'QT0004' });
+    await pool.query(`UPDATE tickets SET fecha_entrada = NOW() - interval '120 minutes' WHERE codigo_qr=$1`, [t2.body.codigo_qr]);
+    const cotizacionBarata = (await request(app).post('/api/tickets/quote').set('Authorization', `Bearer ${tokenA}`)
+      .send({ codigo_qr: t1.body.codigo_qr })).body.cotizacion;
+
+    // La cotización barata del ticket 1 usada en el ticket 2 (2 horas dentro): no debe aplicarse.
+    const cruzada = await request(app).post('/api/tickets/close').set('Authorization', `Bearer ${tokenA}`)
+      .send({ codigo_qr: t2.body.codigo_qr, metodo_pago: 'EFECTIVO', cotizacion: cotizacionBarata });
+    assert.equal(cruzada.status, 200);
+    assert.ok(Number(cruzada.body.monto) >= 2400, `cobró ${cruzada.body.monto} con una cotización ajena`);
+
+    const [cuerpo] = cotizacionBarata.split('.');
+    const alterada = await request(app).post('/api/tickets/close').set('Authorization', `Bearer ${tokenA}`)
+      .send({ codigo_qr: t1.body.codigo_qr, metodo_pago: 'EFECTIVO', cotizacion: `${cuerpo}.firmafalsa` });
+    assert.equal(alterada.status, 200);
+    assert.equal(Number(alterada.body.monto), 500);
+  });
 });

@@ -60,7 +60,7 @@ export default function SolicitudClienteForm({ onCerrar }) {
       });
       setEnviado(true);
     } catch (err) {
-      setError(err.response?.data?.error || 'No se pudo enviar la solicitud. Intenta nuevamente.');
+      setError(err.response?.data?.detalles?.[0]?.mensaje || err.response?.data?.error || 'No se pudo enviar la solicitud. Intenta nuevamente.');
     } finally {
       setLoading(false);
     }
@@ -97,8 +97,8 @@ export default function SolicitudClienteForm({ onCerrar }) {
         <input placeholder="Dirección" value={form.direccion} onChange={e => setForm({ ...form, direccion: e.target.value })} required />
         <LocationPicker value={ubicacion} onChange={setUbicacion} />
         <div className="row-form">
-          <input type="number" min="0" step="any" placeholder="Precio por minuto (CLP)" aria-label="Precio por minuto" value={form.precio_minuto} onChange={e => setForm({ ...form, precio_minuto: e.target.value })} required />
-          <input type="number" min="0" step="any" placeholder="Valor base mínimo (CLP)" aria-label="Valor base mínimo" value={form.tarifa_minima} onChange={e => setForm({ ...form, tarifa_minima: e.target.value })} />
+          <input type="number" min="0" step="any" placeholder="Precio por minuto (CLP)" aria-label="Precio por minuto" max="100000" value={form.precio_minuto} onChange={e => setForm({ ...form, precio_minuto: e.target.value })} required />
+          <input type="number" min="0" step="any" placeholder="Valor base mínimo (CLP)" aria-label="Valor base mínimo" max="10000000" value={form.tarifa_minima} onChange={e => setForm({ ...form, tarifa_minima: e.target.value })} />
         </div>
         <div className="row-form">
           <input type="number" min="1" placeholder="Cupos estimados" value={form.cupo_estimado} onChange={e => setForm({ ...form, cupo_estimado: e.target.value })} required />

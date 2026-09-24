@@ -2,6 +2,7 @@ import {Router} from 'express';
 import {auth} from '../middleware/auth.middleware.js';
 import {roles} from '../middleware/role.middleware.js';
 import {validateBody,validateQuery,validateParams} from '../middleware/validate.middleware.js';
+import {ticketPublicoLimiter} from '../middleware/rateLimit.middleware.js';
 import {createTicket,closeTicket,reserveTicket,checkinTicket,ticketsDashboard,quoteTicket,activeTickets,getReservaPublica,getTicketPublico} from '../services/ticket.service.js';
 import {createTicketSchema,reserveTicketSchema,closeTicketSchema,closeTicketWithMethodSchema,checkinSchema,dashboardQuerySchema,activeQuerySchema,codigoParamSchema} from '../validation/ticket.schema.js';
 
@@ -13,7 +14,7 @@ r.post('/',auth,roles('CLIENTE'),validateBody(createTicketSchema),async(req,res)
 });
 
 r.post('/close',auth,roles('CLIENTE'),validateBody(closeTicketWithMethodSchema),async(req,res)=>{
-  try{res.json(await closeTicket(req.body.codigo_qr,req.user.id,req.body.metodo_pago));}
+  try{res.json(await closeTicket(req.body.codigo_qr,req.user.id,req.body.metodo_pago,req.body.cotizacion));}
   catch(e){res.status(400).json({error:e.message});}
 });
 
@@ -41,7 +42,7 @@ r.get('/reserva/:codigo_qr',async(req,res)=>{
 
 // Vista pública de un ticket (lo que ve el conductor al escanear su QR con la cámara): tiempo
 // transcurrido y monto a pagar hasta ahora. No requiere sesión; cambia con el tiempo, no se cachea.
-r.get('/publico/:codigo_qr',validateParams(codigoParamSchema),async(req,res)=>{
+r.get('/publico/:codigo_qr',ticketPublicoLimiter,validateParams(codigoParamSchema),async(req,res)=>{
   try{res.set('Cache-Control','no-store').json(await getTicketPublico(req.params.codigo_qr));}
   catch(e){res.status(404).json({error:e.message});}
 });

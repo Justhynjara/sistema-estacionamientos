@@ -7,6 +7,9 @@ import QRScanner from './QRScanner.jsx';
 import { qrPayload, extraerCodigoQR } from './utils/qr.js';
 import { formatDuracion, formatTarifa } from './utils/tarifa.js';
 
+// Un poco menos que el plazo del servidor (3 min), para no confirmar con una cotización que vence en el camino.
+const COTIZACION_VIGENTE_MS = 170000;
+
 const METODO_LABEL = { EFECTIVO: 'Efectivo', DEBITO: 'Débito', CREDITO: 'Crédito' };
 
 function Tabs({ tab, setTab }) {
@@ -109,6 +112,8 @@ function GestionTicketPanel({ reloadParking, ticketInicial, onTicketConsumido })
         fecha_entrada: q.data.fecha_entrada,
         minutos: q.data.minutos,
         tarifa: formatTarifa(q.data),
+        cotizacion: q.data.cotizacion,
+        cotizadoEn: Date.now(),
         metodo: null,
         recibido: ''
       });
@@ -121,9 +126,17 @@ function GestionTicketPanel({ reloadParking, ticketInicial, onTicketConsumido })
     const esEfectivo = cobro.metodo === 'EFECTIVO';
     const recibido = esEfectivo ? Number(cobro.recibido) : cobro.monto;
     if (esEfectivo && (!recibido || recibido < cobro.monto)) return;
+    // El monto mostrado queda congelado unos minutos (cotización firmada por el servidor). Si ya
+    // pasó ese plazo, se vuelve a cotizar y se pide confirmar el monto actualizado en vez de
+    // cobrar algo distinto a lo que el dueño le dijo al cliente.
+    if (Date.now() - cobro.cotizadoEn > COTIZACION_VIGENTE_MS) {
+      await iniciarCobro(cobro.codigo);
+      setMensaje({ tipo: 'off', texto: 'Pasaron unos minutos: el monto se actualizó. Revísalo y confirma de nuevo.' });
+      return;
+    }
     setLoading('cobro-confirm');
     try {
-      const r = await api.post('/tickets/close', { codigo_qr: cobro.codigo, metodo_pago: cobro.metodo });
+      const r = await api.post('/tickets/close', { codigo_qr: cobro.codigo, metodo_pago: cobro.metodo, cotizacion: cobro.cotizacion });
       const monto = Number(r.data.monto);
       const vuelto = recibido - monto;
       setMensaje({
@@ -131,7 +144,7 @@ function GestionTicketPanel({ reloadParking, ticketInicial, onTicketConsumido })
         texto: esEfectivo
           ? (vuelto >= 0
               ? `Cobro registrado (Efectivo): $${monto.toLocaleString('es-CL')} — Vuelto: $${vuelto.toLocaleString('es-CL')}`
-              : `Cobro registrado (Efectivo): $${monto.toLocaleString('es-CL')} — Faltan $${Math.abs(vuelto).toLocaleString('es-CL')} (pasó el tiempo y el monto subió)`)
+              : `Cobro registrado (Efectivo): $${monto.toLocaleString('es-CL')} — Faltan $${Math.abs(vuelto).toLocaleString('es-CL')} (el monto subió entre la cotización y el cobro)`)
           : `Cobro registrado (${METODO_LABEL[cobro.metodo]}): $${monto.toLocaleString('es-CL')}`,
         imprimir: () => imprimirTicket({
           nombreEstacionamiento: r.data.estacionamiento_nombre,

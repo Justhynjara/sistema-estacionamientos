@@ -2,6 +2,7 @@ import { pool } from '../config/database.js';
 import { generateQR } from '../utils/generateQR.js';
 import { getIO } from '../sockets/io.js';
 import { calcularTarifa } from '../utils/tarifa.js';
+import { firmarCotizacion, verificarCotizacion } from '../utils/cotizacion.js';
 
 const RESERVATION_TTL_MIN_DEFAULT = 10;
 
@@ -60,7 +61,7 @@ export async function createTicket(estacionamientoId, patente, clienteId){
   finally { client.release(); }
 }
 
-export async function closeTicket(qr, clienteId, metodoPago){
+export async function closeTicket(qr, clienteId, metodoPago, cotizacion=null){
   const client=await pool.connect();
   try {
     await client.query('BEGIN');
@@ -72,7 +73,12 @@ export async function closeTicket(qr, clienteId, metodoPago){
     if(!t.rowCount) throw new Error('Ticket activo no encontrado');
     const row=t.rows[0];
     if(row.cliente_id !== clienteId) throw new Error('Este ticket no pertenece a uno de tus estacionamientos');
-    const {monto,descuento}=await calcularMonto(row.id,row.fecha_entrada,row.precio_minuto,row.tarifa_minima);
+    const actual=await calcularMonto(row.id,row.fecha_entrada,row.precio_minuto,row.tarifa_minima);
+    // Si el dueño cotizó hace poco, se cobra lo que le dijo al cliente; nunca más que el cálculo
+    // actual (p. ej. si el admin bajó la tarifa entremedio).
+    const honrada=verificarCotizacion(cotizacion,qr);
+    const monto=honrada ? Math.min(honrada.monto,actual.monto) : actual.monto;
+    const descuento=honrada ? honrada.descuento : actual.descuento;
     await client.query(
       `UPDATE tickets SET fecha_salida=NOW(), estado='CERRADO', monto=$1, metodo_pago=$2 WHERE id=$3`,
       [monto,metodoPago,row.id]
@@ -99,7 +105,8 @@ export async function quoteTicket(qr, clienteId){
   const row=t.rows[0];
   if(row.cliente_id !== clienteId) throw new Error('Este ticket no pertenece a uno de tus estacionamientos');
   const {monto,descuento,minutos}=await calcularMonto(row.id,row.fecha_entrada,row.precio_minuto,row.tarifa_minima);
-  return {...row, monto, minutos, descuentoReserva:descuento};
+  const {token,expira}=firmarCotizacion({codigo_qr:row.codigo_qr,monto,descuento,minutos});
+  return {...row, monto, minutos, descuentoReserva:descuento, cotizacion:token, cotizacion_expira:expira};
 }
 
 export async function activeTickets(clienteId, estacionamientoId){

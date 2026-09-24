@@ -2,12 +2,12 @@
 // consultar al servidor cada vez. El servidor sigue siendo quien calcula el cobro real.
 export function calcularTarifa(fechaEntrada, precioMinuto, tarifaMinima, ahora = Date.now()) {
   const minutos = Math.max(1, Math.ceil((ahora - new Date(fechaEntrada).getTime()) / 60000));
-  const porTiempo = Math.ceil(Math.round(minutos * Number(precioMinuto) * 100) / 100);
+  const porTiempo = Math.ceil(Math.round(minutos * Number(precioMinuto) * 10) / 10);
   return { minutos, bruto: Math.max(Number(tarifaMinima), porTiempo) };
 }
 
 export function formatCLP(n) {
-  return `$${Number(n).toLocaleString('es-CL')}`;
+  return `$${Number(n).toLocaleString('es-CL', { maximumFractionDigits: 2 })}`;
 }
 
 // "$25/min · mínimo $500" (sin la parte del mínimo si no hay valor base)
