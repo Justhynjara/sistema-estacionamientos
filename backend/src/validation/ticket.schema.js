@@ -28,6 +28,10 @@ export const closeTicketWithMethodSchema = closeTicketSchema.extend({
   metodo_pago: z.enum(['EFECTIVO', 'DEBITO', 'CREDITO'], { message: 'Selecciona el método de pago' })
 });
 
+export const codigoParamSchema = z.object({
+  codigo_qr: z.string().trim().min(4).max(100)
+});
+
 export const checkinSchema = z.object({
   codigo_qr: z.string().trim().min(4)
 });

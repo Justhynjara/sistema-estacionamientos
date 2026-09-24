@@ -25,7 +25,7 @@ describe('validation schemas', () => {
     const r = createParkingSchema.safeParse({
       cliente_id: '11111111-1111-4111-8111-111111111111',
       nombre: 'Test', direccion: 'Calle 1', latitud: -33, longitud: -70,
-      precio_hora: 1000, cupo_maximo: 0
+      precio_minuto: 20, cupo_maximo: 0
     });
     assert.equal(r.success, false);
   });

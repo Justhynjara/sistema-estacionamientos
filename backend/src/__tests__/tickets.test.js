@@ -22,13 +22,13 @@ describe('tickets: propiedad y flujo', () => {
       [clienteB.email, hash]
     );
     const pA = await pool.query(
-      `INSERT INTO estacionamientos(cliente_id,nombre,direccion,latitud,longitud,precio_hora,cupo_maximo,cupos_disponibles)
-       VALUES($1,'Test Parking A','Calle A',-33.45,-70.66,1000,10,10) RETURNING id`,
+      `INSERT INTO estacionamientos(cliente_id,nombre,direccion,latitud,longitud,precio_minuto,tarifa_minima,cupo_maximo,cupos_disponibles)
+       VALUES($1,'Test Parking A','Calle A',-33.45,-70.66,20,500,10,10) RETURNING id`,
       [uA.rows[0].id]
     );
     const pB = await pool.query(
-      `INSERT INTO estacionamientos(cliente_id,nombre,direccion,latitud,longitud,precio_hora,cupo_maximo,cupos_disponibles)
-       VALUES($1,'Test Parking B','Calle B',-33.46,-70.67,2000,10,10) RETURNING id`,
+      `INSERT INTO estacionamientos(cliente_id,nombre,direccion,latitud,longitud,precio_minuto,tarifa_minima,cupo_maximo,cupos_disponibles)
+       VALUES($1,'Test Parking B','Calle B',-33.46,-70.67,40,800,10,10) RETURNING id`,
       [uB.rows[0].id]
     );
     parkingA = pA.rows[0].id;
@@ -172,5 +172,79 @@ describe('tickets: propiedad y flujo', () => {
       .send({ estacionamiento_id: '11111111-1111-4111-8111-111111111111', patente: 'ZZ9999' });
     assert.equal(res.status, 400);
     assert.match(res.body.error, /no encontrado/i);
+  });
+
+  test('el cobro usa precio por minuto con valor base mínimo', async () => {
+    const corto = await request(app).post('/api/tickets').set('Authorization', `Bearer ${tokenA}`)
+      .send({ estacionamiento_id: parkingA, patente: 'MM0001' });
+    const cierraCorto = await request(app).post('/api/tickets/close').set('Authorization', `Bearer ${tokenA}`)
+      .send({ codigo_qr: corto.body.codigo_qr, metodo_pago: 'EFECTIVO' });
+    assert.equal(cierraCorto.status, 200);
+    assert.equal(Number(cierraCorto.body.monto), 500);
+
+    const largo = await request(app).post('/api/tickets').set('Authorization', `Bearer ${tokenA}`)
+      .send({ estacionamiento_id: parkingA, patente: 'MM0002' });
+    await pool.query(`UPDATE tickets SET fecha_entrada = NOW() - interval '90 minutes' WHERE codigo_qr=$1`, [largo.body.codigo_qr]);
+    const cierraLargo = await request(app).post('/api/tickets/close').set('Authorization', `Bearer ${tokenA}`)
+      .send({ codigo_qr: largo.body.codigo_qr, metodo_pago: 'EFECTIVO' });
+    assert.equal(cierraLargo.status, 200);
+    const monto = Number(cierraLargo.body.monto);
+    assert.ok(monto === 1800 || monto === 1820, `esperaba 90 o 91 min a $20/min, obtuve ${monto}`);
+  });
+
+  test('quien escanea el QR sin sesión ve el tiempo y el monto a pagar hasta ahora', async () => {
+    const emitido = await request(app).post('/api/tickets').set('Authorization', `Bearer ${tokenA}`)
+      .send({ estacionamiento_id: parkingA, patente: 'PU0001' });
+    await pool.query(`UPDATE tickets SET fecha_entrada = NOW() - interval '60 minutes' WHERE codigo_qr=$1`, [emitido.body.codigo_qr]);
+
+    const res = await request(app).get(`/api/tickets/publico/${emitido.body.codigo_qr}`);
+    assert.equal(res.status, 200);
+    assert.equal(res.body.estado, 'ACTIVO');
+    assert.equal(res.body.patente, 'PU0001');
+    assert.equal(res.body.estacionamiento_nombre, 'Test Parking A');
+    assert.equal(res.body.precio_minuto, 20);
+    assert.equal(res.body.tarifa_minima, 500);
+    assert.ok(res.body.minutos === 60 || res.body.minutos === 61);
+    assert.equal(res.body.monto, res.body.minutos * 20);
+    assert.ok(res.body.ahora);
+    assert.equal(res.headers['cache-control'], 'no-store');
+  });
+
+  test('la vista pública no expone datos internos (ids ni el dueño)', async () => {
+    const emitido = await request(app).post('/api/tickets').set('Authorization', `Bearer ${tokenA}`)
+      .send({ estacionamiento_id: parkingA, patente: 'PU0002' });
+    const res = await request(app).get(`/api/tickets/publico/${emitido.body.codigo_qr}`);
+    assert.equal(res.status, 200);
+    for (const campo of ['id', 'cliente_id', 'estacionamiento_id']) {
+      assert.equal(campo in res.body, false, `no debe exponer ${campo}`);
+    }
+  });
+
+  test('la vista pública de una reserva muestra cuándo vence y no cobra nada aún', async () => {
+    const reserva = await request(app).post('/api/tickets/reserve').set('Authorization', `Bearer ${tokenA}`)
+      .send({ estacionamiento_id: parkingA });
+    const res = await request(app).get(`/api/tickets/publico/${reserva.body.codigo_qr}`);
+    assert.equal(res.status, 200);
+    assert.equal(res.body.estado, 'RESERVADO');
+    assert.ok(res.body.reserva_expira);
+    assert.equal('monto' in res.body, false);
+  });
+
+  test('la vista pública de un ticket cerrado muestra lo que se pagó', async () => {
+    const emitido = await request(app).post('/api/tickets').set('Authorization', `Bearer ${tokenA}`)
+      .send({ estacionamiento_id: parkingA, patente: 'PU0003' });
+    await request(app).post('/api/tickets/close').set('Authorization', `Bearer ${tokenA}`)
+      .send({ codigo_qr: emitido.body.codigo_qr, metodo_pago: 'CREDITO' });
+    const res = await request(app).get(`/api/tickets/publico/${emitido.body.codigo_qr}`);
+    assert.equal(res.status, 200);
+    assert.equal(res.body.estado, 'CERRADO');
+    assert.equal(res.body.monto, 500);
+  });
+
+  test('la vista pública responde 404 para un código inexistente y 400 para uno absurdo', async () => {
+    const inexistente = await request(app).get('/api/tickets/publico/' + 'a'.repeat(36));
+    assert.equal(inexistente.status, 404);
+    const corto = await request(app).get('/api/tickets/publico/ab');
+    assert.equal(corto.status, 400);
   });
 });

@@ -4,12 +4,12 @@ import { registrarAuditoria } from './audit.service.js';
 export async function crearSolicitud(data) {
   const r = await pool.query(
     `INSERT INTO solicitudes_cliente
-      (nombre_solicitante,email,telefono,nombre_establecimiento,direccion,latitud,longitud,precio_hora,cupo_estimado,descripcion,fotos)
-     VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11::jsonb)
+      (nombre_solicitante,email,telefono,nombre_establecimiento,direccion,latitud,longitud,precio_minuto,tarifa_minima,cupo_estimado,descripcion,fotos)
+     VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12::jsonb)
      RETURNING id,estado,created_at`,
     [
       data.nombre_solicitante, data.email, data.telefono || null, data.nombre_establecimiento, data.direccion,
-      data.latitud ?? null, data.longitud ?? null, data.precio_hora, data.cupo_estimado, data.descripcion || null,
+      data.latitud ?? null, data.longitud ?? null, data.precio_minuto, data.tarifa_minima ?? 0, data.cupo_estimado, data.descripcion || null,
       JSON.stringify(data.fotos || [])
     ]
   );
@@ -19,7 +19,7 @@ export async function crearSolicitud(data) {
 export async function listSolicitudes(estado) {
   const r = await pool.query(
     `SELECT id,nombre_solicitante,email,telefono,nombre_establecimiento,direccion,latitud,longitud,
-            precio_hora,cupo_estimado,descripcion,estado,comentario_soporte,created_at,updated_at,
+            precio_minuto,tarifa_minima,cupo_estimado,descripcion,estado,comentario_soporte,created_at,updated_at,
             jsonb_array_length(fotos) AS cantidad_fotos
      FROM solicitudes_cliente
      WHERE ($1::text IS NULL OR estado=$1)

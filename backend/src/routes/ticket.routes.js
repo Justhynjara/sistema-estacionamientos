@@ -1,9 +1,9 @@
 import {Router} from 'express';
 import {auth} from '../middleware/auth.middleware.js';
 import {roles} from '../middleware/role.middleware.js';
-import {validateBody,validateQuery} from '../middleware/validate.middleware.js';
-import {createTicket,closeTicket,reserveTicket,checkinTicket,ticketsDashboard,quoteTicket,activeTickets,getReservaPublica} from '../services/ticket.service.js';
-import {createTicketSchema,reserveTicketSchema,closeTicketSchema,closeTicketWithMethodSchema,checkinSchema,dashboardQuerySchema,activeQuerySchema} from '../validation/ticket.schema.js';
+import {validateBody,validateQuery,validateParams} from '../middleware/validate.middleware.js';
+import {createTicket,closeTicket,reserveTicket,checkinTicket,ticketsDashboard,quoteTicket,activeTickets,getReservaPublica,getTicketPublico} from '../services/ticket.service.js';
+import {createTicketSchema,reserveTicketSchema,closeTicketSchema,closeTicketWithMethodSchema,checkinSchema,dashboardQuerySchema,activeQuerySchema,codigoParamSchema} from '../validation/ticket.schema.js';
 
 const r=Router();
 
@@ -36,6 +36,13 @@ r.post('/reserve',auth,roles('CLIENTE'),validateBody(reserveTicketSchema),async(
 // Consulta pública de una reserva por su código (usado tras volver del pago Webpay).
 r.get('/reserva/:codigo_qr',async(req,res)=>{
   try{res.json(await getReservaPublica(req.params.codigo_qr));}
+  catch(e){res.status(404).json({error:e.message});}
+});
+
+// Vista pública de un ticket (lo que ve el conductor al escanear su QR con la cámara): tiempo
+// transcurrido y monto a pagar hasta ahora. No requiere sesión; cambia con el tiempo, no se cachea.
+r.get('/publico/:codigo_qr',validateParams(codigoParamSchema),async(req,res)=>{
+  try{res.set('Cache-Control','no-store').json(await getTicketPublico(req.params.codigo_qr));}
   catch(e){res.status(404).json({error:e.message});}
 });
 

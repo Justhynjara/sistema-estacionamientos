@@ -7,7 +7,7 @@ import userEvent from '@testing-library/user-event';
 // de red en useEffect. Ninguno de los dos es lo que este test verifica (el shell/routing de
 // App), así que se reemplazan por stubs simples.
 vi.mock('./BuscarCercanos.jsx', () => ({ default: () => <div>MockBuscarCercanos</div> }));
-vi.mock('./ClientePanel.jsx', () => ({ default: () => <div>MockClientePanel</div> }));
+vi.mock('./ClientePanel.jsx', () => ({ default: ({ ticketInicial }) => <div>MockClientePanel{ticketInicial ? `:${ticketInicial}` : ''}</div> }));
 vi.mock('./AdminPanel.jsx', () => ({ default: () => <div>MockAdminPanel</div> }));
 vi.mock('./SoportePanel.jsx', () => ({ default: () => <div>MockSoportePanel</div> }));
 
@@ -20,7 +20,7 @@ import { api } from './services/api.js';
 
 describe('App', () => {
   beforeEach(() => { localStorage.clear(); });
-  afterEach(() => { vi.clearAllMocks(); });
+  afterEach(() => { vi.clearAllMocks(); window.history.replaceState({}, '', '/'); });
 
   test('sin sesión, muestra la landing con los dos accesos separados (usuario / dueño-admin)', async () => {
     render(<App />);
@@ -73,5 +73,52 @@ describe('App', () => {
     expect(localStorage.getItem('token')).toBeNull();
     // Sigue en la pantalla de login, no navegó a ningún panel.
     expect(screen.getByRole('heading', { name: /acceso cliente \/ administrador/i })).toBeInTheDocument();
+  });
+  describe('enlace del QR del ticket (?ticket=...)', () => {
+    const ticketActivo = { data: { estado: 'ACTIVO', codigo_qr: 'abc123', patente: 'AB1234', estacionamiento_nombre: 'Parking Centro', estacionamiento_direccion: 'Centro', precio_minuto: 20, tarifa_minima: 500, fecha_entrada: new Date().toISOString(), ahora: new Date().toISOString() } };
+
+    test('sin sesión, el conductor ve su tiempo y monto en vez de la landing', async () => {
+      window.history.replaceState({}, '', '/?ticket=abc123');
+      api.get.mockResolvedValue(ticketActivo);
+      render(<App />);
+
+      expect(await screen.findByLabelText('Monto a pagar')).toBeInTheDocument();
+      expect(screen.queryByText('Busco estacionamiento')).not.toBeInTheDocument();
+      expect(api.get).toHaveBeenCalledWith('/tickets/publico/abc123');
+    });
+
+    test('desde esa vista, "Soy el dueño" lleva al login', async () => {
+      window.history.replaceState({}, '', '/?ticket=abc123');
+      api.get.mockResolvedValue(ticketActivo);
+      const user = userEvent.setup();
+      render(<App />);
+
+      await user.click(await screen.findByRole('button', { name: /soy el dueño/i }));
+      expect(screen.getByRole('heading', { name: /acceso cliente \/ administrador/i })).toBeInTheDocument();
+    });
+
+    test('un dueño con sesión iniciada va directo a su panel de cobro con ese código', async () => {
+      window.history.replaceState({}, '', '/?ticket=abc123');
+      localStorage.setItem('token', 'fake-jwt');
+      api.get.mockImplementation(url => (url === '/auth/me'
+        ? Promise.resolve({ data: { id: '1', nombre: 'Cliente Demo', email: 'cliente@demo.cl', rol: 'CLIENTE' } })
+        : Promise.resolve(ticketActivo)));
+      render(<App />);
+
+      expect(await screen.findByText('MockClientePanel:abc123')).toBeInTheDocument();
+      expect(screen.queryByLabelText('Monto a pagar')).not.toBeInTheDocument();
+    });
+
+    test('un admin con sesión que abre el enlace ve la vista pública, no el panel de cobro', async () => {
+      window.history.replaceState({}, '', '/?ticket=abc123');
+      localStorage.setItem('token', 'fake-jwt');
+      api.get.mockImplementation(url => (url === '/auth/me'
+        ? Promise.resolve({ data: { id: '2', nombre: 'Admin', email: 'admin@demo.cl', rol: 'ADMIN' } })
+        : Promise.resolve(ticketActivo)));
+      render(<App />);
+
+      expect(await screen.findByLabelText('Monto a pagar')).toBeInTheDocument();
+      expect(screen.queryByText('MockAdminPanel')).not.toBeInTheDocument();
+    });
   });
 });

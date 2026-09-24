@@ -12,7 +12,8 @@ export const crearSolicitudSchema = z.object({
   direccion: z.string().trim().min(4, 'Dirección muy corta').max(255),
   latitud: z.number().min(-90).max(90).optional().nullable(),
   longitud: z.number().min(-180).max(180).optional().nullable(),
-  precio_hora: z.number().nonnegative('El precio no puede ser negativo'),
+  precio_minuto: z.number().nonnegative('El precio no puede ser negativo'),
+  tarifa_minima: z.number().nonnegative('El valor mínimo no puede ser negativo').optional().default(0),
   cupo_estimado: z.number().int('Debe ser un número entero').positive('Debe ser mayor a 0'),
   descripcion: z.string().trim().max(2000).optional().nullable(),
   fotos: z.array(fotoDataUri).max(4, 'Máximo 4 fotos').optional().default([])

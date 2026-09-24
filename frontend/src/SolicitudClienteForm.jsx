@@ -8,7 +8,7 @@ const MAX_FOTOS = 4;
 const initialForm = {
   nombre_solicitante: '', email: '', telefono: '',
   nombre_establecimiento: '', direccion: '',
-  precio_hora: '', cupo_estimado: '', descripcion: ''
+  precio_minuto: '', tarifa_minima: '', cupo_estimado: '', descripcion: ''
 };
 
 export default function SolicitudClienteForm({ onCerrar }) {
@@ -53,7 +53,8 @@ export default function SolicitudClienteForm({ onCerrar }) {
         ...form,
         latitud: ubicacion.lat,
         longitud: ubicacion.lng,
-        precio_hora: Number(form.precio_hora),
+        precio_minuto: Number(form.precio_minuto),
+        tarifa_minima: Number(form.tarifa_minima || 0),
         cupo_estimado: Number(form.cupo_estimado),
         fotos
       });
@@ -96,7 +97,10 @@ export default function SolicitudClienteForm({ onCerrar }) {
         <input placeholder="Dirección" value={form.direccion} onChange={e => setForm({ ...form, direccion: e.target.value })} required />
         <LocationPicker value={ubicacion} onChange={setUbicacion} />
         <div className="row-form">
-          <input type="number" min="0" placeholder="Precio por hora (CLP)" value={form.precio_hora} onChange={e => setForm({ ...form, precio_hora: e.target.value })} required />
+          <input type="number" min="0" step="any" placeholder="Precio por minuto (CLP)" aria-label="Precio por minuto" value={form.precio_minuto} onChange={e => setForm({ ...form, precio_minuto: e.target.value })} required />
+          <input type="number" min="0" step="any" placeholder="Valor base mínimo (CLP)" aria-label="Valor base mínimo" value={form.tarifa_minima} onChange={e => setForm({ ...form, tarifa_minima: e.target.value })} />
+        </div>
+        <div className="row-form">
           <input type="number" min="1" placeholder="Cupos estimados" value={form.cupo_estimado} onChange={e => setForm({ ...form, cupo_estimado: e.target.value })} required />
         </div>
         <textarea

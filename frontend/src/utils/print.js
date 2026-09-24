@@ -1,4 +1,5 @@
 import QRCode from 'qrcode';
+import { qrPayload } from './qr.js';
 
 // Imprime un comprobante formateado para impresoras térmicas de recibos (ej. Epson TM-T20/TM-88)
 // conectadas como impresora del sistema operativo (USB o red), usando el diálogo de impresión
@@ -20,7 +21,7 @@ export async function imprimirTicket({
   win.document.write('<!doctype html><title>Ticket</title><body style="font-family:sans-serif;padding:20px">Generando comprobante…</body>');
 
   let qrDataUrl = '';
-  try { qrDataUrl = await QRCode.toDataURL(codigo, { width: 160, margin: 1 }); } catch { /* sin QR si falla */ }
+  try { qrDataUrl = await QRCode.toDataURL(qrPayload(codigo), { width: 300, margin: 1, errorCorrectionLevel: 'L' }); } catch { /* sin QR si falla */ }
 
   const filas = detalle
     .map(([k, v]) => `<div class="fila"><span>${k}</span><span>${v}</span></div>`)
@@ -46,7 +47,7 @@ export async function imprimirTicket({
       <div class="linea"></div>
       ${filas}
       <div class="linea"></div>
-      ${qrDataUrl ? `<img src="${qrDataUrl}" width="130" height="130"/>` : ''}
+      ${qrDataUrl ? `<img src="${qrDataUrl}" width="150" height="150"/>` : ''}
       <p class="codigo">${codigo}</p>
       <div class="linea"></div>
       <p class="center">${pie}</p>

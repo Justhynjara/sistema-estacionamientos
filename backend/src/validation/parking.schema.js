@@ -14,8 +14,14 @@ export const createParkingSchema = z.object({
   direccion: z.string().trim().min(2).max(255),
   latitud: z.coerce.number().min(-90).max(90),
   longitud: z.coerce.number().min(-180).max(180),
-  precio_hora: z.coerce.number().nonnegative(),
+  precio_minuto: z.coerce.number().nonnegative(),
+  tarifa_minima: z.coerce.number().nonnegative().default(0),
   cupo_maximo: z.coerce.number().int().positive()
+});
+
+export const updatePricingSchema = z.object({
+  precio_minuto: z.coerce.number().nonnegative(),
+  tarifa_minima: z.coerce.number().nonnegative()
 });
 
 export const updateCapacitySchema = z.object({

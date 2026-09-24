@@ -4,6 +4,8 @@ import QRCodeCanvas from './QRCode.jsx';
 import Pagination, { usePagination } from './Pagination.jsx';
 import { imprimirTicket } from './utils/print.js';
 import QRScanner from './QRScanner.jsx';
+import { qrPayload, extraerCodigoQR } from './utils/qr.js';
+import { formatDuracion, formatTarifa } from './utils/tarifa.js';
 
 const METODO_LABEL = { EFECTIVO: 'Efectivo', DEBITO: 'Débito', CREDITO: 'Crédito' };
 
@@ -35,7 +37,7 @@ function tiempoTranscurrido(iso) {
   return `${Math.floor(min / 60)}h ${min % 60}min`;
 }
 
-function GestionTicketPanel({ reloadParking }) {
+function GestionTicketPanel({ reloadParking, ticketInicial, onTicketConsumido }) {
   const [codigo, setCodigo] = useState('');
   const [loading, setLoading] = useState('');
   const [mensaje, setMensaje] = useState(null);
@@ -52,8 +54,34 @@ function GestionTicketPanel({ reloadParking }) {
     return () => clearInterval(id);
   }, []);
 
+  // Punto de entrada común para un código que llega por el escáner o por el enlace del QR
+  // (el dueño escanea con la cámara del teléfono estando con sesión iniciada): si el vehículo
+  // está dentro, va directo a cobrar; si es una reserva, deja el código listo para validarla.
+  async function abrirCodigo(crudo) {
+    const c = extraerCodigoQR(crudo);
+    if (!c) return;
+    setCodigo(c); setMensaje(null); setCobro(null);
+    try {
+      const r = await api.get(`/tickets/publico/${encodeURIComponent(c)}`);
+      if (r.data.estado === 'ACTIVO') return iniciarCobro(c);
+      if (r.data.estado === 'RESERVADO') {
+        setMensaje({ tipo: 'ok', texto: 'Reserva encontrada. Presiona "✅ Validar reserva" para confirmar que el vehículo llegó.' });
+      } else {
+        setMensaje({ tipo: 'off', texto: r.data.estado === 'CERRADO' ? 'Este ticket ya fue cobrado y cerrado.' : 'Esta reserva expiró o fue cancelada.' });
+      }
+    } catch (err) {
+      setMensaje({ tipo: 'off', texto: err.response?.status === 404 ? 'No encontramos un ticket con ese código.' : 'No se pudo leer el código' });
+    }
+  }
+
+  useEffect(() => {
+    if (!ticketInicial) return;
+    abrirCodigo(ticketInicial);
+    onTicketConsumido?.();
+  }, []);
+
   async function validarReserva(qr) {
-    const c = qr || codigo.trim();
+    const c = extraerCodigoQR(qr || codigo);
     if (!c) return;
     setLoading('checkin'); setMensaje(null); setCobro(null);
     try {
@@ -66,7 +94,7 @@ function GestionTicketPanel({ reloadParking }) {
   }
 
   async function iniciarCobro(qr) {
-    const c = qr || codigo.trim();
+    const c = extraerCodigoQR(qr || codigo);
     if (!c) return;
     setLoading('cobro'); setMensaje(null); setCobro(null);
     try {
@@ -79,6 +107,8 @@ function GestionTicketPanel({ reloadParking }) {
         estacionamiento_nombre: q.data.estacionamiento_nombre,
         direccion: q.data.estacionamiento_direccion,
         fecha_entrada: q.data.fecha_entrada,
+        minutos: q.data.minutos,
+        tarifa: formatTarifa(q.data),
         metodo: null,
         recibido: ''
       });
@@ -101,7 +131,7 @@ function GestionTicketPanel({ reloadParking }) {
         texto: esEfectivo
           ? (vuelto >= 0
               ? `Cobro registrado (Efectivo): $${monto.toLocaleString('es-CL')} — Vuelto: $${vuelto.toLocaleString('es-CL')}`
-              : `Cobro registrado (Efectivo): $${monto.toLocaleString('es-CL')} — Faltan $${Math.abs(vuelto).toLocaleString('es-CL')} (el tiempo avanzó a la hora siguiente)`)
+              : `Cobro registrado (Efectivo): $${monto.toLocaleString('es-CL')} — Faltan $${Math.abs(vuelto).toLocaleString('es-CL')} (pasó el tiempo y el monto subió)`)
           : `Cobro registrado (${METODO_LABEL[cobro.metodo]}): $${monto.toLocaleString('es-CL')}`,
         imprimir: () => imprimirTicket({
           nombreEstacionamiento: r.data.estacionamiento_nombre,
@@ -164,6 +194,9 @@ function GestionTicketPanel({ reloadParking }) {
         <div className="card">
           <h3>Cobro — {cobro.patente || 'sin patente'}</h3>
           <p>{cobro.estacionamiento_nombre}</p>
+          {cobro.minutos != null && (
+            <p style={{ color: 'var(--text-muted)' }}>⏱️ {formatDuracion(cobro.minutos)} estacionado · Tarifa {cobro.tarifa}</p>
+          )}
           {cobro.descuento > 0 && (
             <p className="badge ok">🎟️ Descuento por reserva ya pagada: -${cobro.descuento.toLocaleString('es-CL')}</p>
           )}
@@ -227,14 +260,14 @@ function GestionTicketPanel({ reloadParking }) {
 
       {escaneando && (
         <QRScanner
-          onResult={qr => { setEscaneando(false); setCodigo(qr); }}
+          onResult={qr => { setEscaneando(false); abrirCodigo(qr); }}
           onClose={() => setEscaneando(false)}
         />
       )}
 
       <div className="card">
         <h3>Validar reserva o cobrar con código</h3>
-        <p>Escanea el QR del conductor con la cámara, o ingrésalo manualmente.</p>
+        <p>Escanea el QR del conductor: si ya está dentro te lleva directo a cobrar. También puedes ingresar el código manualmente.</p>
         {mensaje && (
           <p className={'badge ' + mensaje.tipo}>
             {mensaje.texto}
@@ -254,14 +287,14 @@ function GestionTicketPanel({ reloadParking }) {
   );
 }
 
-function EstacionamientosTab({ parking, reloadParking }) {
+function EstacionamientosTab({ parking, reloadParking, ticketInicial, onTicketConsumido }) {
   const [ticketEmitido, setTicketEmitido] = useState(null);
 
   async function emitirTicket(p) {
     const patente = prompt('Patente del vehículo (opcional)')?.trim().toUpperCase() || null;
     try {
       const r = await api.post('/tickets', { estacionamiento_id: p.id, patente });
-      setTicketEmitido({ codigo: r.data.codigo_qr, nombre: p.nombre, direccion: p.direccion, patente: r.data.patente, fechaEntrada: r.data.fecha_entrada, precioHora: p.precio_hora });
+      setTicketEmitido({ codigo: r.data.codigo_qr, nombre: p.nombre, direccion: p.direccion, patente: r.data.patente, fechaEntrada: r.data.fecha_entrada, tarifa: formatTarifa(p) });
       reloadParking();
     } catch (err) { alert(err.response?.data?.error || 'Error al emitir ticket'); }
   }
@@ -270,9 +303,9 @@ function EstacionamientosTab({ parking, reloadParking }) {
       {ticketEmitido && (
         <div className="card" style={{ textAlign: 'center' }}>
           <h3>🎫 Ticket emitido en {ticketEmitido.nombre}</h3>
-          <p>Entrega este código QR al conductor:</p>
+          <p>Entrega este código QR al conductor: con la cámara de su teléfono verá cuánto lleva estacionado y cuánto debe pagar.</p>
           <div style={{ display: 'flex', justifyContent: 'center', margin: '12px 0' }}>
-            <QRCodeCanvas value={ticketEmitido.codigo} downloadable filename={`ticket-${ticketEmitido.codigo.slice(0, 8)}`} />
+            <QRCodeCanvas value={qrPayload(ticketEmitido.codigo)} downloadable filename={`ticket-${ticketEmitido.codigo.slice(0, 8)}`} />
           </div>
           <p style={{ fontFamily: 'monospace', color: 'var(--text-muted)', fontSize: '.8rem', wordBreak: 'break-all' }}>{ticketEmitido.codigo}</p>
           <div className="row-form" style={{ justifyContent: 'center' }}>
@@ -283,7 +316,7 @@ function EstacionamientosTab({ parking, reloadParking }) {
               detalle: [
                 ['Patente', ticketEmitido.patente || '—'],
                 ['Entrada', new Date(ticketEmitido.fechaEntrada).toLocaleString('es-CL')],
-                ['Precio/hora', `$${Number(ticketEmitido.precioHora).toLocaleString('es-CL')}`]
+                ['Tarifa', ticketEmitido.tarifa]
               ],
               pie: 'Conserve este ticket para retirar su vehículo'
             })}>🖨️ Imprimir ticket</button>
@@ -296,14 +329,14 @@ function EstacionamientosTab({ parking, reloadParking }) {
           <div className="card" key={p.id}>
             <h3>{p.nombre}</h3>
             <p>{p.direccion}</p>
-            <p>💰 ${Number(p.precio_hora).toLocaleString('es-CL')} / hora</p>
+            <p>💰 {formatTarifa(p)}</p>
             <p className={'badge ' + (p.cupos_disponibles > 0 ? 'ok' : 'off')}>🅿️ {p.cupos_disponibles} / {p.cupo_maximo} disponibles</p>
             <button onClick={() => emitirTicket(p)} disabled={p.cupos_disponibles <= 0}>🎫 Emitir ticket</button>
           </div>
         ))}
         {parking.length === 0 && <div className="empty-state">Aún no tienes estacionamientos asignados. Pide al administrador que registre uno a tu nombre.</div>}
       </div>
-      {parking.length > 0 && <GestionTicketPanel reloadParking={reloadParking} />}
+      {parking.length > 0 && <GestionTicketPanel reloadParking={reloadParking} ticketInicial={ticketInicial} onTicketConsumido={onTicketConsumido} />}
     </div>
   );
 }
@@ -438,7 +471,7 @@ function DashboardTab({ parking }) {
   );
 }
 
-export default function ClientePanel() {
+export default function ClientePanel({ ticketInicial = null, onTicketConsumido }) {
   const [tab, setTab] = useState('estacionamientos');
   const [parking, setParking] = useState([]);
   const reloadParking = () => api.get('/parking/mine').then(r => setParking(r.data));
@@ -447,7 +480,7 @@ export default function ClientePanel() {
   return (
     <div>
       <Tabs tab={tab} setTab={setTab} />
-      {tab === 'estacionamientos' && <EstacionamientosTab parking={parking} reloadParking={reloadParking} />}
+      {tab === 'estacionamientos' && <EstacionamientosTab parking={parking} reloadParking={reloadParking} ticketInicial={ticketInicial} onTicketConsumido={onTicketConsumido} />}
       {tab === 'dashboard' && <DashboardTab parking={parking} />}
     </div>
   );

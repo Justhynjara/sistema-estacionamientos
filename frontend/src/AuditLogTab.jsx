@@ -9,6 +9,7 @@ const ACCION_LABEL = {
   'parametro.actualizar': 'Actualizó parámetro',
   'estacionamiento.crear': 'Creó estacionamiento',
   'estacionamiento.actualizar_cupo': 'Actualizó cupo',
+  'estacionamiento.actualizar_tarifa': 'Actualizó tarifa',
   'solicitud.revisar': 'Revisó solicitud',
   'solicitud.procesar': 'Procesó solicitud'
 };

@@ -7,8 +7,8 @@ VALUES
 ON CONFLICT (email) DO NOTHING;
 
 INSERT INTO estacionamientos
-(cliente_id,nombre,direccion,latitud,longitud,precio_hora,cupo_maximo,cupos_disponibles)
-SELECT id,'Parking Centro','Centro de Santiago',-33.4489,-70.6693,1500,25,25
+(cliente_id,nombre,direccion,latitud,longitud,precio_minuto,tarifa_minima,cupo_maximo,cupos_disponibles)
+SELECT id,'Parking Centro','Centro de Santiago',-33.4489,-70.6693,25,500,25,25
 FROM usuarios WHERE email='cliente@demo.cl'
 AND NOT EXISTS (SELECT 1 FROM estacionamientos);
 
@@ -31,7 +31,6 @@ AND NOT EXISTS (SELECT 1 FROM tickets);
 
 INSERT INTO parametros_sistema (clave,valor,descripcion) VALUES
 ('comision_plataforma','10','Porcentaje que retiene la plataforma por ticket cobrado'),
-('tarifa_hora_minima','1','Cantidad mínima de horas cobradas por ticket'),
 ('moneda','CLP','Moneda utilizada para mostrar precios'),
 ('reserva_monto_clp','100','Monto del micropago (CLP) que se cobra para confirmar una reserva y evitar reservas falsas'),
 ('reserva_ttl_min','10','Minutos de validez de una reserva antes de liberar el cupo automáticamente')

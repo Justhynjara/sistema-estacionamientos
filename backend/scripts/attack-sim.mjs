@@ -156,7 +156,7 @@ async function main() {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         nombre_solicitante: payloadXSS, email: 'xss@evil.test', nombre_establecimiento: payloadXSS,
-        direccion: 'Calle Falsa 123', precio_hora: 1000, cupo_estimado: 5, descripcion: payloadXSS
+        direccion: 'Calle Falsa 123', precio_minuto: 20, tarifa_minima: 500, cupo_estimado: 5, descripcion: payloadXSS
       })
     });
     record('XSS', 'guarda el payload tal cual (React lo escapa al renderizar; no es XSS ejecutable)', r.status === 201, `status ${r.status}`);
@@ -166,7 +166,7 @@ async function main() {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         nombre_solicitante: 'Test Foto', email: 'foto@evil.test', nombre_establecimiento: 'Test',
-        direccion: 'Calle Falsa 123', precio_hora: 1000, cupo_estimado: 5,
+        direccion: 'Calle Falsa 123', precio_minuto: 20, tarifa_minima: 500, cupo_estimado: 5,
         fotos: ['data:image/svg+xml;base64,PHNjcmlwdD5hbGVydCgxKTwvc2NyaXB0Pg==']
       })
     });
@@ -179,7 +179,7 @@ async function main() {
     const meCliente = await req('/api/auth/me', { headers: { Authorization: `Bearer ${tokenCliente}` } });
     const crea = await req('/api/admin/parking', {
       method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${tokenAdmin}` },
-      body: JSON.stringify({ cliente_id: meCliente.body.id, nombre: 'Race Test', direccion: 'Test', latitud: -33.4, longitud: -70.6, precio_hora: 1000, cupo_maximo: 1 })
+      body: JSON.stringify({ cliente_id: meCliente.body.id, nombre: 'Race Test', direccion: 'Test', latitud: -33.4, longitud: -70.6, precio_minuto: 20, tarifa_minima: 500, cupo_maximo: 1 })
     });
     const parkingId = crea.body?.id;
     if (parkingId) {

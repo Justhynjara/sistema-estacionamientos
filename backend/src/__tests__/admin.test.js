@@ -9,7 +9,7 @@ const suffix = Date.now();
 const adminEmail = `admin_test_${suffix}@demo.cl`;
 const noAdminEmail = `no_admin_${suffix}@demo.cl`;
 const nuevoUsuarioEmail = `creado_por_admin_${suffix}@demo.cl`;
-let tokenAdmin, tokenNoAdmin, adminId, nuevoUsuarioId;
+let tokenAdmin, tokenNoAdmin, adminId, nuevoUsuarioId, parkingId;
 
 describe('admin: auditoría y control de acceso', () => {
   before(async () => {
@@ -35,6 +35,7 @@ describe('admin: auditoría y control de acceso', () => {
 
   after(async () => {
     await pool.query('DELETE FROM audit_log WHERE usuario_id=$1', [adminId]);
+    if (parkingId) await pool.query('DELETE FROM estacionamientos WHERE id=$1', [parkingId]);
     await pool.query('DELETE FROM usuarios WHERE email=ANY($1)', [[adminEmail, noAdminEmail, nuevoUsuarioEmail]]);
     await pool.end();
   });
@@ -75,5 +76,44 @@ describe('admin: auditoría y control de acceso', () => {
       .query({ entidad: 'parametro' });
     assert.equal(log.status, 200);
     assert.ok(log.body.some(e => e.entidad_id === 'moneda' && e.accion === 'parametro.actualizar'));
+  });
+
+  test('el admin puede cambiar la tarifa de un estacionamiento y queda auditado', async () => {
+    const p = await pool.query(
+      `INSERT INTO estacionamientos(cliente_id,nombre,direccion,latitud,longitud,precio_minuto,tarifa_minima,cupo_maximo,cupos_disponibles)
+       VALUES($1,'Parking Tarifa Test','Calle X',-33.45,-70.66,10,300,5,5) RETURNING id`,
+      [adminId]
+    );
+    parkingId = p.rows[0].id;
+
+    const res = await request(app)
+      .put(`/api/admin/parking/${parkingId}/pricing`)
+      .set('Authorization', `Bearer ${tokenAdmin}`)
+      .send({ precio_minuto: 35, tarifa_minima: 700 });
+    assert.equal(res.status, 200);
+    assert.equal(Number(res.body.precio_minuto), 35);
+    assert.equal(Number(res.body.tarifa_minima), 700);
+
+    const log = await request(app)
+      .get('/api/admin/audit-log')
+      .set('Authorization', `Bearer ${tokenAdmin}`)
+      .query({ entidad: 'estacionamiento' });
+    assert.ok(log.body.some(e => e.entidad_id === parkingId && e.accion === 'estacionamiento.actualizar_tarifa'));
+  });
+
+  test('un usuario sin rol ADMIN no puede cambiar tarifas', async () => {
+    const res = await request(app)
+      .put('/api/admin/parking/11111111-1111-4111-8111-111111111111/pricing')
+      .set('Authorization', `Bearer ${tokenNoAdmin}`)
+      .send({ precio_minuto: 1, tarifa_minima: 1 });
+    assert.equal(res.status, 403);
+  });
+
+  test('la tarifa no acepta valores negativos', async () => {
+    const res = await request(app)
+      .put('/api/admin/parking/11111111-1111-4111-8111-111111111111/pricing')
+      .set('Authorization', `Bearer ${tokenAdmin}`)
+      .send({ precio_minuto: -5, tarifa_minima: 0 });
+    assert.equal(res.status, 400);
   });
 });

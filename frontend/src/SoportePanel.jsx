@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { api } from './services/api.js';
+import { formatTarifa } from './utils/tarifa.js';
 
 const ESTADO_LABEL = {
   PENDIENTE: { texto: 'Pendiente', cls: 'off' },
@@ -31,7 +32,7 @@ function RevisionSolicitud({ id, onRevisado }) {
       <h3>{detalle.nombre_establecimiento}</h3>
       <p><strong>Solicitante:</strong> {detalle.nombre_solicitante} — {detalle.email}{detalle.telefono ? ` — ${detalle.telefono}` : ''}</p>
       <p><strong>Dirección:</strong> {detalle.direccion}{detalle.latitud ? ` (${Number(detalle.latitud).toFixed(5)}, ${Number(detalle.longitud).toFixed(5)})` : ''}</p>
-      <p><strong>Precio por hora propuesto:</strong> ${Number(detalle.precio_hora).toLocaleString('es-CL')} &nbsp; <strong>Cupos estimados:</strong> {detalle.cupo_estimado}</p>
+      <p><strong>Tarifa propuesta:</strong> {formatTarifa(detalle)} &nbsp; <strong>Cupos estimados:</strong> {detalle.cupo_estimado}</p>
       {detalle.descripcion && <p><strong>Descripción del solicitante:</strong> {detalle.descripcion}</p>}
 
       {detalle.fotos?.length > 0 ? (
@@ -47,7 +48,7 @@ function RevisionSolicitud({ id, onRevisado }) {
         <ul style={{ color: 'var(--text-muted)', fontSize: '.9rem', margin: '0 0 12px', paddingLeft: 20 }}>
           <li>¿Las fotos muestran un espacio real y accesible para vehículos?</li>
           <li>¿La dirección y ubicación en el mapa coinciden con las fotos?</li>
-          <li>¿El precio por hora y los cupos declarados son razonables para la zona?</li>
+          <li>¿La tarifa (precio por minuto y valor base mínimo) y los cupos declarados son razonables para la zona?</li>
           <li>¿Los datos de contacto (email/teléfono) son válidos y responden?</li>
         </ul>
       </div>

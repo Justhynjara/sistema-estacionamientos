@@ -8,6 +8,8 @@ import QRCodeCanvas from './QRCode.jsx';
 import AddressAutocomplete from './AddressAutocomplete.jsx';
 import { geocode } from './utils/geo.js';
 import { imprimirTicket } from './utils/print.js';
+import { qrPayload } from './utils/qr.js';
+import { formatTarifa } from './utils/tarifa.js';
 import { redirectToWebpay } from './utils/webpay.js';
 
 const SOCKET_URL = API_ORIGIN;
@@ -336,7 +338,7 @@ async function buscarCercaDe(destCoords) {
           <h3>🎫 Reserva confirmada en {reserva.nombre}</h3>
           <p>Muestra este código QR al llegar para validar tu cupo, o descárgalo:</p>
           <div style={{ display: 'flex', justifyContent: 'center', margin: '12px 0' }}>
-            <QRCodeCanvas value={reserva.codigo} downloadable filename={`reserva-${reserva.codigo.slice(0, 8)}`} />
+            <QRCodeCanvas value={qrPayload(reserva.codigo)} downloadable filename={`reserva-${reserva.codigo.slice(0, 8)}`} />
           </div>
           <p style={{ fontFamily: 'monospace', color: 'var(--text-muted)', fontSize: '.8rem', wordBreak: 'break-all' }}>{reserva.codigo}</p>
           <Countdown expira={reserva.expira} />
@@ -393,7 +395,7 @@ async function buscarCercaDe(destCoords) {
           <div className={'card' + (selectedId === p.id ? ' selected' : '')} key={p.id}>
             <h3>{p.nombre}</h3>
             <p>{p.direccion}</p>
-            <p>💰 ${Number(p.precio_hora).toLocaleString('es-CL')} / hora</p>
+            <p>💰 {formatTarifa(p)}</p>
             <p className={'badge ' + (p.cupos_disponibles > 0 ? 'ok' : 'off')}>🅿️ {p.cupos_disponibles} / {p.cupo_maximo} disponibles</p>
             <p>📍 {p.distancia_km.toFixed(2)} km del destino</p>
             {p.ruta && <p>🚗 {p.ruta.distanciaKm.toFixed(1)} km · ⏱️ {Math.round(p.ruta.duracionMin)} min desde tu ubicación</p>}

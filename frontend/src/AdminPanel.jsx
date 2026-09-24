@@ -4,6 +4,7 @@ import Pagination, { usePagination } from './Pagination.jsx';
 import LocationPicker from './LocationPicker.jsx';
 import SolicitudesTab from './SolicitudesTab.jsx';
 import AuditLogTab from './AuditLogTab.jsx';
+import { formatTarifa } from './utils/tarifa.js';
 
 function Tabs({ tab, setTab }) {
   const tabs = [['usuarios', '👤 Usuarios'], ['parking', '🅿️ Estacionamientos'], ['solicitudes', '📋 Solicitudes'], ['parametros', '⚙️ Parámetros'], ['auditoria', '🕵️ Auditoría']];
@@ -17,7 +18,7 @@ function Tabs({ tab, setTab }) {
 }
 
 function ParkingTab({ parking, reloadParking, users }) {
-  const initialForm = { cliente_id: '', nombre: '', direccion: '', precio_hora: '', cupo_maximo: '' };
+  const initialForm = { cliente_id: '', nombre: '', direccion: '', precio_minuto: '', tarifa_minima: '', cupo_maximo: '' };
   const [form, setForm] = useState(initialForm);
   const [ubicacion, setUbicacion] = useState(null);
   const clientes = users.filter(u => u.rol === 'CLIENTE');
@@ -31,7 +32,8 @@ function ParkingTab({ parking, reloadParking, users }) {
         ...form,
         latitud: ubicacion.lat,
         longitud: ubicacion.lng,
-        precio_hora: Number(form.precio_hora),
+        precio_minuto: Number(form.precio_minuto),
+        tarifa_minima: Number(form.tarifa_minima || 0),
         cupo_maximo: Number(form.cupo_maximo)
       });
       setForm(initialForm);
@@ -49,6 +51,17 @@ function ParkingTab({ parking, reloadParking, users }) {
     } catch (err) { alert(err.response?.data?.error || 'Error al actualizar cupo'); }
   }
 
+  async function cambiarTarifa(p) {
+    const precio = prompt('Nuevo precio por minuto (CLP)', Number(p.precio_minuto));
+    if (precio === null || precio.trim() === '') return;
+    const minima = prompt('Nuevo valor base mínimo (CLP)', Number(p.tarifa_minima));
+    if (minima === null || minima.trim() === '') return;
+    try {
+      await api.put(`/admin/parking/${p.id}/pricing`, { precio_minuto: Number(precio), tarifa_minima: Number(minima) });
+      reloadParking();
+    } catch (err) { alert(err.response?.data?.detalles?.[0]?.mensaje || err.response?.data?.error || 'Error al actualizar la tarifa'); }
+  }
+
   return (
     <>
       <div className="card">
@@ -61,7 +74,8 @@ function ParkingTab({ parking, reloadParking, users }) {
           <input placeholder="Nombre" value={form.nombre} onChange={e => setForm({ ...form, nombre: e.target.value })} required />
           <input placeholder="Dirección" value={form.direccion} onChange={e => setForm({ ...form, direccion: e.target.value })} required />
           <LocationPicker value={ubicacion} onChange={setUbicacion} />
-          <input placeholder="Precio por hora" value={form.precio_hora} onChange={e => setForm({ ...form, precio_hora: e.target.value })} required />
+          <input type="number" min="0" step="any" placeholder="Precio por minuto (CLP)" aria-label="Precio por minuto" value={form.precio_minuto} onChange={e => setForm({ ...form, precio_minuto: e.target.value })} required />
+          <input type="number" min="0" step="any" placeholder="Valor base mínimo (CLP)" aria-label="Valor base mínimo" value={form.tarifa_minima} onChange={e => setForm({ ...form, tarifa_minima: e.target.value })} />
           <input placeholder="Cupo máximo" value={form.cupo_maximo} onChange={e => setForm({ ...form, cupo_maximo: e.target.value })} required />
           <button>Crear estacionamiento</button>
         </form>
@@ -71,8 +85,12 @@ function ParkingTab({ parking, reloadParking, users }) {
           <div className="card" key={p.id}>
             <h3>{p.nombre}</h3>
             <p>{p.direccion}</p>
+            <p>💰 {formatTarifa(p)}</p>
             <p className={'badge ' + (p.cupos_disponibles > 0 ? 'ok' : 'off')}>🅿️ {p.cupos_disponibles} / {p.cupo_maximo} disponibles</p>
-            <button onClick={() => cambiarCupo(p.id, p.cupo_maximo)}>Cambiar cupo máximo</button>
+            <div className="row-form">
+              <button onClick={() => cambiarCupo(p.id, p.cupo_maximo)}>Cambiar cupo máximo</button>
+              <button type="button" className="secondary" onClick={() => cambiarTarifa(p)}>Cambiar tarifa</button>
+            </div>
           </div>
         ))}
         {parking.length===0 && <div className="empty-state">No hay estacionamientos registrados todavía.</div>}

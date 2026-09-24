@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { api } from './services/api.js';
+import { formatTarifa } from './utils/tarifa.js';
 
 const ESTADO_LABEL = {
   PENDIENTE: { texto: 'Pendiente de soporte', cls: 'off' },
@@ -23,7 +24,7 @@ function DetalleSolicitud({ s, onCerrar, onProcesar, procesando }) {
       </div>
       <p><strong>Solicitante:</strong> {s.nombre_solicitante} — {s.email}{s.telefono ? ` — ${s.telefono}` : ''}</p>
       <p><strong>Dirección:</strong> {s.direccion}</p>
-      <p><strong>Precio por hora:</strong> ${Number(s.precio_hora).toLocaleString('es-CL')} &nbsp; <strong>Cupos estimados:</strong> {s.cupo_estimado}</p>
+      <p><strong>Tarifa:</strong> {formatTarifa(s)} &nbsp; <strong>Cupos estimados:</strong> {s.cupo_estimado}</p>
       {s.descripcion && <p><strong>Descripción:</strong> {s.descripcion}</p>}
       {s.comentario_soporte && <p className="badge ok">Nota de soporte: {s.comentario_soporte}</p>}
       {detalle?.fotos?.length > 0 && (
@@ -90,13 +91,13 @@ export default function SolicitudesTab() {
 
       <div className="table-wrap">
         <table className="table">
-          <thead><tr><th>Establecimiento</th><th>Solicitante</th><th>Precio/hora</th><th>Cupos</th><th>Estado</th><th></th></tr></thead>
+          <thead><tr><th>Establecimiento</th><th>Solicitante</th><th>Tarifa</th><th>Cupos</th><th>Estado</th><th></th></tr></thead>
           <tbody>
             {solicitudes.map(s => (
               <tr key={s.id}>
                 <td>{s.nombre_establecimiento}</td>
                 <td>{s.nombre_solicitante}</td>
-                <td>${Number(s.precio_hora).toLocaleString('es-CL')}</td>
+                <td>{formatTarifa(s)}</td>
                 <td>{s.cupo_estimado}</td>
                 <td><span className={'badge ' + ESTADO_LABEL[s.estado].cls}>{ESTADO_LABEL[s.estado].texto}</span></td>
                 <td><button type="button" className="secondary" onClick={() => setSeleccionada(s)}>Ver detalle</button></td>

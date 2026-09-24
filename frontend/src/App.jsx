@@ -6,6 +6,7 @@ import BuscarCercanos from './BuscarCercanos.jsx';
 import ChatBot from './ChatBot.jsx';
 import SolicitudClienteForm from './SolicitudClienteForm.jsx';
 import SoportePanel from './SoportePanel.jsx';
+import TicketPublico from './TicketPublico.jsx';
 
 function Login({onLogin,onCancel,onForgot}){
   const [email,setEmail]=useState(''),[password,setPassword]=useState('');
@@ -114,18 +115,31 @@ function App(){
  const [pago,setPago]=useState(null);
  const [reservaCodigo,setReservaCodigo]=useState(null);
  const [mostrarSolicitud,setMostrarSolicitud]=useState(false);
+ const [ticketCodigo,setTicketCodigo]=useState(null);
+
+ // El QR del ticket abre la web con ?ticket=CODIGO. Se deja en la URL mientras se muestra la
+ // vista pública, para que recargar la página (o guardarla) no la pierda.
+ function cerrarTicket(){
+   setTicketCodigo(null);
+   const url=new URL(window.location.href);
+   url.searchParams.delete('ticket');
+   window.history.replaceState({},'',url);
+ }
 
  useEffect(()=>{
    const params=new URLSearchParams(window.location.search);
    const reset=params.get('reset');
    const pagoEstado=params.get('pago');
    const reserva=params.get('reserva');
+   const ticket=params.get('ticket');
+   if(ticket) setTicketCodigo(ticket);
    if(reset) setResetToken(reset);
    if(pagoEstado) setPago({estado:pagoEstado, monto:params.get('monto')});
    if(reserva) setReservaCodigo(reserva);
    if(reset || pagoEstado || reserva){
      const url=new URL(window.location.href);
      url.search='';
+     if(ticket) url.searchParams.set('ticket',ticket);
      window.history.replaceState({},'',url);
    }
  },[]);
@@ -165,6 +179,24 @@ function App(){
  if(!user && showLogin){
    if(authView==='forgot') return <ForgotPassword onBack={()=>setAuthView('login')}/>;
    return <Login onLogin={u=>{setUser(u);setShowLogin(false);}} onCancel={()=>setShowLogin(false)} onForgot={()=>setAuthView('forgot')}/>;
+ }
+
+ // Vista pública del ticket (QR escaneado con la cámara). Un dueño con sesión iniciada no la ve:
+ // cae directo al cobro más abajo (ClientePanel).
+ if(ticketCodigo && (!user || user.rol!=='CLIENTE')){
+   return <>
+     <nav>
+       <div className="brand"><span className="logo">🅿️</span> Sistema de Estacionamientos{user && <span className="role-pill">{user.rol}</span>}</div>
+       {user && <button onClick={()=>{localStorage.removeItem('token');setUser(null)}}>Salir</button>}
+     </nav>
+     <main className="container">
+       <TicketPublico
+         codigo={ticketCodigo}
+         onEntrarDueno={user ? undefined : ()=>{setShowLogin(true);setAuthView('login');}}
+         onCerrar={cerrarTicket}
+       />
+     </main>
+   </>;
  }
 
  if(!user){
@@ -209,7 +241,7 @@ function App(){
   {user.rol==='ADMIN'
     ? <AdminPanel user={user}/>
     : user.rol==='CLIENTE'
-    ? <ClientePanel/>
+    ? <ClientePanel ticketInicial={ticketCodigo} onTicketConsumido={cerrarTicket}/>
     : user.rol==='SOPORTE'
     ? <SoportePanel/>
     : <BuscarCercanos reservaCodigoInicial={reservaCodigo}/>}

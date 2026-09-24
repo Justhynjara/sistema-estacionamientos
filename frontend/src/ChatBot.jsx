@@ -4,7 +4,7 @@ const FAQ = [
   {
     pregunta: '¿Cómo busco un estacionamiento?',
     keywords: ['buscar', 'busco', 'encontrar', 'cerca', 'cupo', 'disponible', 'mapa'],
-    respuesta: 'Escribe tu ubicación de partida (o usa tu GPS) y tu destino, luego presiona "Buscar estacionamientos". Verás los estacionamientos cercanos con cupos disponibles, distancia y precio por hora.'
+    respuesta: 'Escribe tu ubicación de partida (o usa tu GPS) y tu destino, luego presiona "Buscar estacionamientos". Verás los estacionamientos cercanos con cupos disponibles, distancia y tarifa (precio por minuto y valor base mínimo).'
   },
   {
     pregunta: '¿Cómo reservo un cupo?',
@@ -27,7 +27,7 @@ const FAQ = [
   {
     pregunta: '¿Cómo pago al salir del estacionamiento?',
     keywords: ['pagar', 'pago', 'salir', 'cobro', 'efectivo', 'tarjeta', 'debito', 'credito', 'cuanto cuesta'],
-    respuesta: 'Al salir, el encargado del estacionamiento te cobra directamente: en efectivo (te calculará el vuelto) o con tarjeta de débito/crédito en su propio POS. El monto se calcula según las horas que estuviste dentro y el precio por hora del lugar.'
+    respuesta: 'Al salir, el encargado del estacionamiento te cobra directamente: en efectivo (te calculará el vuelto) o con tarjeta de débito/crédito en su propio POS. El monto se calcula por los minutos que estuviste dentro y el precio por minuto del lugar, con un valor base mínimo. Si escaneas el QR de tu ticket con la cámara del teléfono, verás cuánto llevas estacionado y cuánto pagarías en ese momento.'
   },
   {
     pregunta: '¿Cómo descargo o imprimo mi ticket/comprobante?',
