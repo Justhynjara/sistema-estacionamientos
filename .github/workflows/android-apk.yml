@@ -1,0 +1,50 @@
+name: Compilar APK Android
+
+on:
+  workflow_dispatch: {}
+  push:
+    branches: [main]
+    paths:
+      - 'frontend/android/**'
+      - 'frontend/capacitor.config.json'
+      - 'frontend/.env.mobile.example'
+      - '.github/workflows/android-apk.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  build-apk:
+    name: Compilar APK (debug)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+      - run: npm ci
+      # .env.mobile está en .gitignore; el ejemplo trae la URL pública de la API en producción.
+      - name: Configurar API de producción
+        run: cp .env.mobile.example .env.mobile
+      - run: npm run build:mobile
+      - run: npx cap sync android
+      - name: Compilar APK
+        working-directory: frontend/android
+        run: |
+          chmod +x gradlew
+          ./gradlew assembleDebug --no-daemon
+      - uses: actions/upload-artifact@v4
+        with:
+          name: estacionamientos-apk
+          path: frontend/android/app/build/outputs/apk/debug/app-debug.apk
+          retention-days: 30
+          if-no-files-found: error
