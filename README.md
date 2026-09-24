@@ -5,7 +5,7 @@ Plataforma full-stack para administrar estacionamientos registrados, tickets con
 ## 🌐 Demo en vivo
 - Web: https://estacionamientos-web.onrender.com
 - API: https://estacionamientos-api.onrender.com/health
-- Demo cliente: `cliente@demo.cl` / `password` — Demo administrador: `admin@demo.cl` / `password` — Demo soporte: `soporte@demo.cl` / `password`
+- El acceso de dueños y administradores es con cuentas reales (no hay credenciales públicas). Los usuarios de ejemplo `cliente@demo.cl`, `admin@demo.cl` y `soporte@demo.cl` (clave `password`) existen **solo en entornos locales** con los datos de ejemplo (`docker compose up`); en producción deben estar desactivados o eliminados. Al arrancar, la API avisa en sus logs si detecta alguno con esa clave.
 
 Desplegado en Render (backend + frontend) con base de datos Postgres en [Neon](https://neon.tech). El backend está en el plan gratuito de Render, por lo que puede tardar ~30-60s en despertar tras un período de inactividad.
 

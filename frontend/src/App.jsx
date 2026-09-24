@@ -28,9 +28,6 @@ function Login({onLogin,onCancel,onForgot}){
       <button disabled={loading}>{loading && <span className="spinner"/>}{loading?'Ingresando...':'Iniciar sesión'}</button>
     </form>
     <button type="button" onClick={onForgot} className="link-button">¿Olvidaste tu contraseña?</button>
-    <p>Demo cliente (dueño): cliente@demo.cl / password</p>
-    <p>Demo administrador: admin@demo.cl / password</p>
-    <p>Demo soporte: soporte@demo.cl / password</p>
     <button type="button" onClick={onCancel} className="link-button">← Volver a la búsqueda</button>
   </div></div>
 }

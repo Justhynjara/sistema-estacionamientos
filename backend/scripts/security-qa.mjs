@@ -79,6 +79,22 @@ async function main() {
     record('Registro público ignora rol=ADMIN (fuerza USUARIO)', r.status === 201 && body?.rol === 'USUARIO', `status ${r.status}, rol=${body?.rol}`);
   });
 
+  // Las cuentas de ejemplo del repositorio (clave pública "password") no deben abrir sesión en
+  // producción. Solo se exige cuando el QA ya usa su propia cuenta admin (secretos configurados);
+  // mientras siga usando la demo como control, no tiene sentido pedir que esté cerrada.
+  if (ADMIN_EMAIL !== 'admin@demo.cl') {
+    for (const email of ['admin@demo.cl', 'cliente@demo.cl', 'soporte@demo.cl']) {
+      await check(`Cuenta demo ${email} cerrada`, async () => {
+        const r = await req('/api/auth/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, password: 'password' })
+        });
+        record(`La cuenta demo ${email} no permite iniciar sesión con la clave pública`, r.status !== 200, `status ${r.status}`);
+      });
+    }
+  }
+
   let adminToken = null;
   await check('Login de la cuenta admin de control', async () => {
     const r = await req('/api/auth/login', {

@@ -92,8 +92,11 @@ jobs:
         working-directory: backend
         env:
           QA_API_URL: https://estacionamientos-api.onrender.com
-          # admin@demo.cl/password son credenciales demo públicas (README), no secretos reales.
-          # Si más adelante se cambian, sobreescribir acá con secrets.QA_ADMIN_EMAIL / secrets.QA_ADMIN_PASSWORD.
+          # Cuenta admin propia del QA, guardada como secretos del repositorio (Settings > Secrets and
+          # variables > Actions). Si no están definidos, el script usa la cuenta demo de los datos de
+          # ejemplo (solo sirve mientras esa cuenta siga activa en producción).
+          QA_ADMIN_EMAIL: ${{ secrets.QA_ADMIN_EMAIL }}
+          QA_ADMIN_PASSWORD: ${{ secrets.QA_ADMIN_PASSWORD }}
         run: node scripts/security-qa.mjs
 
   reportar-falla:
