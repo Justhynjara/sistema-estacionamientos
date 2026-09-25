@@ -1,0 +1,90 @@
+name: E2E (navegador real)
+
+# Pruebas de punta a punta: levanta Postgres vacío + API + web y maneja un navegador real
+# (Playwright) por los flujos críticos: el dueño emite un ticket, el conductor ve su tiempo y
+# monto al escanear el QR, el dueño cobra abriendo ese enlace, y el admin elimina un usuario.
+# Cada prueba crea sus propios datos y los borra al terminar.
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'backend/**'
+      - 'frontend/**'
+      - 'e2e/**'
+      - '.github/workflows/e2e.yml'
+  pull_request:
+    branches: ['**']
+    paths:
+      - 'backend/**'
+      - 'frontend/**'
+      - 'e2e/**'
+      - '.github/workflows/e2e.yml'
+  workflow_dispatch: {}
+
+jobs:
+  e2e:
+    name: Flujos críticos en el navegador
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: estacionamientos
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres_e2e
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U postgres -d estacionamientos"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgres://postgres:postgres_e2e@localhost:5432/estacionamientos
+      JWT_SECRET: e2e_secret_solo_para_ci
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: API (instala, migra y arranca)
+        working-directory: backend
+        run: |
+          npm ci
+          npm run migrate:up
+          PORT=3000 CLIENT_URL=http://localhost:5173 nohup npm start > ../backend.log 2>&1 &
+          for i in $(seq 1 30); do curl -sf http://localhost:3000/health && break; sleep 2; done
+
+      - name: Web (compila y sirve)
+        working-directory: frontend
+        run: |
+          npm ci
+          VITE_API_URL=http://localhost:3000 npm run build
+          nohup npx vite preview --port 5173 --strictPort > ../frontend.log 2>&1 &
+          for i in $(seq 1 30); do curl -sf http://localhost:5173 > /dev/null && break; sleep 2; done
+
+      - name: Instalar Playwright y Chromium
+        working-directory: e2e
+        run: |
+          npm ci
+          npx playwright install --with-deps chromium
+
+      - name: Correr las pruebas
+        working-directory: e2e
+        env:
+          E2E_BASE_URL: http://localhost:5173
+          E2E_DATABASE_URL: postgres://postgres:postgres_e2e@localhost:5432/estacionamientos
+        run: npx playwright test
+
+      - name: Guardar reporte y logs si algo falló
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-diagnostico
+          path: |
+            e2e/playwright-report
+            e2e/test-results
+            backend.log
+            frontend.log
+          retention-days: 7

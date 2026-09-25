@@ -48,6 +48,19 @@ Los tests de backend requieren una base de datos accesible; se ejecutan dentro d
 docker exec estacionamientos-backend npm test
 ```
 
+### Pruebas de punta a punta (navegador real)
+La carpeta `e2e/` usa [Playwright](https://playwright.dev) para recorrer en un navegador los flujos críticos: el dueño emite un ticket, el conductor ve su tiempo y monto al abrir el QR, el dueño cobra abriendo ese mismo enlace, y el admin elimina un usuario. Cada prueba crea sus propios datos y los borra al terminar. En GitHub corren solas (`.github/workflows/e2e.yml`) contra una base vacía.
+
+Para correrlas en local hace falta la pila levantada (web + API + Postgres):
+```bash
+cd e2e && npm install
+E2E_BASE_URL=http://localhost:5173 \
+E2E_DATABASE_URL=postgres://USUARIO:CLAVE@127.0.0.1:5432/estacionamientos \
+E2E_CHANNEL=msedge \
+npx playwright test
+```
+`E2E_CHANNEL` usa un navegador ya instalado (`msedge` o `chrome`); sin él, Playwright usa su propio Chromium (`npx playwright install chromium`). Si tienes un PostgreSQL nativo en el puerto 5432, apunta `E2E_DATABASE_URL` a una base sin conflicto de puerto.
+
 ## Despliegue (producción)
 - **Backend**: Render Web Service (Node), build `cd backend && npm install`, start `cd backend && npm start`. Las migraciones corren automáticamente al iniciar.
 - **Frontend**: Render Static Site, build `cd frontend && npm install && npm run build`, publica `frontend/dist`.
