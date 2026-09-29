@@ -1,0 +1,32 @@
+version: 2
+updates:
+  # El QA de seguridad (security-qa.yml) ya corre `npm audit` en cada push y cada 6 horas, pero
+  # solo avisa de lo vulnerable que ya está instalado. Dependabot además abre el pull request que
+  # lo actualiza, semana a semana, para backend, frontend y las pruebas E2E.
+  - package-ecosystem: npm
+    directory: /backend
+    schedule: { interval: weekly }
+    groups:
+      dependencias-backend:
+        patterns: ['*']
+        update-types: ['minor', 'patch']
+
+  - package-ecosystem: npm
+    directory: /frontend
+    schedule: { interval: weekly }
+    groups:
+      dependencias-frontend:
+        patterns: ['*']
+        update-types: ['minor', 'patch']
+
+  - package-ecosystem: npm
+    directory: /e2e
+    schedule: { interval: weekly }
+    groups:
+      dependencias-e2e:
+        patterns: ['*']
+        update-types: ['minor', 'patch']
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule: { interval: weekly }

@@ -4,6 +4,7 @@ import jwt from 'jsonwebtoken';
 import { pool } from '../config/database.js';
 import { env } from '../config/env.js';
 import { sendMail } from '../utils/mailer.js';
+import { escapeHtml } from '../utils/html.js';
 
 const RESET_TOKEN_TTL_MIN = 30;
 const LOGIN_MAX_INTENTOS = 5;
@@ -85,7 +86,9 @@ export async function forgotPassword(req,res){
   await sendMail({
     to: email,
     subject: 'Recupera tu contraseña — Sistema de Estacionamientos',
-    html: `<p>Hola ${usuario.nombre},</p><p>Haz clic en el siguiente enlace para definir una nueva contraseña (válido por ${RESET_TOKEN_TTL_MIN} minutos):</p><p><a href="${link}">${link}</a></p><p>Si no solicitaste esto, ignora este correo.</p>`
+    // El nombre lo escribió la propia persona al registrarse: sin escapar, algo como
+    // `<a href="http://evil">click</a>` se renderizaría como un enlace real en su propio correo.
+    html: `<p>Hola ${escapeHtml(usuario.nombre)},</p><p>Haz clic en el siguiente enlace para definir una nueva contraseña (válido por ${RESET_TOKEN_TTL_MIN} minutos):</p><p><a href="${link}">${link}</a></p><p>Si no solicitaste esto, ignora este correo.</p>`
   });
 
   res.json(respuestaGenerica);

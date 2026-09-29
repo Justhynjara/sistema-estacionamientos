@@ -11,6 +11,9 @@ const r = Router();
 
 // Pública: cualquier interesado en ser cliente (dueño de estacionamiento) puede postular.
 r.post('/', reservaLimiter, validateBody(crearSolicitudSchema), async (req, res) => {
+  // Señuelo antibot (ver solicitud.schema.js): si vino lleno, se responde como si hubiera
+  // funcionado, sin crear la solicitud ni delatar que fue detectado como bot.
+  if (req.body.sitio_web) return res.status(201).json({ id: null, estado: 'PENDIENTE', created_at: new Date().toISOString() });
   try { res.status(201).json(await crearSolicitud(req.body)); }
   catch (e) { res.status(400).json({ error: e.message }); }
 });

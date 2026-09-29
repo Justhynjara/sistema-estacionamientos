@@ -8,7 +8,8 @@ const MAX_FOTOS = 4;
 const initialForm = {
   nombre_solicitante: '', email: '', telefono: '',
   nombre_establecimiento: '', direccion: '',
-  precio_minuto: '', tarifa_minima: '', cupo_estimado: '', descripcion: ''
+  precio_minuto: '', tarifa_minima: '', cupo_estimado: '', descripcion: '',
+  sitio_web: '' // señuelo antibot: campo oculto que una persona real nunca llena
 };
 
 export default function SolicitudClienteForm({ onCerrar }) {
@@ -88,6 +89,18 @@ export default function SolicitudClienteForm({ onCerrar }) {
       </div>
       {error && <p className="badge off">⚠️ {error}</p>}
       <form onSubmit={enviar}>
+        {/* Señuelo antibot: fuera de la pantalla y sin tabulador, así que ninguna persona lo ve ni
+            lo llena; un bot que autocompleta todos los campos del formulario, sí. */}
+        <input
+          type="text"
+          name="sitio_web"
+          value={form.sitio_web}
+          onChange={e => setForm({ ...form, sitio_web: e.target.value })}
+          tabIndex={-1}
+          autoComplete="off"
+          aria-hidden="true"
+          style={{ position: 'absolute', left: '-9999px', width: 1, height: 1, opacity: 0 }}
+        />
         <div className="row-form">
           <input placeholder="Tu nombre" value={form.nombre_solicitante} onChange={e => setForm({ ...form, nombre_solicitante: e.target.value })} required />
           <input type="email" placeholder="Tu email" value={form.email} onChange={e => setForm({ ...form, email: e.target.value })} required />

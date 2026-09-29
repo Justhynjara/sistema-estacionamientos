@@ -46,3 +46,15 @@ export const ticketPublicoLimiter = rateLimit({
   keyGenerator: realIp,
   message: { error: 'Demasiadas consultas. Intenta nuevamente en unos minutos.' }
 });
+
+// GET /tickets/reserva/:codigo_qr no tenía ningún límite: quedaba abierto a cualquiera sin
+// restricción. El código es imposible de adivinar (144 bits al azar), así que esto es solo para
+// que nadie lo use para saturar la base, no para evitar fuga de datos.
+export const reservaPublicaLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 60,
+  standardHeaders: true,
+  legacyHeaders: false,
+  keyGenerator: realIp,
+  message: { error: 'Demasiadas consultas. Intenta nuevamente en unos minutos.' }
+});

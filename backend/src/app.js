@@ -24,7 +24,26 @@ export const app=express();
 // y cualquier lógica basada en req.ip no vería la IP real del cliente.
 app.set('trust proxy', 1);
 
-app.use(helmet());
+// Render/Cloudflare ya redirige http->https en el borde, pero si algún día la API se sirve
+// directo (otro proxy, otro hosting) esto la protege igual: nunca sirve una petición en claro.
+if(env.isProduction){
+  app.use((req,res,next)=>{
+    if(req.headers['x-forwarded-proto'] && req.headers['x-forwarded-proto']!=='https')
+      return res.redirect(301, `https://${req.headers.host}${req.originalUrl}`);
+    next();
+  });
+}
+
+app.use(helmet({
+  hsts: { maxAge: 15552000, includeSubDomains: true, preload: true }
+}));
+// Permissions-Policy: apaga cámara/micrófono/geolocalización/pagos para este origen. Helmet 8 ya
+// no incluye este header (lo tuvo como "Feature-Policy" en versiones viejas); nada en la propia
+// API los necesita — el navegador los usa desde la web, para el escáner QR y el mapa, no desde aquí.
+app.use((req,res,next)=>{
+  res.setHeader('Permissions-Policy','camera=(),microphone=(),geolocation=(),payment=()');
+  next();
+});
 app.use(pinoHttp({logger, autoLogging:{ignore:req=>req.url==='/health'}}));
 app.use(cors({origin:corsOrigin}));
 app.use(express.json({limit:'12mb'})); // las solicitudes de nuevos clientes incluyen fotos en base64

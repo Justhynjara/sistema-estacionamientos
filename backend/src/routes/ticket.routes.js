@@ -2,7 +2,7 @@ import {Router} from 'express';
 import {auth} from '../middleware/auth.middleware.js';
 import {roles} from '../middleware/role.middleware.js';
 import {validateBody,validateQuery,validateParams} from '../middleware/validate.middleware.js';
-import {ticketPublicoLimiter} from '../middleware/rateLimit.middleware.js';
+import {ticketPublicoLimiter,reservaPublicaLimiter} from '../middleware/rateLimit.middleware.js';
 import {createTicket,closeTicket,reserveTicket,checkinTicket,ticketsDashboard,quoteTicket,activeTickets,getReservaPublica,getTicketPublico} from '../services/ticket.service.js';
 import {createTicketSchema,reserveTicketSchema,closeTicketSchema,closeTicketWithMethodSchema,checkinSchema,dashboardQuerySchema,activeQuerySchema,codigoParamSchema} from '../validation/ticket.schema.js';
 
@@ -35,7 +35,7 @@ r.post('/reserve',auth,roles('CLIENTE'),validateBody(reserveTicketSchema),async(
 });
 
 // Consulta pública de una reserva por su código (usado tras volver del pago Webpay).
-r.get('/reserva/:codigo_qr',async(req,res)=>{
+r.get('/reserva/:codigo_qr',reservaPublicaLimiter,validateParams(codigoParamSchema),async(req,res)=>{
   try{res.json(await getReservaPublica(req.params.codigo_qr));}
   catch(e){res.status(404).json({error:e.message});}
 });

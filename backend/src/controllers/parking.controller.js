@@ -33,7 +33,10 @@ export async function myParking(req,res){
   res.json(r.rows);
 }
 export async function getParking(req,res){
-  const r=await pool.query('SELECT * FROM estacionamientos WHERE id=$1',[req.params.id]);
+  // Endpoint público: nunca cliente_id (identifica al dueño) ni created_at, que no aportan nada
+  // a quien busca estacionamiento y no deberían quedar expuestos a cualquiera.
+  const r=await pool.query(`SELECT id,nombre,direccion,latitud,longitud,precio_minuto,tarifa_minima,cupo_maximo,cupos_disponibles,estado
+    FROM estacionamientos WHERE id=$1`,[req.params.id]);
   if(!r.rowCount) return res.status(404).json({error:'No encontrado'});
   res.json(r.rows[0]);
 }
