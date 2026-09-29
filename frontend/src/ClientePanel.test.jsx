@@ -12,10 +12,11 @@ import { api } from './services/api.js';
 const parking = [{ id: 'p1', nombre: 'Parking Centro', direccion: 'Centro', precio_minuto: 25, tarifa_minima: 500, cupo_maximo: 10, cupos_disponibles: 5 }];
 const activo = { id: 't1', codigo_qr: 'QR-1', patente: 'AB1234', fecha_entrada: new Date().toISOString(), estado: 'ACTIVO', estacionamiento_id: 'p1', estacionamiento_nombre: 'Parking Centro', precio_minuto: 25, tarifa_minima: 500 };
 
-// Hay dos botones "💰 Cobrar" (uno por fila de la tabla, otro para cobrar por código manual).
-// Este helper espera a que la fila del ticket cargue y hace click en el de la fila, no en el
-// del código manual (que estaría vacío y no haría nada).
-async function clickCobrarDeLaFila(user) {
+// Antes de ver la tabla de vehículos hay que abrir el estacionamiento desde la lista (el flujo ya
+// no muestra todo mezclado). Luego hay dos botones "💰 Cobrar" (uno por fila de la tabla, otro
+// para cobrar por código manual); este helper hace click en el de la fila.
+async function abrirParkingYCobrarDeLaFila(user) {
+  await user.click(await screen.findByRole('button', { name: /abrir parking centro/i }));
   await screen.findByText('AB1234');
   const botones = screen.getAllByRole('button', { name: /💰 cobrar/i });
   await user.click(botones[0]);
@@ -40,7 +41,7 @@ describe('ClientePanel — cobro sin Webpay', () => {
     const user = userEvent.setup();
     render(<ClientePanel />);
 
-    await clickCobrarDeLaFila(user);
+    await abrirParkingYCobrarDeLaFila(user);
 
     expect(await screen.findByText('Total a pagar: $3.000')).toBeInTheDocument();
     expect(screen.queryByLabelText('Monto recibido')).not.toBeInTheDocument();
@@ -63,7 +64,7 @@ describe('ClientePanel — cobro sin Webpay', () => {
     const user = userEvent.setup();
     render(<ClientePanel />);
 
-    await clickCobrarDeLaFila(user);
+    await abrirParkingYCobrarDeLaFila(user);
     await screen.findByText('Total a pagar: $3.000');
     await user.click(screen.getByRole('button', { name: /💳 débito/i }));
 
@@ -85,7 +86,7 @@ describe('ClientePanel — cobro sin Webpay', () => {
     const user = userEvent.setup();
     render(<ClientePanel />);
 
-    await clickCobrarDeLaFila(user);
+    await abrirParkingYCobrarDeLaFila(user);
     await screen.findByText('Total a pagar: $3.000');
     await user.click(screen.getByRole('button', { name: /💵 efectivo/i }));
 
@@ -178,7 +179,7 @@ describe('ClientePanel — cobro sin Webpay', () => {
     const user = userEvent.setup();
     render(<ClientePanel />);
 
-    await clickCobrarDeLaFila(user);
+    await abrirParkingYCobrarDeLaFila(user);
     await screen.findByText('Total a pagar: $3.000');
     await user.click(screen.getByRole('button', { name: /💳 débito/i }));
 

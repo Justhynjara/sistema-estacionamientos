@@ -40,7 +40,7 @@ function tiempoTranscurrido(iso) {
   return `${Math.floor(min / 60)}h ${min % 60}min`;
 }
 
-function GestionTicketPanel({ reloadParking, ticketInicial, onTicketConsumido }) {
+function GestionTicketPanel({ reloadParking, ticketInicial, onTicketConsumido, estacionamientoId, estacionamientoNombre }) {
   const [codigo, setCodigo] = useState('');
   const [loading, setLoading] = useState('');
   const [mensaje, setMensaje] = useState(null);
@@ -49,7 +49,7 @@ function GestionTicketPanel({ reloadParking, ticketInicial, onTicketConsumido })
   const [escaneando, setEscaneando] = useState(false);
 
   function cargarActivos() {
-    api.get('/tickets/active').then(r => setActivos(r.data)).catch(() => {});
+    api.get('/tickets/active', { params: { estacionamiento_id: estacionamientoId || undefined } }).then(r => setActivos(r.data)).catch(() => {});
   }
   useEffect(() => {
     cargarActivos();
@@ -173,18 +173,18 @@ function GestionTicketPanel({ reloadParking, ticketInicial, onTicketConsumido })
   return (
     <>
       <div className="card">
-        <h3>Vehículos y reservas</h3>
+        <h3>Vehículos y reservas{estacionamientoNombre ? ` en ${estacionamientoNombre}` : ''}</h3>
         <p style={{ color: 'var(--text-muted)', fontSize: '.85rem' }}>Busca por patente — no necesitas el código QR para validar o cobrar.</p>
         {activos.length === 0 && <p style={{ color: 'var(--text-muted)' }}>No hay vehículos ni reservas pendientes en este momento.</p>}
         {activos.length > 0 && (
           <div className="table-wrap">
             <table className="table">
-              <thead><tr><th>Patente</th><th>Estacionamiento</th><th>Estado</th><th>Entrada</th><th>Tiempo</th><th></th></tr></thead>
+              <thead><tr><th>Patente</th>{!estacionamientoId && <th>Estacionamiento</th>}<th>Estado</th><th>Entrada</th><th>Tiempo</th><th></th></tr></thead>
               <tbody>
                 {activos.map(t => (
                   <tr key={t.id}>
                     <td>{t.patente || '—'}</td>
-                    <td>{t.estacionamiento_nombre}</td>
+                    {!estacionamientoId && <td>{t.estacionamiento_nombre}</td>}
                     <td><span className={'badge ' + (t.estado === 'ACTIVO' ? 'ok' : 'off')}>{t.estado === 'ACTIVO' ? 'Dentro' : 'Reservado'}</span></td>
                     <td>{fmtHora(t.fecha_entrada)}</td>
                     <td>{tiempoTranscurrido(t.fecha_entrada)}</td>
@@ -302,17 +302,89 @@ function GestionTicketPanel({ reloadParking, ticketInicial, onTicketConsumido })
 
 function EstacionamientosTab({ parking, reloadParking, ticketInicial, onTicketConsumido }) {
   const [ticketEmitido, setTicketEmitido] = useState(null);
+  const [emitiendo, setEmitiendo] = useState(null); // { p, patente, loading }
+  const [seleccionadoId, setSeleccionadoId] = useState(null);
 
-  async function emitirTicket(p) {
-    const patente = prompt('Patente del vehículo (opcional)')?.trim().toUpperCase() || null;
-    try {
-      const r = await api.post('/tickets', { estacionamiento_id: p.id, patente });
-      setTicketEmitido({ codigo: r.data.codigo_qr, nombre: p.nombre, direccion: p.direccion, patente: r.data.patente, fechaEntrada: r.data.fecha_entrada, tarifa: formatTarifa(p) });
-      reloadParking();
-    } catch (err) { alert(err.response?.data?.error || 'Error al emitir ticket'); }
+  function iniciarEmision(p) {
+    setEmitiendo({ p, patente: '', loading: false });
   }
+
+  async function confirmarEmision() {
+    const { p, patente } = emitiendo;
+    setEmitiendo(e => ({ ...e, loading: true }));
+    try {
+      const r = await api.post('/tickets', { estacionamiento_id: p.id, patente: patente.trim().toUpperCase() || null });
+      setTicketEmitido({ codigo: r.data.codigo_qr, nombre: p.nombre, direccion: p.direccion, patente: r.data.patente, fechaEntrada: r.data.fecha_entrada, tarifa: formatTarifa(p) });
+      setEmitiendo(null);
+      reloadParking();
+    } catch (err) {
+      alert(err.response?.data?.error || 'Error al emitir ticket');
+      setEmitiendo(e => ({ ...e, loading: false }));
+    }
+  }
+
+  // Llegó por un enlace o un QR ya escaneado: el código identifica el ticket sin ambigüedad,
+  // así que va directo al cobro/validación sin pedir primero que elija un estacionamiento.
+  if (ticketInicial) {
+    return <GestionTicketPanel reloadParking={reloadParking} ticketInicial={ticketInicial} onTicketConsumido={onTicketConsumido} />;
+  }
+
+  const seleccionado = parking.find(p => p.id === seleccionadoId) || null;
+
+  if (!seleccionado) {
+    return (
+      <div>
+        <div className="grid">
+          {parking.map(p => (
+            <div className="card" key={p.id}>
+              <h3>{p.nombre}</h3>
+              <p>{p.direccion}</p>
+              <p>💰 {formatTarifa(p)}</p>
+              <p className={'badge ' + (p.cupos_disponibles > 0 ? 'ok' : 'off')}>🅿️ {p.cupos_disponibles} / {p.cupo_maximo} disponibles</p>
+              <button type="button" onClick={() => setSeleccionadoId(p.id)}>📋 Abrir {p.nombre}</button>
+            </div>
+          ))}
+          {parking.length === 0 && <div className="empty-state">Aún no tienes estacionamientos asignados. Pide al administrador que registre uno a tu nombre.</div>}
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div>
+      <button type="button" className="secondary" onClick={() => setSeleccionadoId(null)} style={{ marginBottom: 14 }}>← Volver a mis estacionamientos</button>
+
+      <div className="card">
+        <h3>{seleccionado.nombre}</h3>
+        <p>{seleccionado.direccion}</p>
+        <p>💰 {formatTarifa(seleccionado)}</p>
+        <p className={'badge ' + (seleccionado.cupos_disponibles > 0 ? 'ok' : 'off')}>🅿️ {seleccionado.cupos_disponibles} / {seleccionado.cupo_maximo} disponibles</p>
+        {!emitiendo && (
+          <button type="button" onClick={() => iniciarEmision(seleccionado)} disabled={seleccionado.cupos_disponibles <= 0}>🎫 Emitir ticket en {seleccionado.nombre}</button>
+        )}
+      </div>
+
+      {emitiendo && (
+        <div className="card" style={{ textAlign: 'center', borderColor: 'var(--primary)' }}>
+          <h3>🎫 Emitir ticket en {emitiendo.p.nombre}</h3>
+          <p style={{ color: 'var(--text-muted)' }}>{emitiendo.p.direccion}</p>
+          <div className="row-form" style={{ justifyContent: 'center' }}>
+            <input
+              placeholder="Patente del vehículo (opcional)"
+              value={emitiendo.patente}
+              onChange={e => setEmitiendo({ ...emitiendo, patente: e.target.value })}
+              aria-label="Patente del vehículo"
+              autoFocus
+            />
+          </div>
+          <div className="row-form" style={{ justifyContent: 'center' }}>
+            <button type="button" onClick={confirmarEmision} disabled={emitiendo.loading}>
+              {emitiendo.loading && <span className="spinner" />}✅ Confirmar emisión en {emitiendo.p.nombre}
+            </button>
+            <button type="button" className="secondary" onClick={() => setEmitiendo(null)} disabled={emitiendo.loading}>Cancelar</button>
+          </div>
+        </div>
+      )}
       {ticketEmitido && (
         <div className="card" style={{ textAlign: 'center' }}>
           <h3>🎫 Ticket emitido en {ticketEmitido.nombre}</h3>
@@ -337,19 +409,8 @@ function EstacionamientosTab({ parking, reloadParking, ticketInicial, onTicketCo
           </div>
         </div>
       )}
-      <div className="grid">
-        {parking.map(p => (
-          <div className="card" key={p.id}>
-            <h3>{p.nombre}</h3>
-            <p>{p.direccion}</p>
-            <p>💰 {formatTarifa(p)}</p>
-            <p className={'badge ' + (p.cupos_disponibles > 0 ? 'ok' : 'off')}>🅿️ {p.cupos_disponibles} / {p.cupo_maximo} disponibles</p>
-            <button onClick={() => emitirTicket(p)} disabled={p.cupos_disponibles <= 0}>🎫 Emitir ticket</button>
-          </div>
-        ))}
-        {parking.length === 0 && <div className="empty-state">Aún no tienes estacionamientos asignados. Pide al administrador que registre uno a tu nombre.</div>}
-      </div>
-      {parking.length > 0 && <GestionTicketPanel reloadParking={reloadParking} ticketInicial={ticketInicial} onTicketConsumido={onTicketConsumido} />}
+
+      <GestionTicketPanel key={seleccionado.id} reloadParking={reloadParking} estacionamientoId={seleccionado.id} estacionamientoNombre={seleccionado.nombre} />
     </div>
   );
 }
