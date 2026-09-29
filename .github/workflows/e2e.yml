@@ -79,7 +79,7 @@ jobs:
 
       - name: Guardar reporte y logs si algo falló
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: e2e-diagnostico
           path: |
