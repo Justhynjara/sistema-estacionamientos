@@ -316,7 +316,7 @@ async function buscarCercaDe(destCoords) {
       {reservaPendiente && (
         <div className="card">
           <h3>🎫 Reservar cupo en {reservaPendiente.nombre}</h3>
-          <p>Ingresa la patente del vehículo que va a estacionar. Para confirmar, se te pedirá un micropago de <strong>$100 CLP</strong> por Webpay — evita reservas falsas y tu cupo queda apartado por <strong>10 minutos</strong>.</p>
+          <p>Ingresa la patente del vehículo que va a estacionar. Para confirmar, se te pedirá un micropago de <strong>$100 CLP</strong> por Webpay — evita reservas falsas y tu cupo queda apartado por <strong>10 minutos</strong>. Si llegas a tiempo, se descuenta de lo que pagues al salir; si la reserva expira sin usarse, <strong>el monto no se reembolsa</strong>.</p>
           {reservaError && <p className="badge off">⚠️ {reservaError}</p>}
           <form onSubmit={confirmarReserva} className="row-form">
             <input
@@ -338,7 +338,7 @@ async function buscarCercaDe(destCoords) {
           <h3>🎫 Reserva confirmada en {reserva.nombre}</h3>
           <p>Muestra este código QR al llegar para validar tu cupo, o descárgalo:</p>
           <div style={{ display: 'flex', justifyContent: 'center', margin: '12px 0' }}>
-            <QRCodeCanvas value={qrPayload(reserva.codigo)} downloadable filename={`reserva-${reserva.codigo.slice(0, 8)}`} />
+            <QRCodeCanvas value={qrPayload(reserva.codigo)} downloadable filename={`reserva-${reserva.codigo.slice(0, 8)}`} label="Código QR de tu reserva" />
           </div>
           <p style={{ fontFamily: 'monospace', color: 'var(--text-muted)', fontSize: '.8rem', wordBreak: 'break-all' }}>{reserva.codigo}</p>
           <Countdown expira={reserva.expira} />

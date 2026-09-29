@@ -318,7 +318,7 @@ function EstacionamientosTab({ parking, reloadParking, ticketInicial, onTicketCo
           <h3>🎫 Ticket emitido en {ticketEmitido.nombre}</h3>
           <p>Entrega este código QR al conductor: con la cámara de su teléfono verá cuánto lleva estacionado y cuánto debe pagar.</p>
           <div style={{ display: 'flex', justifyContent: 'center', margin: '12px 0' }}>
-            <QRCodeCanvas value={qrPayload(ticketEmitido.codigo)} downloadable filename={`ticket-${ticketEmitido.codigo.slice(0, 8)}`} />
+            <QRCodeCanvas value={qrPayload(ticketEmitido.codigo)} downloadable filename={`ticket-${ticketEmitido.codigo.slice(0, 8)}`} label="Código QR del ticket" />
           </div>
           <p style={{ fontFamily: 'monospace', color: 'var(--text-muted)', fontSize: '.8rem', wordBreak: 'break-all' }}>{ticketEmitido.codigo}</p>
           <div className="row-form" style={{ justifyContent: 'center' }}>

@@ -47,7 +47,7 @@ export async function imprimirTicket({
       <div class="linea"></div>
       ${filas}
       <div class="linea"></div>
-      ${qrDataUrl ? `<img src="${qrDataUrl}" width="150" height="150"/>` : ''}
+      ${qrDataUrl ? `<img src="${qrDataUrl}" width="150" height="150" alt="Código QR del ticket ${codigo}"/>` : ''}
       <p class="codigo">${codigo}</p>
       <div class="linea"></div>
       <p class="center">${pie}</p>

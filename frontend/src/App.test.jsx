@@ -22,6 +22,7 @@ const SIN_SESION = { response: { status: 401 } };
 
 describe('App', () => {
   beforeEach(() => {
+    localStorage.clear(); // aviso de cookies visto, etc. — no debe filtrarse entre tests
     // La sesión ya no vive en localStorage: se restaura preguntándole al servidor (GET /auth/me),
     // que el componente llama siempre al montar. Por defecto, sin sesión (401); cada test que
     // necesite otra cosa (una sesión ya iniciada, la vista pública del ticket) sobrescribe esto.
@@ -144,5 +145,56 @@ describe('App', () => {
       expect(await screen.findByLabelText('Monto a pagar')).toBeInTheDocument();
       expect(screen.queryByText('MockAdminPanel')).not.toBeInTheDocument();
     });
+  });
+
+  describe('páginas legales (?legal=...)', () => {
+    test('la landing enlaza a las tres páginas legales desde el pie de página', async () => {
+      render(<App />);
+      await screen.findByText('Busco estacionamiento');
+
+      expect(screen.getByRole('link', { name: 'Política de Privacidad' })).toHaveAttribute('href', '/?legal=privacidad');
+      expect(screen.getByRole('link', { name: 'Términos y Condiciones' })).toHaveAttribute('href', '/?legal=terminos');
+      expect(screen.getByRole('link', { name: 'Política de Cookies' })).toHaveAttribute('href', '/?legal=cookies');
+    });
+
+    test('abrir con ?legal=privacidad muestra la política de privacidad, y "Volver" regresa a la landing', async () => {
+      window.history.replaceState({}, '', '/?legal=privacidad');
+      const user = userEvent.setup();
+      render(<App />);
+
+      expect(await screen.findByRole('heading', { name: 'Política de Privacidad' })).toBeInTheDocument();
+      // Mientras se muestra la página legal, no se ve la landing por debajo.
+      expect(screen.queryByText('Busco estacionamiento')).not.toBeInTheDocument();
+
+      await user.click(screen.getByRole('button', { name: /volver/i }));
+      expect(await screen.findByText('Busco estacionamiento')).toBeInTheDocument();
+    });
+
+    test('?legal=terminos y ?legal=cookies muestran su propio contenido', async () => {
+      window.history.replaceState({}, '', '/?legal=terminos');
+      const { unmount } = render(<App />);
+      expect(await screen.findByRole('heading', { name: 'Términos y Condiciones' })).toBeInTheDocument();
+      unmount();
+
+      window.history.replaceState({}, '', '/?legal=cookies');
+      render(<App />);
+      expect(await screen.findByRole('heading', { name: 'Política de Cookies' })).toBeInTheDocument();
+    });
+  });
+
+  test('el aviso de cookies se puede cerrar y no vuelve a aparecer en este navegador', async () => {
+    const user = userEvent.setup();
+    render(<App />);
+    await screen.findByText('Busco estacionamiento');
+
+    expect(screen.getByText(/usamos una sola cookie/i)).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Entendido' }));
+    expect(screen.queryByText(/usamos una sola cookie/i)).not.toBeInTheDocument();
+
+    // Simula recargar la página: como ya se cerró antes, no debe volver a mostrarse.
+    const { unmount } = render(<App />);
+    await screen.findAllByText('Busco estacionamiento');
+    expect(screen.queryByText(/usamos una sola cookie/i)).not.toBeInTheDocument();
+    unmount();
   });
 });

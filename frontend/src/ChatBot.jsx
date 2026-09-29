@@ -12,12 +12,12 @@ const FAQ = [
     // "reservando", etc. Sin esto, preguntar literalmente "¿Cómo reservo un cupo?" empataba
     // en puntaje con la FAQ de "buscar" (por la keyword 'cupo') y ganaba la que aparece primero.
     keywords: ['reserv', 'cupo', 'apartar'],
-    respuesta: 'En la tarjeta del estacionamiento presiona "Reservar cupo", ingresa la patente de tu vehículo y confirma. Se te pedirá un micropago de $100 CLP por Webpay para validar que la reserva es real — una vez aprobado, tu reserva queda activa por 10 minutos.'
+    respuesta: 'En la tarjeta del estacionamiento presiona "Reservar cupo", ingresa la patente de tu vehículo y confirma. Se te pedirá un micropago de $100 CLP por Webpay para validar que la reserva es real — una vez aprobado, tu reserva queda activa por 10 minutos. Si llegas a tiempo, ese monto se descuenta de lo que pagues al salir; si no, no se reembolsa.'
   },
   {
     pregunta: '¿Por qué me cobran $100 al reservar?',
     keywords: ['micropago', '100', 'cobro', 'cobran', 'por que', 'porqué', 'reserva pagada', 'pago reserva'],
-    respuesta: 'Es un micropago mínimo de $100 CLP para evitar reservas falsas que ocupen cupos sin intención real de llegar. Si validas tu reserva a tiempo, el cupo queda para ti; si no llegas dentro de los 10 minutos, la reserva se libera automáticamente.'
+    respuesta: 'Es un micropago mínimo de $100 CLP para evitar reservas falsas que ocupen cupos sin intención real de llegar. Si validas tu reserva a tiempo, el cupo queda para ti y ese monto se descuenta de tu pago final; si no llegas dentro de los 10 minutos, la reserva se libera automáticamente y el monto no se reembolsa.'
   },
   {
     pregunta: '¿Cuánto dura mi reserva?',

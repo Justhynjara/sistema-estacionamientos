@@ -7,6 +7,9 @@ import ChatBot from './ChatBot.jsx';
 import SolicitudClienteForm from './SolicitudClienteForm.jsx';
 import SoportePanel from './SoportePanel.jsx';
 import TicketPublico from './TicketPublico.jsx';
+import LegalPage from './legal/LegalPage.jsx';
+import Footer from './legal/Footer.jsx';
+import CookieNotice from './legal/CookieNotice.jsx';
 
 function Login({onLogin,onCancel,onForgot}){
   const [email,setEmail]=useState(''),[password,setPassword]=useState('');
@@ -29,7 +32,9 @@ function Login({onLogin,onCancel,onForgot}){
     </form>
     <button type="button" onClick={onForgot} className="link-button">¿Olvidaste tu contraseña?</button>
     <button type="button" onClick={onCancel} className="link-button">← Volver a la búsqueda</button>
-  </div></div>
+  </div>
+  <Footer/>
+  </div>
 }
 
 function ForgotPassword({onBack}){
@@ -55,7 +60,9 @@ function ForgotPassword({onBack}){
           <button disabled={loading}>{loading && <span className="spinner"/>}{loading?'Enviando...':'Enviar enlace'}</button>
         </form>}
     <button type="button" onClick={onBack} className="link-button">← Volver al inicio de sesión</button>
-  </div></div>
+  </div>
+  <Footer/>
+  </div>
 }
 
 function ResetPassword({token,onDone}){
@@ -84,7 +91,9 @@ function ResetPassword({token,onDone}){
           <input type="password" value={password} onChange={e=>setPassword(e.target.value)} placeholder="Nueva contraseña (mín. 8 caracteres)" aria-label="Nueva contraseña" required minLength={8}/>
           <button disabled={loading}>{loading && <span className="spinner"/>}{loading?'Guardando...':'Guardar contraseña'}</button>
         </form>}
-  </div></div>
+  </div>
+  <Footer/>
+  </div>
 }
 
 function PagoBanner({estado,monto,onClose}){
@@ -99,7 +108,8 @@ function PagoBanner({estado,monto,onClose}){
   const info=textos[estado];
   if(!info) return null;
   return <div className="container" style={{paddingBottom:0}}>
-    <p className={'badge '+info.cls} style={{cursor:'pointer'}} onClick={onClose} title="Cerrar">{info.texto} ✕</p>
+    {/* Botón real (no un <p onClick>): así se puede cerrar el aviso con el teclado, no solo con el mouse. */}
+    <button type="button" className={'badge '+info.cls} onClick={onClose} aria-label={`${info.texto} Cerrar aviso`}>{info.texto} ✕</button>
   </div>;
 }
 
@@ -113,6 +123,14 @@ function App(){
  const [reservaCodigo,setReservaCodigo]=useState(null);
  const [mostrarSolicitud,setMostrarSolicitud]=useState(false);
  const [ticketCodigo,setTicketCodigo]=useState(null);
+ const [legalPage,setLegalPage]=useState(null);
+
+ function cerrarLegal(){
+   setLegalPage(null);
+   const url=new URL(window.location.href);
+   url.searchParams.delete('legal');
+   window.history.replaceState({},'',url);
+ }
 
  // El QR del ticket abre la web con ?ticket=CODIGO. Se deja en la URL mientras se muestra la
  // vista pública, para que recargar la página (o guardarla) no la pierda.
@@ -129,14 +147,17 @@ function App(){
    const pagoEstado=params.get('pago');
    const reserva=params.get('reserva');
    const ticket=params.get('ticket');
+   const legal=params.get('legal');
    if(ticket) setTicketCodigo(ticket);
    if(reset) setResetToken(reset);
    if(pagoEstado) setPago({estado:pagoEstado, monto:params.get('monto')});
    if(reserva) setReservaCodigo(reserva);
+   if(legal) setLegalPage(legal);
    if(reset || pagoEstado || reserva){
      const url=new URL(window.location.href);
      url.search='';
      if(ticket) url.searchParams.set('ticket',ticket);
+     if(legal) url.searchParams.set('legal',legal);
      window.history.replaceState({},'',url);
    }
  },[]);
@@ -168,6 +189,16 @@ function App(){
    return <ResetPassword token={resetToken} onDone={()=>{setResetToken(null); setShowLogin(true); setAuthView('login');}}/>;
  }
 
+ if(legalPage){
+   return <>
+     <nav>
+       <div className="brand"><span className="logo">🅿️</span> Sistema de Estacionamientos</div>
+     </nav>
+     <LegalPage pagina={legalPage} onVolver={cerrarLegal}/>
+     <Footer/>
+   </>;
+ }
+
  if(mostrarSolicitud){
    return <>
      <nav>
@@ -176,6 +207,7 @@ function App(){
      <main className="container">
        <SolicitudClienteForm onCerrar={()=>setMostrarSolicitud(false)}/>
      </main>
+     <Footer/>
    </>;
  }
 
@@ -199,6 +231,8 @@ function App(){
          onCerrar={cerrarTicket}
        />
      </main>
+     <Footer/>
+     <CookieNotice/>
    </>;
  }
 
@@ -231,6 +265,8 @@ function App(){
        <BuscarCercanos reservaCodigoInicial={reservaCodigo}/>
      </main>
      <ChatBot onAbrirSolicitud={()=>setMostrarSolicitud(true)}/>
+     <Footer/>
+     <CookieNotice/>
    </>;
  }
 
@@ -250,6 +286,8 @@ function App(){
     : <BuscarCercanos reservaCodigoInicial={reservaCodigo}/>}
  </main>
  <ChatBot onAbrirSolicitud={()=>setMostrarSolicitud(true)}/>
+ <Footer/>
+ <CookieNotice/>
  </>
 }
 export default App;

@@ -49,15 +49,18 @@ export default function AddressAutocomplete({ value, onChange, onSelect, placeho
         value={value}
         onChange={handleChange}
         onFocus={() => setAbierto(true)}
+        onKeyDown={e => { if (e.key === 'Escape') setAbierto(false); }}
         autoComplete="off"
       />
       {mostrarPanel && (
-        <div className="address-suggestions">
+        <div className="address-suggestions" role="listbox" aria-label="Sugerencias de dirección">
           {buscando && <div className="hint">Buscando direcciones...</div>}
           {!buscando && sugerencias.map((s, i) => (
-            <div className="item" key={i} onClick={() => elegir(s)}>
-              <span>📍</span><span>{s.label}</span>
-            </div>
+            // Botón real: se llega con Tab y se activa con Enter/Espacio, a diferencia de un
+            // <div onClick> (que solo funciona con el mouse o el dedo).
+            <button type="button" className="item" role="option" key={i} onClick={() => elegir(s)}>
+              <span aria-hidden="true">📍</span><span>{s.label}</span>
+            </button>
           ))}
         </div>
       )}
