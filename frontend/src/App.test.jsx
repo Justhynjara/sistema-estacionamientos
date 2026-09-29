@@ -18,8 +18,15 @@ vi.mock('./services/api.js', () => ({
 import App from './App.jsx';
 import { api } from './services/api.js';
 
+const SIN_SESION = { response: { status: 401 } };
+
 describe('App', () => {
-  beforeEach(() => { localStorage.clear(); });
+  beforeEach(() => {
+    // La sesión ya no vive en localStorage: se restaura preguntándole al servidor (GET /auth/me),
+    // que el componente llama siempre al montar. Por defecto, sin sesión (401); cada test que
+    // necesite otra cosa (una sesión ya iniciada, la vista pública del ticket) sobrescribe esto.
+    api.get.mockImplementation(url => (url === '/auth/me' ? Promise.reject(SIN_SESION) : Promise.resolve({ data: [] })));
+  });
   afterEach(() => { vi.clearAllMocks(); window.history.replaceState({}, '', '/'); });
 
   test('sin sesión, muestra la landing con los dos accesos separados (usuario / dueño-admin)', async () => {
@@ -39,7 +46,7 @@ describe('App', () => {
     expect(screen.getByRole('heading', { name: /acceso cliente \/ administrador/i })).toBeInTheDocument();
   });
 
-  test('login exitoso guarda el token y muestra el panel según el rol', async () => {
+  test('login exitoso muestra el panel según el rol (la sesión queda en una cookie, no en localStorage)', async () => {
     api.post.mockResolvedValueOnce({
       data: { token: 'fake-jwt', user: { id: '1', nombre: 'Cliente Demo', email: 'cliente@demo.cl', rol: 'CLIENTE' } }
     });
@@ -53,11 +60,11 @@ describe('App', () => {
     await user.click(screen.getByRole('button', { name: /iniciar sesión/i }));
 
     expect(await screen.findByText('MockClientePanel')).toBeInTheDocument();
-    expect(localStorage.getItem('token')).toBe('fake-jwt');
     expect(screen.getByText('CLIENTE')).toBeInTheDocument();
+    expect(localStorage.getItem('token')).toBeNull(); // ya no se guarda nada ahí
   });
 
-  test('login con credenciales inválidas muestra una alerta y no guarda token', async () => {
+  test('login con credenciales inválidas muestra una alerta y no navega a ningún panel', async () => {
     api.post.mockRejectedValueOnce(new Error('Credenciales inválidas'));
     const alertSpy = vi.spyOn(window, 'alert').mockImplementation(() => {});
     const user = userEvent.setup();
@@ -70,16 +77,35 @@ describe('App', () => {
     await user.click(screen.getByRole('button', { name: /iniciar sesión/i }));
 
     await waitFor(() => expect(alertSpy).toHaveBeenCalledWith('Credenciales inválidas'));
-    expect(localStorage.getItem('token')).toBeNull();
     // Sigue en la pantalla de login, no navegó a ningún panel.
     expect(screen.getByRole('heading', { name: /acceso cliente \/ administrador/i })).toBeInTheDocument();
   });
+
+  test('"Salir" llama a /auth/logout (borra la cookie del lado del servidor) y vuelve a la landing', async () => {
+    api.post.mockImplementation(url => (url === '/auth/login'
+      ? Promise.resolve({ data: { token: 'fake-jwt', user: { id: '1', nombre: 'Cliente Demo', email: 'cliente@demo.cl', rol: 'CLIENTE' } } })
+      : Promise.resolve({ data: { ok: true } })));
+    const user = userEvent.setup();
+    render(<App />);
+    await screen.findByText('Busco estacionamiento');
+    await user.click(screen.getByRole('button', { name: /iniciar sesión/i }));
+    await user.type(screen.getByLabelText('Email'), 'cliente@demo.cl');
+    await user.type(screen.getByLabelText('Contraseña'), 'password');
+    await user.click(screen.getByRole('button', { name: /iniciar sesión/i }));
+    await screen.findByText('MockClientePanel');
+
+    await user.click(screen.getByRole('button', { name: 'Salir' }));
+
+    expect(api.post).toHaveBeenCalledWith('/auth/logout');
+    expect(await screen.findByText('Busco estacionamiento')).toBeInTheDocument();
+  });
+
   describe('enlace del QR del ticket (?ticket=...)', () => {
     const ticketActivo = { data: { estado: 'ACTIVO', codigo_qr: 'abc123', patente: 'AB1234', estacionamiento_nombre: 'Parking Centro', estacionamiento_direccion: 'Centro', precio_minuto: 20, tarifa_minima: 500, fecha_entrada: new Date().toISOString(), ahora: new Date().toISOString() } };
 
     test('sin sesión, el conductor ve su tiempo y monto en vez de la landing', async () => {
       window.history.replaceState({}, '', '/?ticket=abc123');
-      api.get.mockResolvedValue(ticketActivo);
+      api.get.mockImplementation(url => (url === '/auth/me' ? Promise.reject(SIN_SESION) : Promise.resolve(ticketActivo)));
       render(<App />);
 
       expect(await screen.findByLabelText('Monto a pagar')).toBeInTheDocument();
@@ -89,7 +115,7 @@ describe('App', () => {
 
     test('desde esa vista, "Soy el dueño" lleva al login', async () => {
       window.history.replaceState({}, '', '/?ticket=abc123');
-      api.get.mockResolvedValue(ticketActivo);
+      api.get.mockImplementation(url => (url === '/auth/me' ? Promise.reject(SIN_SESION) : Promise.resolve(ticketActivo)));
       const user = userEvent.setup();
       render(<App />);
 
@@ -99,7 +125,6 @@ describe('App', () => {
 
     test('un dueño con sesión iniciada va directo a su panel de cobro con ese código', async () => {
       window.history.replaceState({}, '', '/?ticket=abc123');
-      localStorage.setItem('token', 'fake-jwt');
       api.get.mockImplementation(url => (url === '/auth/me'
         ? Promise.resolve({ data: { id: '1', nombre: 'Cliente Demo', email: 'cliente@demo.cl', rol: 'CLIENTE' } })
         : Promise.resolve(ticketActivo)));
@@ -111,7 +136,6 @@ describe('App', () => {
 
     test('un admin con sesión que abre el enlace ve la vista pública, no el panel de cobro', async () => {
       window.history.replaceState({}, '', '/?ticket=abc123');
-      localStorage.setItem('token', 'fake-jwt');
       api.get.mockImplementation(url => (url === '/auth/me'
         ? Promise.resolve({ data: { id: '2', nombre: 'Admin', email: 'admin@demo.cl', rol: 'ADMIN' } })
         : Promise.resolve(ticketActivo)));

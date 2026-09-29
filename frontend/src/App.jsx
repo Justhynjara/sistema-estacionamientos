@@ -14,7 +14,7 @@ function Login({onLogin,onCancel,onForgot}){
   async function submit(e){
     e.preventDefault();
     setLoading(true);
-    try{const r=await api.post('/auth/login',{email,password});localStorage.setItem('token',r.data.token);onLogin(r.data.user)}
+    try{const r=await api.post('/auth/login',{email,password});onLogin(r.data.user)}
     catch{alert('Credenciales inválidas')}
     finally{setLoading(false)}
   }
@@ -141,14 +141,20 @@ function App(){
    }
  },[]);
 
+ // La sesión ya no se guarda en localStorage: se restaura preguntándole al servidor, que decide
+ // según la cookie httpOnly que el navegador manda solo (si no hay cookie o ya expiró, responde 401
+ // y se sigue sin sesión, sin error visible).
  useEffect(()=>{
-   const token=localStorage.getItem('token');
-   if(!token){ setCheckingSession(false); return; }
    api.get('/auth/me')
      .then(r=>setUser(r.data))
-     .catch(()=>localStorage.removeItem('token'))
+     .catch(()=>{})
      .finally(()=>setCheckingSession(false));
  },[]);
+
+ async function salir(){
+   try{ await api.post('/auth/logout'); } catch{ /* si ya no hay sesión, no importa */ }
+   setUser(null);
+ }
 
  useEffect(()=>{
    const onLogout=()=>setUser(null);
@@ -184,7 +190,7 @@ function App(){
    return <>
      <nav>
        <div className="brand"><span className="logo">🅿️</span> Sistema de Estacionamientos{user && <span className="role-pill">{user.rol}</span>}</div>
-       {user && <button onClick={()=>{localStorage.removeItem('token');setUser(null)}}>Salir</button>}
+       {user && <button onClick={salir}>Salir</button>}
      </nav>
      <main className="container">
        <TicketPublico
@@ -231,7 +237,7 @@ function App(){
  return <>
  <nav>
    <div className="brand"><span className="logo">🅿️</span> Sistema de Estacionamientos <span className="role-pill">{user.rol}</span></div>
-   <button onClick={()=>{localStorage.removeItem('token');setUser(null)}}>Salir</button>
+   <button onClick={salir}>Salir</button>
  </nav>
  <PagoBanner estado={pago?.estado} monto={pago?.monto} onClose={()=>setPago(null)}/>
  <main className="container">

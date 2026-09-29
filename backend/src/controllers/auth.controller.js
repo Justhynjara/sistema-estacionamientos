@@ -5,6 +5,7 @@ import { pool } from '../config/database.js';
 import { env } from '../config/env.js';
 import { sendMail } from '../utils/mailer.js';
 import { escapeHtml } from '../utils/html.js';
+import { setSessionCookie, clearSessionCookie } from '../utils/sessionCookie.js';
 
 const RESET_TOKEN_TTL_MIN = 30;
 const LOGIN_MAX_INTENTOS = 5;
@@ -43,7 +44,16 @@ export async function login(req,res){
     await pool.query('UPDATE usuarios SET intentos_fallidos=0, bloqueado_hasta=NULL WHERE id=$1',[u.id]);
 
   const token=jwt.sign({id:u.id,email:u.email,rol:u.rol},env.jwtSecret,{expiresIn:'8h'});
+  // La web ya no guarda el token en localStorage: se apoya en esta cookie httpOnly, invisible
+  // para JavaScript. El token sigue en el cuerpo de la respuesta por compatibilidad con scripts
+  // y pruebas automáticas que lo usan como Bearer; la propia web ya no lo lee de ahí.
+  setSessionCookie(res,token);
   res.json({token,user:{id:u.id,nombre:u.nombre,email:u.email,rol:u.rol}});
+}
+
+export async function logout(req,res){
+  clearSessionCookie(res);
+  res.json({ok:true});
 }
 
 export async function me(req,res){

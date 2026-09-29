@@ -2,6 +2,7 @@ import 'express-async-errors';
 import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
+import cookieParser from 'cookie-parser';
 import pinoHttp from 'pino-http';
 import {env} from './config/env.js';
 import {logger} from './config/logger.js';
@@ -45,7 +46,11 @@ app.use((req,res,next)=>{
   next();
 });
 app.use(pinoHttp({logger, autoLogging:{ignore:req=>req.url==='/health'}}));
-app.use(cors({origin:corsOrigin}));
+// credentials:true (junto con withCredentials en el frontend) permite que el navegador mande y
+// reciba la cookie de sesión entre estacionamientos-web.onrender.com y esta API — dominios
+// distintos, así que sin esto la cookie nunca llegaría.
+app.use(cors({origin:corsOrigin, credentials:true}));
+app.use(cookieParser());
 app.use(express.json({limit:'12mb'})); // las solicitudes de nuevos clientes incluyen fotos en base64
 app.use(express.urlencoded({extended:true}));
 
