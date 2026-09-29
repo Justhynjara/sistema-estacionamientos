@@ -21,7 +21,7 @@ jobs:
     name: Auditoría de dependencias (npm audit)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: actions/setup-node@v4
         with: { node-version: 20 }
       # --omit=dev: nos interesa lo que realmente se despliega (web en Render, API en Render).
@@ -54,7 +54,7 @@ jobs:
       DATABASE_URL: postgresql://postgres:postgres@localhost:5432/estacionamientos
       JWT_SECRET: ci_test_secret_no_usar_en_produccion
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: actions/setup-node@v4
         with: { node-version: 20 }
       - name: Instalar dependencias
@@ -71,7 +71,7 @@ jobs:
     name: Suite de tests del frontend
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: actions/setup-node@v4
         with: { node-version: 20 }
       - name: Instalar dependencias
@@ -85,7 +85,7 @@ jobs:
     name: Pruebas de seguridad contra producción
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: actions/setup-node@v4
         with: { node-version: 20 }
       - name: Ejecutar pruebas de caja negra contra la API en vivo
