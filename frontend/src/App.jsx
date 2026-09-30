@@ -285,7 +285,6 @@ function App(){
     ? <SoportePanel/>
     : <BuscarCercanos reservaCodigoInicial={reservaCodigo}/>}
  </main>
- <ChatBot onAbrirSolicitud={()=>setMostrarSolicitud(true)}/>
  <Footer/>
  <CookieNotice/>
  </>
