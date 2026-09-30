@@ -21,7 +21,9 @@ test('el dueño emite un ticket, el conductor ve su tiempo y monto con el QR, y 
   await expect(page.getByRole('heading', { name: esc.parking.nombre })).toBeVisible();
 
   // Primero hay que abrir el estacionamiento desde la lista: ya no se emite directo desde la tarjeta.
-  await page.getByRole('button', { name: /Abrir/ }).click();
+  // (El regex va anclado al emoji del botón: "Abrir" a secas también matchea el botón flotante
+  // del ChatBot, "Abrir asistente".)
+  await page.getByRole('button', { name: /📋 Abrir/ }).click();
 
   // La patente se ingresa en un campo del formulario inline, no en un prompt() nativo.
   await page.getByRole('button', { name: /Emitir ticket/ }).click();
