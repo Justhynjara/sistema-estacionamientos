@@ -33,8 +33,18 @@ async function main() {
   console.log(`QA de seguridad contra ${API}\n`);
 
   await check('API responde /health', async () => {
-    const r = await req('/health');
-    record('API responde /health', r.ok, `status ${r.status}`);
+    // En el plan free de Render la instancia se duerme tras inactividad: la
+    // corrida programada cada 6h casi siempre la encuentra dormida, y el
+    // primer request puede tardar más que TIMEOUT_MS solo en "despertarla".
+    // Un segundo intento después de ese despertar confirma si la API está
+    // realmente caída o solo estaba fría.
+    try {
+      const r = await req('/health');
+      return record('API responde /health', r.ok, `status ${r.status}`);
+    } catch (e) {
+      const r = await req('/health');
+      record('API responde /health', r.ok, `status ${r.status} (tras reintento por posible cold start)`);
+    }
   });
 
   await check('Cabeceras de seguridad (helmet)', async () => {
