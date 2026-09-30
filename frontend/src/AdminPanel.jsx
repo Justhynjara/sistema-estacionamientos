@@ -21,8 +21,28 @@ function ParkingTab({ parking, reloadParking, users }) {
   const initialForm = { cliente_id: '', nombre: '', direccion: '', precio_minuto: '', tarifa_minima: '', cupo_maximo: '' };
   const [form, setForm] = useState(initialForm);
   const [ubicacion, setUbicacion] = useState(null);
+  const [reasignando, setReasignando] = useState(null); // { p, clienteId, loading }
   const clientes = users.filter(u => u.rol === 'CLIENTE');
   const { pageItems, page, setPage, totalPages } = usePagination(parking, 9);
+
+  function dueñoDe(clienteId) {
+    const u = users.find(u => u.id === clienteId);
+    return u ? `${u.nombre} (${u.email})` : '⚠️ usuario no encontrado';
+  }
+
+  async function confirmarReasignacion() {
+    const { p, clienteId } = reasignando;
+    if (!clienteId) return;
+    setReasignando(r => ({ ...r, loading: true }));
+    try {
+      await api.put(`/admin/parking/${p.id}/owner`, { cliente_id: clienteId });
+      setReasignando(null);
+      reloadParking();
+    } catch (err) {
+      alert(err.response?.data?.error || 'Error al cambiar el dueño');
+      setReasignando(r => ({ ...r, loading: false }));
+    }
+  }
 
   async function crear(e) {
     e.preventDefault();
@@ -87,10 +107,27 @@ function ParkingTab({ parking, reloadParking, users }) {
             <p>{p.direccion}</p>
             <p>💰 {formatTarifa(p)}</p>
             <p className={'badge ' + (p.cupos_disponibles > 0 ? 'ok' : 'off')}>🅿️ {p.cupos_disponibles} / {p.cupo_maximo} disponibles</p>
+            <p style={{ color: 'var(--text-muted)', fontSize: '.85rem' }}>👤 Dueño: {dueñoDe(p.cliente_id)}</p>
             <div className="row-form">
               <button onClick={() => cambiarCupo(p.id, p.cupo_maximo)}>Cambiar cupo máximo</button>
               <button type="button" className="secondary" onClick={() => cambiarTarifa(p)}>Cambiar tarifa</button>
             </div>
+            {reasignando?.p.id === p.id ? (
+              <div className="row-form">
+                <select value={reasignando.clienteId} onChange={e => setReasignando({ ...reasignando, clienteId: e.target.value })} aria-label={`Nuevo dueño de ${p.nombre}`}>
+                  <option value="">Nuevo dueño...</option>
+                  {clientes.map(c => <option key={c.id} value={c.id}>{c.nombre} ({c.email})</option>)}
+                </select>
+                <button type="button" onClick={confirmarReasignacion} disabled={!reasignando.clienteId || reasignando.loading}>
+                  {reasignando.loading && <span className="spinner" />}Confirmar
+                </button>
+                <button type="button" className="secondary" onClick={() => setReasignando(null)} disabled={reasignando.loading}>Cancelar</button>
+              </div>
+            ) : (
+              <div className="row-form">
+                <button type="button" className="secondary" onClick={() => setReasignando({ p, clienteId: '', loading: false })}>Cambiar dueño</button>
+              </div>
+            )}
           </div>
         ))}
         {parking.length===0 && <div className="empty-state">No hay estacionamientos registrados todavía.</div>}
@@ -231,7 +268,9 @@ export default function AdminPanel({ user }) {
   const [users, setUsers] = useState([]);
   const [params, setParams] = useState([]);
 
-  const reloadParking = () => api.get('/parking').then(r => setParking(r.data));
+  // El listado público (/parking) oculta cliente_id a propósito; el admin necesita verlo para
+  // saber (y poder corregir) a quién pertenece cada estacionamiento.
+  const reloadParking = () => api.get('/admin/parking').then(r => setParking(r.data));
   const reloadUsers = () => api.get('/admin/users').then(r => setUsers(r.data));
   const reloadParams = () => api.get('/admin/params').then(r => setParams(r.data));
 

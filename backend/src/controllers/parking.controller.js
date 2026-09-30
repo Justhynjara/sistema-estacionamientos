@@ -66,3 +66,22 @@ export async function updatePricing(req,res){
   await registrarAuditoria(req.user.id, 'estacionamiento.actualizar_tarifa', 'estacionamiento', r.rows[0].id, { precio_minuto, tarifa_minima });
   res.json(r.rows[0]);
 }
+// Listado para el panel de administración: a diferencia de listParking (público), incluye
+// cliente_id y los estacionamientos desactivados, porque el admin necesita ver y poder corregir
+// a quién pertenece cada uno (la vista pública lo oculta a propósito, ver getParking).
+export async function listParkingAdmin(req,res){
+  const r=await pool.query(`SELECT id,nombre,direccion,latitud,longitud,precio_minuto,tarifa_minima,cupo_maximo,cupos_disponibles,estado,cliente_id
+    FROM estacionamientos ORDER BY nombre`);
+  res.json(r.rows);
+}
+export async function updateOwner(req,res){
+  const {cliente_id}=req.body;
+  const due=await pool.query(`SELECT rol FROM usuarios WHERE id=$1`,[cliente_id]);
+  if(!due.rowCount || due.rows[0].rol!=='CLIENTE')
+    return res.status(400).json({error:'El nuevo dueño debe ser un usuario con rol CLIENTE'});
+  const anterior=await pool.query(`SELECT cliente_id FROM estacionamientos WHERE id=$1`,[req.params.id]);
+  if(!anterior.rowCount) return res.status(404).json({error:'No encontrado'});
+  const r=await pool.query(`UPDATE estacionamientos SET cliente_id=$1 WHERE id=$2 RETURNING *`,[cliente_id,req.params.id]);
+  await registrarAuditoria(req.user.id, 'estacionamiento.cambiar_dueno', 'estacionamiento', r.rows[0].id, { cliente_id_anterior: anterior.rows[0].cliente_id, cliente_id_nuevo: cliente_id });
+  res.json(r.rows[0]);
+}

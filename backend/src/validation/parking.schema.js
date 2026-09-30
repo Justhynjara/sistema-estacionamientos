@@ -34,3 +34,7 @@ export const updatePricingSchema = z.object({
 export const updateCapacitySchema = z.object({
   cupo_maximo: z.coerce.number().int().positive()
 });
+
+export const updateOwnerSchema = z.object({
+  cliente_id: uuid
+});

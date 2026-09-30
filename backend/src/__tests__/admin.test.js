@@ -192,4 +192,42 @@ describe('admin: auditoría y control de acceso', () => {
     const inexistente = await request(app).delete('/api/admin/users/11111111-1111-4111-8111-111111111111').set('Authorization', `Bearer ${tokenAdmin}`);
     assert.equal(inexistente.status, 404);
   });
+
+  test('el listado de admin trae cliente_id (el público no lo expone) y el admin puede reasignar el dueño', async () => {
+    const emailDuenoOriginal = `dueno_original_${suffix}@demo.cl`;
+    const emailDuenoNuevo = `dueno_nuevo_${suffix}@demo.cl`;
+    extraEmails.push(emailDuenoOriginal, emailDuenoNuevo);
+    const hash = await bcrypt.hash('clave12345', 10);
+    const original = await pool.query(`INSERT INTO usuarios(nombre,email,password_hash,rol) VALUES('Dueño Original',$1,$2,'CLIENTE') RETURNING id`, [emailDuenoOriginal, hash]);
+    const nuevo = await pool.query(`INSERT INTO usuarios(nombre,email,password_hash,rol) VALUES('Dueño Nuevo',$1,$2,'CLIENTE') RETURNING id`, [emailDuenoNuevo, hash]);
+    const p = await pool.query(
+      `INSERT INTO estacionamientos(cliente_id,nombre,direccion,latitud,longitud,precio_minuto,tarifa_minima,cupo_maximo,cupos_disponibles)
+       VALUES($1,'Parking Reasignar Test','Calle Z',-33.45,-70.66,10,300,5,5) RETURNING id`, [original.rows[0].id]);
+    extraParkings.push(p.rows[0].id);
+
+    const listado = await request(app).get('/api/admin/parking').set('Authorization', `Bearer ${tokenAdmin}`);
+    assert.equal(listado.status, 200);
+    const fila = listado.body.find(e => e.id === p.rows[0].id);
+    assert.equal(fila.cliente_id, original.rows[0].id, 'el listado de admin debe traer cliente_id');
+
+    const publico = await request(app).get('/api/parking');
+    const filaPublica = publico.body.find(e => e.id === p.rows[0].id);
+    assert.equal(filaPublica.cliente_id, undefined, 'el listado público no debe exponer cliente_id');
+
+    const noAdmin = await request(app).put(`/api/admin/parking/${p.rows[0].id}/owner`).set('Authorization', `Bearer ${tokenNoAdmin}`).send({ cliente_id: nuevo.rows[0].id });
+    assert.equal(noAdmin.status, 403);
+
+    const noCliente = await request(app).put(`/api/admin/parking/${p.rows[0].id}/owner`).set('Authorization', `Bearer ${tokenAdmin}`).send({ cliente_id: adminId });
+    assert.equal(noCliente.status, 400, 'no debe permitir asignar como dueño a alguien que no es CLIENTE');
+
+    const reasignar = await request(app).put(`/api/admin/parking/${p.rows[0].id}/owner`).set('Authorization', `Bearer ${tokenAdmin}`).send({ cliente_id: nuevo.rows[0].id });
+    assert.equal(reasignar.status, 200);
+    assert.equal(reasignar.body.cliente_id, nuevo.rows[0].id);
+
+    const log = await request(app).get('/api/admin/audit-log').set('Authorization', `Bearer ${tokenAdmin}`).query({ entidad: 'estacionamiento' });
+    const entrada = log.body.find(e => e.entidad_id === p.rows[0].id && e.accion === 'estacionamiento.cambiar_dueno');
+    assert.ok(entrada, 'debe quedar registro del cambio de dueño');
+    assert.equal(entrada.detalle.cliente_id_anterior, original.rows[0].id);
+    assert.equal(entrada.detalle.cliente_id_nuevo, nuevo.rows[0].id);
+  });
 });

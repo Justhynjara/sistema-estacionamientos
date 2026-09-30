@@ -11,6 +11,7 @@ const ACCION_LABEL = {
   'estacionamiento.crear': 'Creó estacionamiento',
   'estacionamiento.actualizar_cupo': 'Actualizó cupo',
   'estacionamiento.actualizar_tarifa': 'Actualizó tarifa',
+  'estacionamiento.cambiar_dueno': 'Cambió dueño de estacionamiento',
   'solicitud.revisar': 'Revisó solicitud',
   'solicitud.procesar': 'Procesó solicitud'
 };
