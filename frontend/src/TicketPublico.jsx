@@ -48,12 +48,16 @@ export default function TicketPublico({ codigo, onEntrarDueno, onCerrar }) {
 
   function contenido() {
     if (error) return <p className="badge off">⚠️ {error}</p>;
-    if (!t) return <p><span className="spinner" style={{ borderTopColor: 'var(--primary)', borderColor: 'rgba(67,56,202,.2)' }} />Cargando tu ticket…</p>;
+    if (!t) return <p><span className="spinner" />Cargando tu ticket…</p>;
 
     const encabezado = (
       <>
         <h2 style={{ marginBottom: 2 }}>🅿️ {t.estacionamiento_nombre}</h2>
         <p style={{ color: 'var(--text-muted)', marginTop: 0 }}>{t.estacionamiento_direccion}{t.patente ? ` · Patente ${t.patente}` : ''}</p>
+        <p className="mono" style={{ color: 'var(--text-muted)', fontSize: '.78rem', letterSpacing: '.08em', margin: '2px 0 12px' }}>
+          TICKET N.º {codigo}
+        </p>
+        <div className="barcode-rule" style={{ margin: '0 0 16px' }} />
       </>
     );
 
@@ -66,13 +70,13 @@ export default function TicketPublico({ codigo, onEntrarDueno, onCerrar }) {
         <>
           {encabezado}
           <p style={{ margin: '14px 0 2px', color: 'var(--text-muted)' }}>Llevas estacionado</p>
-          <p aria-label="Tiempo estacionado" style={{ fontSize: '2.4rem', fontWeight: 800, margin: 0, fontVariantNumeric: 'tabular-nums' }}>
+          <p aria-label="Tiempo estacionado" className="mono" style={{ fontSize: '2.4rem', fontWeight: 700, margin: 0 }}>
             {formatCronometro(ahoraServidor - new Date(t.fecha_entrada).getTime())}
           </p>
           <p style={{ color: 'var(--text-muted)', marginTop: 2 }}>Entraste a las {hora(t.fecha_entrada)} · {formatDuracion(minutos)} cobrados</p>
 
           <p style={{ margin: '18px 0 2px', color: 'var(--text-muted)' }}>Monto a pagar hasta ahora</p>
-          <p aria-label="Monto a pagar" style={{ fontSize: '2rem', fontWeight: 800, margin: 0 }}>{formatCLP(monto)}</p>
+          <p aria-label="Monto a pagar" className="mono" style={{ fontSize: '2rem', fontWeight: 700, margin: 0 }}>{formatCLP(monto)}</p>
           {descuento > 0 && <p className="badge ok">🎟️ Incluye descuento por tu reserva ya pagada: -{formatCLP(descuento)}</p>}
           <p style={{ color: 'var(--text-muted)', fontSize: '.9rem' }}>
             Tarifa: {formatTarifa(t)}.{enMinimo ? ' Aún estás en el valor base mínimo.' : ''}
@@ -116,11 +120,14 @@ export default function TicketPublico({ codigo, onEntrarDueno, onCerrar }) {
   }
 
   return (
-    <div className="card" style={{ maxWidth: 520, margin: '0 auto' }}>
-      {contenido()}
-      <div className="row-form" style={{ marginTop: 16 }}>
-        {onEntrarDueno && <button type="button" onClick={onEntrarDueno}>🔑 Soy el dueño: iniciar sesión para cobrar</button>}
-        <button type="button" className="secondary" onClick={onCerrar}>← Ir al inicio</button>
+    <div style={{ maxWidth: 520, margin: '0 auto' }}>
+      <div className="ticket-perf" />
+      <div className="card ticket-card">
+        {contenido()}
+        <div className="row-form" style={{ marginTop: 16 }}>
+          {onEntrarDueno && <button type="button" onClick={onEntrarDueno}>🔑 Soy el dueño: iniciar sesión para cobrar</button>}
+          <button type="button" className="secondary" onClick={onCerrar}>← Ir al inicio</button>
+        </div>
       </div>
     </div>
   );

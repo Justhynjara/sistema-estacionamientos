@@ -49,7 +49,7 @@ export default function AuditLogTab() {
         </div>
       </div>
 
-      {loading && <p><span className="spinner" style={{ borderTopColor: 'var(--primary)', borderColor: 'rgba(67,56,202,.2)' }} />Cargando...</p>}
+      {loading && <p><span className="spinner" />Cargando...</p>}
 
       {!loading && (
         <div className="table-wrap">

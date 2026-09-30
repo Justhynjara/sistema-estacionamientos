@@ -183,7 +183,7 @@ function App(){
    return ()=>window.removeEventListener('auth:logout',onLogout);
  },[]);
 
- if(checkingSession) return <div className="login-shell"><p><span className="spinner" style={{borderTopColor:'var(--primary)',borderColor:'rgba(67,56,202,.2)'}}/>Cargando sesión…</p></div>;
+ if(checkingSession) return <div className="login-shell"><p><span className="spinner" />Cargando sesión…</p></div>;
 
  if(resetToken){
    return <ResetPassword token={resetToken} onDone={()=>{setResetToken(null); setShowLogin(true); setAuthView('login');}}/>;

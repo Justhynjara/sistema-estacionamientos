@@ -480,7 +480,7 @@ function DashboardTab({ parking }) {
         </div>
       </div>
 
-      {loading && <p><span className="spinner" style={{ borderTopColor: 'var(--primary)', borderColor: 'rgba(67,56,202,.2)' }} />Cargando datos...</p>}
+      {loading && <p><span className="spinner" />Cargando datos...</p>}
 
       {data && !loading && (
         <>

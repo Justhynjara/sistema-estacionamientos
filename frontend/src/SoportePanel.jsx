@@ -25,7 +25,7 @@ function RevisionSolicitud({ id, onRevisado }) {
     finally { setLoading(''); }
   }
 
-  if (!detalle) return <p><span className="spinner" style={{ borderTopColor: 'var(--primary)', borderColor: 'rgba(67,56,202,.2)' }} />Cargando...</p>;
+  if (!detalle) return <p><span className="spinner" />Cargando...</p>;
 
   return (
     <div className="card">

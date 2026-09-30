@@ -127,7 +127,7 @@ export default function SolicitudClienteForm({ onCerrar }) {
         <label htmlFor="solicitud-fotos" style={{ fontWeight: 600, fontSize: '.9rem' }}>Fotos de la ubicación y el establecimiento (hasta {MAX_FOTOS})</label>
         <div className="row-form" style={{ marginTop: 6 }}>
           <input id="solicitud-fotos" type="file" accept="image/*" multiple onChange={agregarFotos} disabled={comprimiendo || fotos.length >= MAX_FOTOS} />
-          {comprimiendo && <span className="spinner" style={{ borderTopColor: 'var(--primary)', borderColor: 'rgba(67,56,202,.2)' }} />}
+          {comprimiendo && <span className="spinner" />}
         </div>
         {fotos.length > 0 && (
           <div className="grid" style={{ gridTemplateColumns: 'repeat(auto-fit,minmax(110px,1fr))', marginBottom: 14 }}>
