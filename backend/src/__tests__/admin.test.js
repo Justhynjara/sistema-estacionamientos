@@ -209,6 +209,7 @@ describe('admin: auditoría y control de acceso', () => {
     assert.equal(listado.status, 200);
     const fila = listado.body.find(e => e.id === p.rows[0].id);
     assert.equal(fila.cliente_id, original.rows[0].id, 'el listado de admin debe traer cliente_id');
+    assert.equal(fila.total_tickets, 0, 'un estacionamiento recién creado no tiene tickets todavía');
 
     const publico = await request(app).get('/api/parking');
     const filaPublica = publico.body.find(e => e.id === p.rows[0].id);

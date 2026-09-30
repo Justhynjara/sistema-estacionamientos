@@ -68,10 +68,17 @@ export async function updatePricing(req,res){
 }
 // Listado para el panel de administración: a diferencia de listParking (público), incluye
 // cliente_id y los estacionamientos desactivados, porque el admin necesita ver y poder corregir
-// a quién pertenece cada uno (la vista pública lo oculta a propósito, ver getParking).
+// a quién pertenece cada uno (la vista pública lo oculta a propósito, ver getParking). También
+// suma cuántos tickets tiene cada uno: sirve para detectar duplicados (dos estacionamientos con
+// nombre parecido, uno vacío y otro con las ventas reales, cada uno con un dueño distinto).
 export async function listParkingAdmin(req,res){
-  const r=await pool.query(`SELECT id,nombre,direccion,latitud,longitud,precio_minuto,tarifa_minima,cupo_maximo,cupos_disponibles,estado,cliente_id
-    FROM estacionamientos ORDER BY nombre`);
+  const r=await pool.query(`SELECT e.id,e.nombre,e.direccion,e.latitud,e.longitud,e.precio_minuto,e.tarifa_minima,e.cupo_maximo,e.cupos_disponibles,e.estado,e.cliente_id,
+      COUNT(t.id)::int AS total_tickets,
+      COUNT(t.id) FILTER (WHERE t.estado IN ('ACTIVO','RESERVADO'))::int AS tickets_activos
+    FROM estacionamientos e
+    LEFT JOIN tickets t ON t.estacionamiento_id=e.id
+    GROUP BY e.id
+    ORDER BY e.nombre`);
   res.json(r.rows);
 }
 export async function updateOwner(req,res){

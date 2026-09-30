@@ -108,6 +108,9 @@ function ParkingTab({ parking, reloadParking, users }) {
             <p>💰 {formatTarifa(p)}</p>
             <p className={'badge ' + (p.cupos_disponibles > 0 ? 'ok' : 'off')}>🅿️ {p.cupos_disponibles} / {p.cupo_maximo} disponibles</p>
             <p style={{ color: 'var(--text-muted)', fontSize: '.85rem' }}>👤 Dueño: {dueñoDe(p.cliente_id)}</p>
+            <p style={{ color: 'var(--text-muted)', fontSize: '.85rem' }}>
+              🎫 {p.total_tickets ?? 0} tickets en total{p.tickets_activos ? ` (${p.tickets_activos} activo${p.tickets_activos === 1 ? '' : 's'} ahora)` : ''}
+            </p>
             <div className="row-form">
               <button onClick={() => cambiarCupo(p.id, p.cupo_maximo)}>Cambiar cupo máximo</button>
               <button type="button" className="secondary" onClick={() => cambiarTarifa(p)}>Cambiar tarifa</button>
