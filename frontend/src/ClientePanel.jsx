@@ -304,6 +304,10 @@ function EstacionamientosTab({ parking, reloadParking, ticketInicial, onTicketCo
   const [ticketEmitido, setTicketEmitido] = useState(null);
   const [emitiendo, setEmitiendo] = useState(null); // { p, patente, loading }
   const [seleccionadoId, setSeleccionadoId] = useState(null);
+  // Se fija solo en el montaje: el propio GestionTicketPanel limpia ticketInicial (para sacar el
+  // código de la URL) apenas lo consume, y no queremos que ese cambio nos saque de este modo a
+  // mitad del cobro (desmontando el panel justo cuando la cotización está por llegar).
+  const [modoDirecto] = useState(() => !!ticketInicial);
 
   function iniciarEmision(p) {
     setEmitiendo({ p, patente: '', loading: false });
@@ -325,7 +329,7 @@ function EstacionamientosTab({ parking, reloadParking, ticketInicial, onTicketCo
 
   // Llegó por un enlace o un QR ya escaneado: el código identifica el ticket sin ambigüedad,
   // así que va directo al cobro/validación sin pedir primero que elija un estacionamiento.
-  if (ticketInicial) {
+  if (modoDirecto) {
     return <GestionTicketPanel reloadParking={reloadParking} ticketInicial={ticketInicial} onTicketConsumido={onTicketConsumido} />;
   }
 
