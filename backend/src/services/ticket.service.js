@@ -261,15 +261,24 @@ export function startReservationSweeper(logger){
 }
 
 export async function ticketsDashboard(clienteId, estacionamientoId, fecha){
-  const params=[clienteId, estacionamientoId || null, fecha || null];
+  // "Hoy" y los límites del día se calculan en la zona horaria de Chile, no en la del servidor
+  // (Render/Neon corren en UTC): un ticket emitido de noche en Chile podía caer del lado
+  // equivocado del corte UTC y el dueño veía $0 pese a tener ventas ese mismo día.
+  const rango=await pool.query(
+    `SELECT
+       (COALESCE($1::date, (NOW() AT TIME ZONE 'America/Santiago')::date))::timestamp AT TIME ZONE 'America/Santiago' AS desde,
+       (COALESCE($1::date, (NOW() AT TIME ZONE 'America/Santiago')::date) + INTERVAL '1 day')::timestamp AT TIME ZONE 'America/Santiago' AS hasta`,
+    [fecha || null]
+  );
+  const {desde,hasta}=rango.rows[0];
+  const params=[clienteId, estacionamientoId || null, desde, hasta];
 
   const tickets=await pool.query(
     `SELECT t.id,t.codigo_qr,t.patente,t.fecha_entrada,t.fecha_salida,t.estado,t.monto,t.metodo_pago,e.nombre AS estacionamiento_nombre
      FROM tickets t JOIN estacionamientos e ON e.id=t.estacionamiento_id
      WHERE e.cliente_id=$1
        AND ($2::uuid IS NULL OR t.estacionamiento_id=$2)
-       AND t.fecha_entrada >= COALESCE($3::date, CURRENT_DATE)
-       AND t.fecha_entrada < COALESCE($3::date, CURRENT_DATE) + INTERVAL '1 day'
+       AND t.fecha_entrada >= $3 AND t.fecha_entrada < $4
      ORDER BY t.fecha_entrada DESC`,
     params
   );
@@ -279,18 +288,16 @@ export async function ticketsDashboard(clienteId, estacionamientoId, fecha){
      FROM tickets t JOIN estacionamientos e ON e.id=t.estacionamiento_id
      WHERE e.cliente_id=$1
        AND ($2::uuid IS NULL OR t.estacionamiento_id=$2)
-       AND t.fecha_entrada >= COALESCE($3::date, CURRENT_DATE)
-       AND t.fecha_entrada < COALESCE($3::date, CURRENT_DATE) + INTERVAL '1 day'`,
+       AND t.fecha_entrada >= $3 AND t.fecha_entrada < $4`,
     params
   );
 
   const flujo=await pool.query(
-    `SELECT EXTRACT(HOUR FROM t.fecha_entrada)::int AS hora, COUNT(*)::int AS entradas
+    `SELECT EXTRACT(HOUR FROM t.fecha_entrada AT TIME ZONE 'America/Santiago')::int AS hora, COUNT(*)::int AS entradas
      FROM tickets t JOIN estacionamientos e ON e.id=t.estacionamiento_id
      WHERE e.cliente_id=$1
        AND ($2::uuid IS NULL OR t.estacionamiento_id=$2)
-       AND t.fecha_entrada >= COALESCE($3::date, CURRENT_DATE)
-       AND t.fecha_entrada < COALESCE($3::date, CURRENT_DATE) + INTERVAL '1 day'
+       AND t.fecha_entrada >= $3 AND t.fecha_entrada < $4
      GROUP BY hora ORDER BY hora`,
     params
   );

@@ -147,6 +147,36 @@ describe('tickets: propiedad y flujo', () => {
     assert.ok(res.body.tickets.every(t => t.estacionamiento_nombre !== 'Test Parking A'));
   });
 
+  test('el dashboard usa "hoy" en hora de Chile, no en UTC del servidor', async () => {
+    // Un ticket emitido a las 23:50 hora de Chile: si el "hoy" se calcula en UTC (el servidor en
+    // Render/Neon corre en UTC), ese instante ya cae del lado del día siguiente y el ticket
+    // desaparecía del dashboard pese a haberse emitido "hoy" para el dueño.
+    const emitido = await request(app)
+      .post('/api/tickets')
+      .set('Authorization', `Bearer ${tokenA}`)
+      .send({ estacionamiento_id: parkingA, patente: 'TZ0001' });
+    assert.equal(emitido.status, 201);
+    await pool.query(
+      `UPDATE tickets SET fecha_entrada =
+         ((NOW() AT TIME ZONE 'America/Santiago')::date)::timestamp AT TIME ZONE 'America/Santiago' + INTERVAL '23 hours 50 minutes'
+       WHERE codigo_qr=$1`,
+      [emitido.body.codigo_qr]
+    );
+
+    const res = await request(app)
+      .get('/api/tickets/dashboard')
+      .set('Authorization', `Bearer ${tokenA}`);
+    assert.equal(res.status, 200);
+    assert.ok(
+      res.body.tickets.some(t => t.codigo_qr === emitido.body.codigo_qr),
+      'un ticket de las 23:50 hora de Chile debe contar como "hoy" en el dashboard'
+    );
+
+    // Este ticket queda ACTIVO a propósito (para no alterar su fecha_entrada antes de leerla en
+    // el dashboard); se libera el cupo a mano para no afectar la capacidad que usan otros tests.
+    await pool.query(`UPDATE estacionamientos SET cupos_disponibles = cupos_disponibles + 1 WHERE id=$1`, [parkingA]);
+  });
+
   test('sin token, el dashboard responde 401', async () => {
     const res = await request(app).get('/api/tickets/dashboard');
     assert.equal(res.status, 401);
