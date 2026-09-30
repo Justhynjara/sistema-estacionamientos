@@ -192,3 +192,28 @@ describe('ClientePanel — cobro sin Webpay', () => {
     dateNow.mockRestore();
   });
 });
+
+describe('ClientePanel — dashboard', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  test('se refresca solo cada 20s, sin esperar a que el dueño cambie el filtro', async () => {
+    // Timers reales: el polling usa setInterval real y RTL no combina bien su espera con fake timers.
+    const dashboard = { totalTickets: 1, totalCobrado: 3000, horaPico: null, flujoPorHora: Array.from({ length: 24 }, (_, hora) => ({ hora, entradas: 0 })), tickets: [] };
+    api.get.mockImplementation(url => {
+      if (url === '/parking/mine') return Promise.resolve({ data: parking });
+      if (url === '/tickets/dashboard') return Promise.resolve({ data: dashboard });
+      return Promise.resolve({ data: [] });
+    });
+    const user = userEvent.setup();
+    render(<ClientePanel />);
+
+    await user.click(await screen.findByRole('button', { name: /dashboard de tickets/i }));
+    await screen.findByText('$3.000');
+    expect(api.get.mock.calls.filter(([u]) => u === '/tickets/dashboard')).toHaveLength(1);
+
+    await new Promise(resolve => setTimeout(resolve, 20500));
+    expect(api.get.mock.calls.filter(([u]) => u === '/tickets/dashboard')).toHaveLength(2);
+  }, 25000);
+});

@@ -450,11 +450,19 @@ function DashboardTab({ parking }) {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(false);
 
+  // Igual que la tabla de vehículos activos, se refresca solo: si no, una venta recién cobrada no
+  // aparece hasta que el dueño cambie el filtro o recargue la página a mano.
   useEffect(() => {
-    setLoading(true);
-    api.get('/tickets/dashboard', { params: { estacionamiento_id: estacionamientoId || undefined, fecha } })
-      .then(r => setData(r.data))
-      .finally(() => setLoading(false));
+    let cancelado = false;
+    function cargar(mostrarSpinner) {
+      if (mostrarSpinner) setLoading(true);
+      api.get('/tickets/dashboard', { params: { estacionamiento_id: estacionamientoId || undefined, fecha } })
+        .then(r => { if (!cancelado) setData(r.data); })
+        .finally(() => { if (mostrarSpinner) setLoading(false); });
+    }
+    cargar(true);
+    const id = setInterval(() => cargar(false), 20000);
+    return () => { cancelado = true; clearInterval(id); };
   }, [estacionamientoId, fecha]);
 
   const maxEntradas = data ? Math.max(1, ...data.flujoPorHora.map(h => h.entradas)) : 1;
