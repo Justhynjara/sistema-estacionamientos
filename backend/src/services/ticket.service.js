@@ -273,22 +273,28 @@ export async function ticketsDashboard(clienteId, estacionamientoId, fecha){
   const {desde,hasta}=rango.rows[0];
   const params=[clienteId, estacionamientoId || null, desde, hasta];
 
+  // Un auto puede entrar un día y pagar al siguiente: el detalle muestra los tickets que entraron o
+  // se cobraron ese día, y el total cobrado se cuenta por la fecha del cobro (fecha_salida).
   const tickets=await pool.query(
     `SELECT t.id,t.codigo_qr,t.patente,t.fecha_entrada,t.fecha_salida,t.estado,t.monto,t.metodo_pago,e.nombre AS estacionamiento_nombre
      FROM tickets t JOIN estacionamientos e ON e.id=t.estacionamiento_id
      WHERE e.cliente_id=$1
        AND ($2::uuid IS NULL OR t.estacionamiento_id=$2)
-       AND t.fecha_entrada >= $3 AND t.fecha_entrada < $4
-     ORDER BY t.fecha_entrada DESC`,
+       AND ((t.fecha_entrada >= $3 AND t.fecha_entrada < $4)
+         OR (t.fecha_salida >= $3 AND t.fecha_salida < $4))
+     ORDER BY COALESCE(t.fecha_salida, t.fecha_entrada) DESC`,
     params
   );
 
   const totales=await pool.query(
-    `SELECT COUNT(*)::int AS total_tickets, COALESCE(SUM(t.monto),0) AS total_cobrado
+    `SELECT
+       COUNT(*) FILTER (WHERE t.fecha_entrada >= $3 AND t.fecha_entrada < $4)::int AS total_tickets,
+       COALESCE(SUM(t.monto) FILTER (WHERE t.estado='CERRADO' AND t.fecha_salida >= $3 AND t.fecha_salida < $4),0) AS total_cobrado
      FROM tickets t JOIN estacionamientos e ON e.id=t.estacionamiento_id
      WHERE e.cliente_id=$1
        AND ($2::uuid IS NULL OR t.estacionamiento_id=$2)
-       AND t.fecha_entrada >= $3 AND t.fecha_entrada < $4`,
+       AND ((t.fecha_entrada >= $3 AND t.fecha_entrada < $4)
+         OR (t.fecha_salida >= $3 AND t.fecha_salida < $4))`,
     params
   );
 

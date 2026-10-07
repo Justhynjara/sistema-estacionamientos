@@ -34,6 +34,17 @@ function fmtHora(iso) {
   return new Date(iso).toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit' });
 }
 
+// En el dashboard un ticket puede haber entrado otro día (se cobró en la fecha consultada):
+// en ese caso se muestra también el día para que no parezca una hora de hoy.
+function fmtHoraEnDia(iso, fecha) {
+  if (!iso) return '—';
+  const d = new Date(iso);
+  const pad = n => String(n).padStart(2, '0');
+  const dia = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+  const hora = fmtHora(iso);
+  return dia === fecha ? hora : `${pad(d.getDate())}/${pad(d.getMonth() + 1)} ${hora}`;
+}
+
 function tiempoTranscurrido(iso) {
   const min = Math.max(0, Math.floor((Date.now() - new Date(iso).getTime()) / 60000));
   if (min < 60) return `${min} min`;
@@ -538,8 +549,8 @@ function DashboardTab({ parking }) {
                     <tr key={t.id}>
                       <td>{t.estacionamiento_nombre}</td>
                       <td>{t.patente || '—'}</td>
-                      <td>{fmtHora(t.fecha_entrada)}</td>
-                      <td>{fmtHora(t.fecha_salida)}</td>
+                      <td>{fmtHoraEnDia(t.fecha_entrada, fecha)}</td>
+                      <td>{fmtHoraEnDia(t.fecha_salida, fecha)}</td>
                       <td><span className={'badge ' + (t.estado === 'ACTIVO' ? 'ok' : 'off')} style={t.estado !== 'ACTIVO' ? { color: 'var(--text-muted)', background: '#f0f0f5' } : {}}>{t.estado}</span></td>
                       <td>{METODO_LABEL[t.metodo_pago] || '—'}</td>
                       <td>{t.monto != null ? `$${Number(t.monto).toLocaleString('es-CL')}` : '—'}</td>
@@ -547,7 +558,7 @@ function DashboardTab({ parking }) {
                   ))}
                 </tbody>
               </table>
-              {data.tickets.length === 0 && <div className="empty-state">No hay tickets emitidos ese día.</div>}
+              {data.tickets.length === 0 && <div className="empty-state">No hay tickets emitidos ni cobrados ese día.</div>}
             </div>
             <Pagination page={ticketsPage} totalPages={ticketsTotalPages} onChange={setTicketsPage} />
           </div>

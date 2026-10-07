@@ -177,6 +177,43 @@ describe('tickets: propiedad y flujo', () => {
     await pool.query(`UPDATE estacionamientos SET cupos_disponibles = cupos_disponibles + 1 WHERE id=$1`, [parkingA]);
   });
 
+  test('un cobro de hoy aparece en el dashboard de hoy aunque el auto haya entrado ayer', async () => {
+    const emitido = await request(app)
+      .post('/api/tickets')
+      .set('Authorization', `Bearer ${tokenA}`)
+      .send({ estacionamiento_id: parkingA, patente: 'AY0001' });
+    assert.equal(emitido.status, 201);
+    await pool.query(`UPDATE tickets SET fecha_entrada = NOW() - interval '1 day' WHERE codigo_qr=$1`, [emitido.body.codigo_qr]);
+
+    const antes = await request(app).get('/api/tickets/dashboard').set('Authorization', `Bearer ${tokenA}`);
+    const cierra = await request(app)
+      .post('/api/tickets/close')
+      .set('Authorization', `Bearer ${tokenA}`)
+      .send({ codigo_qr: emitido.body.codigo_qr, metodo_pago: 'EFECTIVO' });
+    assert.equal(cierra.status, 200);
+    const despues = await request(app).get('/api/tickets/dashboard').set('Authorization', `Bearer ${tokenA}`);
+
+    assert.equal(despues.body.totalCobrado - antes.body.totalCobrado, Number(cierra.body.monto),
+      'lo cobrado hoy debe sumarse al total de hoy, sin importar cuándo entró el vehículo');
+    assert.equal(despues.body.totalTickets, antes.body.totalTickets,
+      'un ticket emitido ayer no cuenta como emitido hoy');
+    assert.ok(despues.body.tickets.some(t => t.codigo_qr === emitido.body.codigo_qr),
+      'el ticket cobrado hoy debe aparecer en el detalle de hoy');
+  });
+
+  test('el total cobrado no incluye tickets aún activos (sin cobrar)', async () => {
+    const antes = await request(app).get('/api/tickets/dashboard').set('Authorization', `Bearer ${tokenA}`);
+    const emitido = await request(app)
+      .post('/api/tickets')
+      .set('Authorization', `Bearer ${tokenA}`)
+      .send({ estacionamiento_id: parkingA, patente: 'AY0002' });
+    const despues = await request(app).get('/api/tickets/dashboard').set('Authorization', `Bearer ${tokenA}`);
+    assert.equal(despues.body.totalTickets, antes.body.totalTickets + 1);
+    assert.equal(despues.body.totalCobrado, antes.body.totalCobrado);
+    await pool.query(`UPDATE tickets SET estado='CANCELADO' WHERE codigo_qr=$1`, [emitido.body.codigo_qr]);
+    await pool.query(`UPDATE estacionamientos SET cupos_disponibles = cupos_disponibles + 1 WHERE id=$1`, [parkingA]);
+  });
+
   test('sin token, el dashboard responde 401', async () => {
     const res = await request(app).get('/api/tickets/dashboard');
     assert.equal(res.status, 401);
