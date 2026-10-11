@@ -25,9 +25,14 @@ async function handleWebpayReturn(req,res){
     return res.redirect(`${env.frontendUrl}/?pago=cancelado`);
   }
   try{
-    const {aprobado,monto,codigoQr,error}=await confirmPayment(token);
+    const {aprobado,reembolsado,monto,buyOrder,codigoQr,error}=await confirmPayment(token);
     if(aprobado) return res.redirect(`${env.frontendUrl}/?pago=aprobado&reserva=${codigoQr}`);
-    res.redirect(`${env.frontendUrl}/?pago=${error?'sin_cupo':'rechazado'}&monto=${Math.round(monto)}`);
+    // Pago aprobado pero sin cupo: "reembolsado" si Webpay ya anuló el cargo; "sin_cupo" si la
+    // anulación quedó pendiente (se reintenta sola), con la orden de compra para que el conductor
+    // pueda reclamar con el mismo número que aparece en su comprobante de Webpay.
+    if(error && reembolsado) return res.redirect(`${env.frontendUrl}/?pago=reembolsado&monto=${Math.round(monto)}`);
+    if(error) return res.redirect(`${env.frontendUrl}/?pago=sin_cupo&monto=${Math.round(monto)}&orden=${encodeURIComponent(buyOrder)}`);
+    res.redirect(`${env.frontendUrl}/?pago=rechazado&monto=${Math.round(monto)}`);
   }catch(e){
     logger.error({err:e},'Error confirmando pago Webpay');
     res.redirect(`${env.frontendUrl}/?pago=error`);

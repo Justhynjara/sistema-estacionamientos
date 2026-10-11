@@ -316,7 +316,7 @@ async function buscarCercaDe(destCoords) {
       {reservaPendiente && (
         <div className="card">
           <h3>🎫 Reservar cupo en {reservaPendiente.nombre}</h3>
-          <p>Ingresa la patente del vehículo que va a estacionar. Para confirmar, se te pedirá un micropago de <strong>$100 CLP</strong> por Webpay — evita reservas falsas y tu cupo queda apartado por <strong>10 minutos</strong>. Si llegas a tiempo, se descuenta de lo que pagues al salir; si la reserva expira sin usarse, <strong>el monto no se reembolsa</strong>.</p>
+          <p>Ingresa la patente del vehículo que va a estacionar. Para confirmar, se te pedirá un micropago de <strong>$100 CLP</strong> por Webpay — evita reservas falsas y tu cupo queda apartado por <strong>10 minutos</strong>. Si llegas a tiempo, se descuenta de lo que pagues al salir; si la reserva expira sin usarse, <strong>el monto no se reembolsa</strong>. Si el último cupo se ocupa mientras pagas, anulamos el cobro automáticamente.</p>
           {reservaError && <p className="badge off">⚠️ {reservaError}</p>}
           <form onSubmit={confirmarReserva} className="row-form">
             <input

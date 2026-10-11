@@ -43,6 +43,16 @@ export default function TermsOfService() {
         <li>El cupo queda apartado por el tiempo que indique la reserva (10 minutos, salvo que el estacionamiento indique otro plazo).</li>
         <li>Si validas tu llegada dentro de ese plazo, el monto se descuenta del cobro final que te haga el estacionamiento al salir.</li>
         <li><strong>Si no llegas dentro del plazo, la reserva expira, el cupo se libera y el monto de $100 CLP no se reembolsa.</strong> Es el costo de haber apartado ese cupo, se use o no.</li>
+        <li>
+          <strong>Si tu pago se aprueba pero no alcanzamos a apartarte el cupo</strong> (por ejemplo,
+          porque el último cupo se ocupó mientras pagabas), no se crea la reserva y{' '}
+          <strong>anulamos automáticamente el cobro en Webpay</strong>: no pagas nada. Te lo
+          avisamos en pantalla al volver de Webpay. La devolución la hace tu banco o emisor de la
+          tarjeta y puede tardar algunos días hábiles en verse en tu cartola. Si la anulación
+          automática falla, la reintentamos; si aun así no ves la devolución, escríbenos a{' '}
+          <strong>{CONTACTO_LEGAL}</strong> con la orden de compra que aparece en tu comprobante
+          de Webpay.
+        </li>
       </ul>
       <p>Verificamos los pagos directamente con Transbank; nunca vemos ni almacenamos el número de tu tarjeta.</p>
 

@@ -10,6 +10,7 @@ import TicketPublico from './TicketPublico.jsx';
 import LegalPage from './legal/LegalPage.jsx';
 import Footer from './legal/Footer.jsx';
 import CookieNotice from './legal/CookieNotice.jsx';
+import {CONTACTO_LEGAL} from './legal/contenido.js';
 
 function Login({onLogin,onCancel,onForgot}){
   const [email,setEmail]=useState(''),[password,setPassword]=useState('');
@@ -96,13 +97,16 @@ function ResetPassword({token,onDone}){
   </div>
 }
 
-function PagoBanner({estado,monto,onClose}){
+function PagoBanner({estado,monto,orden,onClose}){
   if(!estado) return null;
+  const montoTxt=monto?` de $${Number(monto).toLocaleString('es-CL')}`:'';
   const textos={
     aprobado:{cls:'ok',texto:`✅ Pago aprobado${monto?` por $${Number(monto).toLocaleString('es-CL')}`:''}.`},
     rechazado:{cls:'off',texto:'❌ El pago fue rechazado. Intenta con otra tarjeta.'},
     cancelado:{cls:'off',texto:'⚠️ Pago cancelado.'},
-    sin_cupo:{cls:'off',texto:'⚠️ Tu pago se procesó, pero el cupo se agotó justo antes de confirmar tu reserva. Contacta al estacionamiento para resolverlo.'},
+    // El cupo se ocupó entre que empezaste a pagar y la confirmación: el backend anula el cargo en Webpay.
+    reembolsado:{cls:'off',texto:`⚠️ No pudimos reservar: el último cupo se ocupó justo antes de confirmar tu pago. Anulamos el cobro${montoTxt} en Webpay, así que no se te cobrará nada. Según tu banco, la devolución puede tardar unos días hábiles en verse en tu cartola.`},
+    sin_cupo:{cls:'off',texto:`⚠️ No pudimos reservar: el último cupo se ocupó justo antes de confirmar tu pago${montoTxt}. Todavía no logramos anular el cobro en Webpay; lo seguiremos intentando automáticamente. Si en 5 días hábiles no ves la devolución, escríbenos a ${CONTACTO_LEGAL}${orden?` indicando la orden de compra ${orden}`:''}.`},
     error:{cls:'off',texto:'⚠️ Ocurrió un error al confirmar el pago.'}
   };
   const info=textos[estado];
@@ -150,7 +154,7 @@ function App(){
    const legal=params.get('legal');
    if(ticket) setTicketCodigo(ticket);
    if(reset) setResetToken(reset);
-   if(pagoEstado) setPago({estado:pagoEstado, monto:params.get('monto')});
+   if(pagoEstado) setPago({estado:pagoEstado, monto:params.get('monto'), orden:params.get('orden')});
    if(reserva) setReservaCodigo(reserva);
    if(legal) setLegalPage(legal);
    if(reset || pagoEstado || reserva){
@@ -242,7 +246,7 @@ function App(){
        <div className="brand"><span className="logo">🅿️</span> Sistema de Estacionamientos</div>
        <button onClick={()=>{setShowLogin(true);setAuthView('login');}}>Acceso Cliente / Admin</button>
      </nav>
-     <PagoBanner estado={pago?.estado} monto={pago?.monto} onClose={()=>setPago(null)}/>
+     <PagoBanner estado={pago?.estado} monto={pago?.monto} orden={pago?.orden} onClose={()=>setPago(null)}/>
      <main className="container">
        <div className="hero">
          <h1>Encuentra estacionamiento cerca de tu destino</h1>
@@ -275,7 +279,7 @@ function App(){
    <div className="brand"><span className="logo">🅿️</span> Sistema de Estacionamientos <span className="role-pill">{user.rol}</span></div>
    <button onClick={salir}>Salir</button>
  </nav>
- <PagoBanner estado={pago?.estado} monto={pago?.monto} onClose={()=>setPago(null)}/>
+ <PagoBanner estado={pago?.estado} monto={pago?.monto} orden={pago?.orden} onClose={()=>setPago(null)}/>
  <main className="container">
   {user.rol==='ADMIN'
     ? <AdminPanel user={user}/>

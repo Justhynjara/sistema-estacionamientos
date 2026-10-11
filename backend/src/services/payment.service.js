@@ -1,6 +1,7 @@
 import crypto from 'crypto';
 import { pool } from '../config/database.js';
 import { env } from '../config/env.js';
+import { logger } from '../config/logger.js';
 import { webpayTransaction } from './webpay.service.js';
 import { reserveTicket } from './ticket.service.js';
 
@@ -23,6 +24,7 @@ export async function releaseStalePayments() {
 export function startPaymentSweeper(logger) {
   setInterval(() => {
     releaseStalePayments().catch(err => logger?.error({ err }, 'Error liberando pagos vencidos'));
+    retryPendingRefunds().catch(err => logger?.error({ err }, 'Error reintentando reembolsos pendientes'));
   }, 5 * 60000);
 }
 
@@ -77,8 +79,71 @@ export async function confirmPayment(token) {
     reserva = await reserveTicket(payment.estacionamiento_id, payment.patente);
   } catch (e) {
     // El pago se aprobó pero el cupo se agotó justo antes de confirmar (carrera poco frecuente).
-    return { aprobado: false, monto: Number(payment.monto), error: e.message };
+    // Sin reserva no hay nada que cobrar: se anula el cargo en Webpay en vez de quedarse con él.
+    const reembolsado = await reembolsar(tx, payment);
+    return { aprobado: false, reembolsado, monto: Number(payment.monto), buyOrder: payment.buy_order, error: e.message };
   }
   await pool.query(`UPDATE payments SET ticket_id=$1 WHERE id=$2`, [reserva.id, payment.id]);
   return { aprobado, monto: Number(payment.monto), codigoQr: reserva.codigo_qr };
+}
+
+// Webpay Plus responde REVERSED (reversa total: el cargo desaparece) o NULLIFIED (anulación, con
+// response_code 0 si se aceptó) según cuánto tiempo pasó desde el pago.
+function reembolsoAceptado(r) {
+  return r?.type === 'REVERSED' || (r?.type === 'NULLIFIED' && r.response_code === 0);
+}
+
+async function marcarReembolsado(paymentId, tipo) {
+  await pool.query(
+    `UPDATE payments SET estado='REEMBOLSADO', reembolso_tipo=$1, reembolsado_at=NOW() WHERE id=$2`,
+    [tipo, paymentId]
+  );
+}
+
+async function anularEnWebpay(tx, payment) {
+  const r = await tx.refund(payment.token, Number(payment.monto));
+  if (!reembolsoAceptado(r)) throw new Error(`Transbank no aceptó el reembolso (${r?.type}, código ${r?.response_code})`);
+  await marcarReembolsado(payment.id, r.type);
+}
+
+async function reembolsar(tx, payment) {
+  try {
+    await anularEnWebpay(tx, payment);
+    return true;
+  } catch (err) {
+    // El conductor sigue con el cargo: queda pendiente para que retryPendingRefunds lo reintente.
+    await pool.query(`UPDATE payments SET estado='REEMBOLSO_PENDIENTE' WHERE id=$1`, [payment.id]);
+    logger.error({ err, paymentId: payment.id, buyOrder: payment.buy_order }, 'No se pudo reembolsar un pago de reserva sin cupo');
+    return false;
+  }
+}
+
+// Transbank solo permite consultar el estado de una transacción hasta 7 días después del pago.
+const REFUND_RETRY_DAYS = 7;
+
+// Reintenta los reembolsos que fallaron en confirmPayment. Antes de anular de nuevo se consulta el
+// estado en Transbank: si el primer intento sí llegó (y lo que falló fue la respuesta), no se anula dos veces.
+export async function retryPendingRefunds() {
+  const pendientes = await pool.query(
+    `SELECT * FROM payments
+     WHERE estado='REEMBOLSO_PENDIENTE' AND created_at > NOW() - ($1 || ' days')::interval`,
+    [REFUND_RETRY_DAYS]
+  );
+  let reembolsados = 0;
+  for (const payment of pendientes.rows) {
+    const tx = webpayTransaction();
+    try {
+      const estado = await tx.status(payment.token);
+      if (estado.status === 'REVERSED' || estado.status === 'NULLIFIED') {
+        await marcarReembolsado(payment.id, estado.status);
+        reembolsados++;
+      } else if (estado.status === 'AUTHORIZED') {
+        await anularEnWebpay(tx, payment);
+        reembolsados++;
+      }
+    } catch (err) {
+      logger.error({ err, paymentId: payment.id, buyOrder: payment.buy_order }, 'Reintento de reembolso fallido');
+    }
+  }
+  return reembolsados;
 }

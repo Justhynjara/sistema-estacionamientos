@@ -197,4 +197,18 @@ describe('App', () => {
     expect(screen.queryByText(/usamos una sola cookie/i)).not.toBeInTheDocument();
     unmount();
   });
+
+  test('al volver de Webpay sin cupo y con el cobro anulado, avisa claramente que no se cobró nada', async () => {
+    window.history.replaceState({}, '', '/?pago=reembolsado&monto=100');
+    render(<App />);
+    expect(await screen.findByRole('button', { name: /anulamos el cobro de \$100 en webpay, así que no se te cobrará nada/i })).toBeInTheDocument();
+  });
+
+  test('si la anulación quedó pendiente, muestra a quién escribir y la orden de compra', async () => {
+    window.history.replaceState({}, '', '/?pago=sin_cupo&monto=100&orden=RABC123');
+    render(<App />);
+    const aviso = await screen.findByRole('button', { name: /todavía no logramos anular el cobro/i });
+    expect(aviso).toHaveTextContent('orden de compra RABC123');
+    expect(aviso).toHaveTextContent('@');
+  });
 });
