@@ -441,8 +441,15 @@ function exportarCSV(tickets, fecha) {
     METODO_LABEL[t.metodo_pago] || '',
     t.monto != null ? Number(t.monto) : ''
   ]);
+  // Excel en español usa ";" como separador de lista: con "," abre todo en una sola columna.
+  // Un texto que empieza con = + - @ se neutraliza para que Excel no lo ejecute como fórmula.
+  const celda = v => {
+    let s = String(v);
+    if (typeof v === 'string' && /^[=+\-@\t\r]/.test(s)) s = `'${s}`;
+    return `"${s.replace(/"/g, '""')}"`;
+  };
   const csv = [encabezado, ...filas]
-    .map(fila => fila.map(v => `"${String(v).replace(/"/g, '""')}"`).join(','))
+    .map(fila => fila.map(celda).join(';'))
     .join('\r\n');
   const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8;' });
   const url = URL.createObjectURL(blob);
@@ -460,6 +467,8 @@ function DashboardTab({ parking }) {
   const [fecha, setFecha] = useState(todayStr());
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+  const [recarga, setRecarga] = useState(0);
 
   // Igual que la tabla de vehículos activos, se refresca solo: si no, una venta recién cobrada no
   // aparece hasta que el dueño cambie el filtro o recargue la página a mano.
@@ -468,15 +477,24 @@ function DashboardTab({ parking }) {
     function cargar(mostrarSpinner) {
       if (mostrarSpinner) setLoading(true);
       api.get('/tickets/dashboard', { params: { estacionamiento_id: estacionamientoId || undefined, fecha } })
-        .then(r => { if (!cancelado) setData(r.data); })
-        .finally(() => { if (mostrarSpinner) setLoading(false); });
+        .then(r => { if (!cancelado) { setData(r.data); setError(null); } })
+        .catch(err => { if (!cancelado) setError(err.response?.data?.error || 'No se pudieron cargar los datos del dashboard.'); })
+        .finally(() => { if (mostrarSpinner && !cancelado) setLoading(false); });
     }
     cargar(true);
     const id = setInterval(() => cargar(false), 20000);
     return () => { cancelado = true; clearInterval(id); };
-  }, [estacionamientoId, fecha]);
+  }, [estacionamientoId, fecha, recarga]);
 
+  const esHoy = fecha === todayStr();
   const maxEntradas = data ? Math.max(1, ...data.flujoPorHora.map(h => h.entradas)) : 1;
+  const porMetodo = data?.cobradoPorMetodo;
+  const abonos = data?.abonosReservas;
+  const resumenFlujo = data
+    ? (data.horaPico
+        ? `Vehículos ingresados por hora. Mayor flujo entre las ${data.horaPico.hora}:00 y las ${data.horaPico.hora + 1}:00, con ${data.horaPico.entradas} vehículos.`
+        : 'Vehículos ingresados por hora. Sin movimiento este día.')
+    : '';
   const { pageItems: ticketsPagina, page: ticketsPage, setPage: setTicketsPage, totalPages: ticketsTotalPages } = usePagination(data?.tickets || [], 10);
 
   return (
@@ -493,16 +511,57 @@ function DashboardTab({ parking }) {
 
       {loading && <p><span className="spinner" />Cargando datos...</p>}
 
+      {error && !loading && (
+        <div className="card" role="alert">
+          <p className="badge off" style={{ margin: 0 }}>
+            {data ? `${error} Se muestran los últimos datos cargados.` : error}
+          </p>
+          <div className="row-form" style={{ marginTop: 8 }}>
+            <button type="button" className="secondary" onClick={() => setRecarga(n => n + 1)}>🔄 Reintentar</button>
+          </div>
+        </div>
+      )}
+
       {data && !loading && (
         <>
           <div className="grid">
             <div className="card">
-              <h3>🎫 Tickets emitidos</h3>
+              <h3>🚗 Vehículos ingresados</h3>
               <p style={{ fontSize: '2rem', fontWeight: 800, margin: 0 }}>{data.totalTickets}</p>
+              {esHoy && data.vehiculosDentro != null && (
+                <small style={{ color: 'var(--text-muted)' }}>{data.vehiculosDentro} dentro ahora</small>
+              )}
             </div>
             <div className="card">
-              <h3>💰 Total cobrado</h3>
+              <h3>💰 Total cobrado en caja</h3>
               <p style={{ fontSize: '2rem', fontWeight: 800, margin: 0 }}>${data.totalCobrado.toLocaleString('es-CL')}</p>
+              {data.cobros != null && (
+                <small style={{ color: 'var(--text-muted)' }}>
+                  {data.cobros} {data.cobros === 1 ? 'cobro' : 'cobros'}
+                  {data.ticketPromedio != null && ` · promedio $${data.ticketPromedio.toLocaleString('es-CL')}`}
+                </small>
+              )}
+              {porMetodo && data.totalCobrado > 0 && (
+                <ul style={{ listStyle: 'none', padding: 0, margin: '8px 0 0', fontSize: '.9rem' }}>
+                  {['EFECTIVO', 'DEBITO', 'CREDITO'].map(m => (
+                    <li key={m}>{METODO_LABEL[m]}: <strong>${porMetodo[m].toLocaleString('es-CL')}</strong></li>
+                  ))}
+                  {porMetodo.SIN_REGISTRO > 0 && (
+                    <li>Sin medio registrado: <strong>${porMetodo.SIN_REGISTRO.toLocaleString('es-CL')}</strong></li>
+                  )}
+                </ul>
+              )}
+              {abonos && abonos.cantidad > 0 && (
+                <p style={{ fontSize: '.85rem', color: 'var(--text-muted)', margin: '8px 0 0' }}>
+                  Además: ${abonos.monto.toLocaleString('es-CL')} en {abonos.cantidad} {abonos.cantidad === 1 ? 'abono' : 'abonos'} de reserva pagados online (Webpay), descontados al cobrar.
+                </p>
+              )}
+            </div>
+            <div className="card">
+              <h3>⏱️ Permanencia promedio</h3>
+              {data.permanenciaPromedioMin != null
+                ? <p style={{ fontSize: '1.4rem', fontWeight: 800, margin: 0 }}>{formatDuracion(data.permanenciaPromedioMin)}</p>
+                : <p style={{ color: 'var(--text-muted)' }}>Sin cobros este día</p>}
             </div>
             <div className="card">
               <h3>🔥 Hora de mayor flujo</h3>
@@ -514,7 +573,7 @@ function DashboardTab({ parking }) {
 
           <div className="card">
             <h3>Flujo de vehículos por hora</h3>
-            <div style={{ display: 'flex', alignItems: 'flex-end', gap: 3, height: 140, marginTop: 12 }}>
+            <div role="img" aria-label={resumenFlujo} style={{ display: 'flex', alignItems: 'flex-end', gap: 3, height: 140, marginTop: 12 }}>
               {data.flujoPorHora.map(h => (
                 <div key={h.hora} title={`${h.hora}:00 — ${h.entradas} vehículos`} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'flex-end', height: '100%' }}>
                   <div style={{
@@ -527,7 +586,7 @@ function DashboardTab({ parking }) {
                 </div>
               ))}
             </div>
-            <div style={{ display: 'flex', gap: 3, marginTop: 4 }}>
+            <div aria-hidden="true" style={{ display: 'flex', gap: 3, marginTop: 4 }}>
               {data.flujoPorHora.map(h => (
                 <div key={h.hora} style={{ flex: 1, textAlign: 'center', fontSize: '.62rem', color: 'var(--text-muted)' }}>
                   {h.hora % 3 === 0 ? h.hora : ''}

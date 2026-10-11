@@ -41,7 +41,7 @@ describe('tickets: propiedad y flujo', () => {
   });
 
   after(async () => {
-    await pool.query('DELETE FROM payments WHERE ticket_id IN (SELECT id FROM tickets WHERE estacionamiento_id=ANY($1))', [[parkingA, parkingB]]);
+    await pool.query('DELETE FROM payments WHERE ticket_id IN (SELECT id FROM tickets WHERE estacionamiento_id=ANY($1)) OR estacionamiento_id=ANY($1)', [[parkingA, parkingB]]);
     await pool.query('DELETE FROM tickets WHERE estacionamiento_id=ANY($1)', [[parkingA, parkingB]]);
     await pool.query('DELETE FROM estacionamientos WHERE id=ANY($1)', [[parkingA, parkingB]]);
     await pool.query('DELETE FROM usuarios WHERE email=ANY($1)', [[clienteA.email, clienteB.email]]);
@@ -212,6 +212,76 @@ describe('tickets: propiedad y flujo', () => {
     assert.equal(despues.body.totalCobrado, antes.body.totalCobrado);
     await pool.query(`UPDATE tickets SET estado='CANCELADO' WHERE codigo_qr=$1`, [emitido.body.codigo_qr]);
     await pool.query(`UPDATE estacionamientos SET cupos_disponibles = cupos_disponibles + 1 WHERE id=$1`, [parkingA]);
+  });
+
+  test('una reserva que no llegó no cuenta como vehículo ingresado ni en el flujo por hora', async () => {
+    const antes = await request(app).get('/api/tickets/dashboard').set('Authorization', `Bearer ${tokenA}`);
+    const reserva = await request(app)
+      .post('/api/tickets/reserve')
+      .set('Authorization', `Bearer ${tokenA}`)
+      .send({ estacionamiento_id: parkingA });
+    assert.equal(reserva.status, 201);
+    const pendiente = await request(app).get('/api/tickets/dashboard').set('Authorization', `Bearer ${tokenA}`);
+    await pool.query(`UPDATE tickets SET estado='CANCELADO' WHERE codigo_qr=$1`, [reserva.body.codigo_qr]);
+    await pool.query(`UPDATE estacionamientos SET cupos_disponibles = cupos_disponibles + 1 WHERE id=$1`, [parkingA]);
+    const cancelada = await request(app).get('/api/tickets/dashboard').set('Authorization', `Bearer ${tokenA}`);
+
+    const sumaFlujo = d => d.flujoPorHora.reduce((s, h) => s + h.entradas, 0);
+    for (const d of [pendiente.body, cancelada.body]) {
+      assert.equal(d.totalTickets, antes.body.totalTickets);
+      assert.equal(sumaFlujo(d), sumaFlujo(antes.body));
+    }
+  });
+
+  test('el dashboard desglosa lo cobrado por medio de pago y calcula ticket y permanencia promedio', async () => {
+    const antes = await request(app).get('/api/tickets/dashboard').set('Authorization', `Bearer ${tokenA}`);
+    const cobrados = [];
+    for (const [patente, metodo] of [['MP0001', 'EFECTIVO'], ['MP0002', 'DEBITO'], ['MP0003', 'CREDITO']]) {
+      const t = await request(app).post('/api/tickets').set('Authorization', `Bearer ${tokenA}`)
+        .send({ estacionamiento_id: parkingA, patente });
+      await pool.query(`UPDATE tickets SET fecha_entrada = NOW() - interval '30 minutes' WHERE codigo_qr=$1`, [t.body.codigo_qr]);
+      const c = await request(app).post('/api/tickets/close').set('Authorization', `Bearer ${tokenA}`)
+        .send({ codigo_qr: t.body.codigo_qr, metodo_pago: metodo });
+      assert.equal(c.status, 200);
+      cobrados.push([metodo, Number(c.body.monto)]);
+    }
+    const despues = await request(app).get('/api/tickets/dashboard').set('Authorization', `Bearer ${tokenA}`);
+    const d = despues.body;
+
+    for (const [metodo, monto] of cobrados) {
+      assert.equal(d.cobradoPorMetodo[metodo] - antes.body.cobradoPorMetodo[metodo], monto, `desglose de ${metodo}`);
+    }
+    const suma = Object.values(d.cobradoPorMetodo).reduce((s, v) => s + v, 0);
+    assert.equal(suma, d.totalCobrado, 'el desglose debe sumar el total cobrado');
+    assert.equal(d.cobros, antes.body.cobros + 3);
+    assert.equal(d.ticketPromedio, Math.round(d.totalCobrado / d.cobros));
+    assert.ok(Number.isInteger(d.permanenciaPromedioMin) && d.permanenciaPromedioMin >= 0);
+  });
+
+  test('el dashboard informa aparte los abonos de reserva pagados online', async () => {
+    const antes = await request(app).get('/api/tickets/dashboard').set('Authorization', `Bearer ${tokenA}`);
+    await pool.query(
+      `INSERT INTO payments(tipo,estacionamiento_id,patente,buy_order,token,monto,estado)
+       VALUES('RESERVA',$1,'AB1234',$2,$3,100,'APROBADO'), ('RESERVA',$1,'AB1235',$4,$5,100,'RECHAZADO')`,
+      [parkingA, `RT${suffix}a`.slice(0, 26), `tok-${suffix}-a`, `RT${suffix}b`.slice(0, 26), `tok-${suffix}-b`]
+    );
+    const despues = await request(app).get('/api/tickets/dashboard').set('Authorization', `Bearer ${tokenA}`);
+    assert.equal(despues.body.abonosReservas.cantidad, antes.body.abonosReservas.cantidad + 1);
+    assert.equal(despues.body.abonosReservas.monto, antes.body.abonosReservas.monto + 100);
+    assert.equal(despues.body.totalCobrado, antes.body.totalCobrado, 'el abono online no se suma al cobrado en caja');
+
+    const otro = await request(app).get('/api/tickets/dashboard').set('Authorization', `Bearer ${tokenB}`);
+    assert.equal(otro.body.abonosReservas.cantidad, 0, 'otro dueño no ve los abonos de este estacionamiento');
+  });
+
+  test('el dashboard cuenta los vehículos que están dentro ahora', async () => {
+    const antes = await request(app).get('/api/tickets/dashboard').set('Authorization', `Bearer ${tokenA}`);
+    const t = await request(app).post('/api/tickets').set('Authorization', `Bearer ${tokenA}`)
+      .send({ estacionamiento_id: parkingA, patente: 'VD0001' });
+    const despues = await request(app).get('/api/tickets/dashboard').set('Authorization', `Bearer ${tokenA}`);
+    assert.equal(despues.body.vehiculosDentro, antes.body.vehiculosDentro + 1);
+    await request(app).post('/api/tickets/close').set('Authorization', `Bearer ${tokenA}`)
+      .send({ codigo_qr: t.body.codigo_qr, metodo_pago: 'EFECTIVO' });
   });
 
   test('sin token, el dashboard responde 401', async () => {

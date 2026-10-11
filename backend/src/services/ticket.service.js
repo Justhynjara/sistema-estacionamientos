@@ -274,48 +274,90 @@ export async function ticketsDashboard(clienteId, estacionamientoId, fecha){
   const params=[clienteId, estacionamientoId || null, desde, hasta];
 
   // Un auto puede entrar un día y pagar al siguiente: el detalle muestra los tickets que entraron o
-  // se cobraron ese día, y el total cobrado se cuenta por la fecha del cobro (fecha_salida).
-  const tickets=await pool.query(
-    `SELECT t.id,t.codigo_qr,t.patente,t.fecha_entrada,t.fecha_salida,t.estado,t.monto,t.metodo_pago,e.nombre AS estacionamiento_nombre
-     FROM tickets t JOIN estacionamientos e ON e.id=t.estacionamiento_id
-     WHERE e.cliente_id=$1
-       AND ($2::uuid IS NULL OR t.estacionamiento_id=$2)
-       AND ((t.fecha_entrada >= $3 AND t.fecha_entrada < $4)
-         OR (t.fecha_salida >= $3 AND t.fecha_salida < $4))
-     ORDER BY COALESCE(t.fecha_salida, t.fecha_entrada) DESC`,
-    params
-  );
-
-  const totales=await pool.query(
-    `SELECT
-       COUNT(*) FILTER (WHERE t.fecha_entrada >= $3 AND t.fecha_entrada < $4)::int AS total_tickets,
-       COALESCE(SUM(t.monto) FILTER (WHERE t.estado='CERRADO' AND t.fecha_salida >= $3 AND t.fecha_salida < $4),0) AS total_cobrado
-     FROM tickets t JOIN estacionamientos e ON e.id=t.estacionamiento_id
-     WHERE e.cliente_id=$1
-       AND ($2::uuid IS NULL OR t.estacionamiento_id=$2)
-       AND ((t.fecha_entrada >= $3 AND t.fecha_entrada < $4)
-         OR (t.fecha_salida >= $3 AND t.fecha_salida < $4))`,
-    params
-  );
-
-  const flujo=await pool.query(
-    `SELECT EXTRACT(HOUR FROM t.fecha_entrada AT TIME ZONE 'America/Santiago')::int AS hora, COUNT(*)::int AS entradas
-     FROM tickets t JOIN estacionamientos e ON e.id=t.estacionamiento_id
-     WHERE e.cliente_id=$1
-       AND ($2::uuid IS NULL OR t.estacionamiento_id=$2)
-       AND t.fecha_entrada >= $3 AND t.fecha_entrada < $4
-     GROUP BY hora ORDER BY hora`,
-    params
-  );
+  // se cobraron ese día, y lo cobrado se cuenta por la fecha del cobro (fecha_salida).
+  // Las reservas que nunca llegaron (CANCELADO) o que aún no llegan (RESERVADO) no son vehículos
+  // ingresados: si se contaran, inflarían los ingresos del día y la hora de mayor flujo.
+  const [tickets,totales,flujo,abonos,dentro]=await Promise.all([
+    pool.query(
+      `SELECT t.id,t.codigo_qr,t.patente,t.fecha_entrada,t.fecha_salida,t.estado,t.monto,t.metodo_pago,e.nombre AS estacionamiento_nombre
+       FROM tickets t JOIN estacionamientos e ON e.id=t.estacionamiento_id
+       WHERE e.cliente_id=$1
+         AND ($2::uuid IS NULL OR t.estacionamiento_id=$2)
+         AND ((t.fecha_entrada >= $3 AND t.fecha_entrada < $4)
+           OR (t.fecha_salida >= $3 AND t.fecha_salida < $4))
+       ORDER BY COALESCE(t.fecha_salida, t.fecha_entrada) DESC`,
+      params
+    ),
+    pool.query(
+      `SELECT
+         COUNT(*) FILTER (WHERE t.estado IN ('ACTIVO','PAGADO','CERRADO') AND t.fecha_entrada >= $3 AND t.fecha_entrada < $4)::int AS total_tickets,
+         COUNT(*) FILTER (WHERE t.estado='CERRADO' AND t.fecha_salida >= $3 AND t.fecha_salida < $4)::int AS cobros,
+         COALESCE(SUM(t.monto) FILTER (WHERE t.estado='CERRADO' AND t.fecha_salida >= $3 AND t.fecha_salida < $4),0) AS total_cobrado,
+         COALESCE(SUM(t.monto) FILTER (WHERE t.estado='CERRADO' AND t.fecha_salida >= $3 AND t.fecha_salida < $4 AND t.metodo_pago='EFECTIVO'),0) AS efectivo,
+         COALESCE(SUM(t.monto) FILTER (WHERE t.estado='CERRADO' AND t.fecha_salida >= $3 AND t.fecha_salida < $4 AND t.metodo_pago='DEBITO'),0) AS debito,
+         COALESCE(SUM(t.monto) FILTER (WHERE t.estado='CERRADO' AND t.fecha_salida >= $3 AND t.fecha_salida < $4 AND t.metodo_pago='CREDITO'),0) AS credito,
+         AVG(EXTRACT(EPOCH FROM (t.fecha_salida - t.fecha_entrada))/60) FILTER (WHERE t.estado='CERRADO' AND t.fecha_salida >= $3 AND t.fecha_salida < $4) AS permanencia_min
+       FROM tickets t JOIN estacionamientos e ON e.id=t.estacionamiento_id
+       WHERE e.cliente_id=$1
+         AND ($2::uuid IS NULL OR t.estacionamiento_id=$2)
+         AND ((t.fecha_entrada >= $3 AND t.fecha_entrada < $4)
+           OR (t.fecha_salida >= $3 AND t.fecha_salida < $4))`,
+      params
+    ),
+    pool.query(
+      `SELECT EXTRACT(HOUR FROM t.fecha_entrada AT TIME ZONE 'America/Santiago')::int AS hora, COUNT(*)::int AS entradas
+       FROM tickets t JOIN estacionamientos e ON e.id=t.estacionamiento_id
+       WHERE e.cliente_id=$1
+         AND ($2::uuid IS NULL OR t.estacionamiento_id=$2)
+         AND t.estado IN ('ACTIVO','PAGADO','CERRADO')
+         AND t.fecha_entrada >= $3 AND t.fecha_entrada < $4
+       GROUP BY hora ORDER BY hora`,
+      params
+    ),
+    // El micropago de la reserva lo paga el conductor por Webpay y luego se descuenta en caja, así
+    // que no está dentro de "total cobrado": se informa aparte para que el dueño vea el total real.
+    pool.query(
+      `SELECT COUNT(*)::int AS cantidad, COALESCE(SUM(p.monto),0) AS monto
+       FROM payments p JOIN estacionamientos e ON e.id=p.estacionamiento_id
+       WHERE p.tipo='RESERVA' AND p.estado='APROBADO'
+         AND e.cliente_id=$1
+         AND ($2::uuid IS NULL OR p.estacionamiento_id=$2)
+         AND p.created_at >= $3 AND p.created_at < $4`,
+      params
+    ),
+    pool.query(
+      `SELECT COUNT(*)::int AS dentro
+       FROM tickets t JOIN estacionamientos e ON e.id=t.estacionamiento_id
+       WHERE e.cliente_id=$1
+         AND ($2::uuid IS NULL OR t.estacionamiento_id=$2)
+         AND t.estado='ACTIVO'`,
+      [clienteId, estacionamientoId || null]
+    )
+  ]);
 
   const porHora=Array.from({length:24},(_,hora)=>({hora,entradas:0}));
   flujo.rows.forEach(r=>{ porHora[r.hora].entradas=r.entradas; });
   const horaPico=porHora.reduce((max,h)=>h.entradas>max.entradas?h:max, porHora[0]);
 
+  const tot=totales.rows[0];
+  const totalCobrado=Number(tot.total_cobrado);
+  const efectivo=Number(tot.efectivo), debito=Number(tot.debito), credito=Number(tot.credito);
   return {
     tickets: tickets.rows,
-    totalTickets: totales.rows[0].total_tickets,
-    totalCobrado: Number(totales.rows[0].total_cobrado),
+    totalTickets: tot.total_tickets,
+    totalCobrado,
+    cobros: tot.cobros,
+    cobradoPorMetodo: {
+      EFECTIVO: efectivo,
+      DEBITO: debito,
+      CREDITO: credito,
+      // Tickets cerrados antes de que se registrara el medio de pago.
+      SIN_REGISTRO: Math.max(0, totalCobrado-efectivo-debito-credito)
+    },
+    ticketPromedio: tot.cobros>0 ? Math.round(totalCobrado/tot.cobros) : null,
+    permanenciaPromedioMin: tot.permanencia_min!=null ? Math.round(Number(tot.permanencia_min)) : null,
+    abonosReservas: { cantidad: abonos.rows[0].cantidad, monto: Number(abonos.rows[0].monto) },
+    vehiculosDentro: dentro.rows[0].dentro,
     flujoPorHora: porHora,
     horaPico: horaPico.entradas>0 ? horaPico : null
   };

@@ -216,4 +216,52 @@ describe('ClientePanel — dashboard', () => {
     await new Promise(resolve => setTimeout(resolve, 20500));
     expect(api.get.mock.calls.filter(([u]) => u === '/tickets/dashboard')).toHaveLength(2);
   }, 25000);
+
+  test('muestra el desglose por medio de pago, el promedio, la permanencia y los abonos online', async () => {
+    const dashboard = {
+      totalTickets: 4, totalCobrado: 6000, cobros: 3, ticketPromedio: 2000, permanenciaPromedioMin: 95,
+      cobradoPorMetodo: { EFECTIVO: 1000, DEBITO: 2000, CREDITO: 3000, SIN_REGISTRO: 0 },
+      abonosReservas: { cantidad: 2, monto: 200 }, vehiculosDentro: 1,
+      horaPico: { hora: 9, entradas: 3 },
+      flujoPorHora: Array.from({ length: 24 }, (_, hora) => ({ hora, entradas: hora === 9 ? 3 : 0 })),
+      tickets: []
+    };
+    api.get.mockImplementation(url => {
+      if (url === '/parking/mine') return Promise.resolve({ data: parking });
+      if (url === '/tickets/dashboard') return Promise.resolve({ data: dashboard });
+      return Promise.resolve({ data: [] });
+    });
+    const user = userEvent.setup();
+    render(<ClientePanel />);
+    await user.click(await screen.findByRole('button', { name: /dashboard de tickets/i }));
+
+    await screen.findByText('$6.000');
+    expect(screen.getByText(/3 cobros · promedio \$2\.000/)).toBeInTheDocument();
+    expect(screen.getByText('$1.000')).toBeInTheDocument();
+    expect(screen.getByText('$2.000')).toBeInTheDocument();
+    expect(screen.getByText('$3.000')).toBeInTheDocument();
+    expect(screen.getByText('1 h 35 min')).toBeInTheDocument();
+    expect(screen.getByText('1 dentro ahora')).toBeInTheDocument();
+    expect(screen.getByText(/\$200 en 2 abonos de reserva pagados online/)).toBeInTheDocument();
+    expect(screen.getByRole('img', { name: /mayor flujo entre las 9:00 y las 10:00, con 3 vehículos/i })).toBeInTheDocument();
+  });
+
+  test('si falla la carga muestra un error y permite reintentar', async () => {
+    let falla = true;
+    const dashboard = { totalTickets: 0, totalCobrado: 0, horaPico: null, flujoPorHora: Array.from({ length: 24 }, (_, hora) => ({ hora, entradas: 0 })), tickets: [] };
+    api.get.mockImplementation(url => {
+      if (url === '/parking/mine') return Promise.resolve({ data: parking });
+      if (url === '/tickets/dashboard') return falla ? Promise.reject(new Error('red')) : Promise.resolve({ data: dashboard });
+      return Promise.resolve({ data: [] });
+    });
+    const user = userEvent.setup();
+    render(<ClientePanel />);
+    await user.click(await screen.findByRole('button', { name: /dashboard de tickets/i }));
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(/no se pudieron cargar los datos del dashboard/i);
+    falla = false;
+    await user.click(screen.getByRole('button', { name: /reintentar/i }));
+    await screen.findByText('$0');
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+  });
 });
