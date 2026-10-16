@@ -15,7 +15,10 @@ import Capacidad from './Capacidad.jsx';
 import Tarifa from './Tarifa.jsx';
 
 const SOCKET_URL = API_ORIGIN;
-const RADIUS_KM = 5;
+// Con destino se buscan estacionamientos para dejar el auto y caminar: radio corto. Sin destino
+// (el conductor solo quiere estacionar cerca de donde está) se amplía a 15 km a la redonda.
+const RADIO_DESTINO_KM = 5;
+const RADIO_CERCA_KM = 15;
 const REROUTE_THRESHOLD_M = 30;
 
 // Marcadores dibujados con el mismo lenguaje que la lista: tu ubicación es el origen de la línea,
@@ -31,6 +34,13 @@ function paradaIcon(n, lleno, sel) {
 
 function formatDistancia(km) {
   return km < 1 ? `${Math.round(km * 1000)} m` : `${km.toFixed(1).replace('.', ',')} km`;
+}
+
+// La misma distancia separada en cifra y unidad, para destacar la cifra.
+function partesDistancia(km) {
+  return km < 1
+    ? { valor: String(Math.round(km * 1000)), unidad: 'm' }
+    : { valor: km.toFixed(1).replace('.', ','), unidad: 'km' };
 }
 
 // Lo que le importa a quien estaciona es cuánto camina hasta su destino: a paso normal
@@ -73,9 +83,22 @@ async function routeGeometry(from, to) {
   };
 }
 
-function RecenterMap({ center }) {
+// Recentra solo cuando cambian las coordenadas (no en cada render: una actualización de cupos por
+// socket no debe devolver el mapa al centro si el conductor lo movió).
+function RecenterMap({ lat, lng }) {
   const map = useMap();
-  useEffect(() => { if (center) map.setView(center, map.getZoom()); }, [center, map]);
+  useEffect(() => { map.setView([lat, lng], map.getZoom()); }, [lat, lng, map]);
+  return null;
+}
+
+// Tras cada búsqueda, encuadra la partida, el destino y todos los resultados: con 15 km de radio
+// los más lejanos quedarían fuera del zoom por defecto.
+function AjustarVista({ clave, puntos }) {
+  const map = useMap();
+  useEffect(() => {
+    if (!clave || puntos.length < 2) return;
+    map.fitBounds(L.latLngBounds(puntos), { padding: [48, 48], maxZoom: 15 });
+  }, [clave, map]);
   return null;
 }
 
@@ -106,6 +129,9 @@ export default function BuscarCercanos({ reservaCodigoInicial } = {}) {
   const [destinoCoords, setDestinoCoords] = useState(null);
   const [parkings, setParkings] = useState([]);
   const [loading, setLoading] = useState(false);
+  // 'destino': opciones junto al destino escrito; 'cerca': sin destino, alrededor de tu partida.
+  // null mientras no se ha buscado nada.
+  const [modo, setModo] = useState(null);
   const [error, setError] = useState('');
   const [selectedId, setSelectedId] = useState(null);
   const [selectedRoute, setSelectedRoute] = useState(null);
@@ -195,13 +221,16 @@ export default function BuscarCercanos({ reservaCodigoInicial } = {}) {
     joinedRoomsRef.current = nuevos;
   }
 
-async function buscarCercaDe(destCoords) {
+  async function buscarCercaDe(destCoords, modoBusqueda = 'destino') {
     setError(''); setLoading(true); setSelectedId(null); setSelectedRoute(null);
     try {
       if (!destCoords) throw new Error('Aún no se ha obtenido tu ubicación actual');
-      setDestinoCoords(destCoords);
+      setModo(modoBusqueda);
+      // Sin destino no hay una "estación final" que marcar: el centro es tu propia ubicación.
+      setDestinoCoords(modoBusqueda === 'destino' ? destCoords : null);
 
-      const r = await api.get('/parking/nearby', { params: { lat: destCoords.lat, lng: destCoords.lng, radiusKm: RADIUS_KM } });
+      const radiusKm = modoBusqueda === 'cerca' ? RADIO_CERCA_KM : RADIO_DESTINO_KM;
+      const r = await api.get('/parking/nearby', { params: { lat: destCoords.lat, lng: destCoords.lng, radiusKm } });
       const candidatos = r.data.slice(0, 8);
 
       if (userPos) {
@@ -227,7 +256,14 @@ async function buscarCercaDe(destCoords) {
 
   async function buscar(e) {
     e.preventDefault();
-    if (!destino.trim()) { await buscarCercaDe(userPos); return; }
+    if (!destino.trim()) {
+      if (!userPos) {
+        setError('Para buscar sin destino necesitamos tu partida: activa el GPS, escribe una dirección en "Desde" o toca el mapa.');
+        return;
+      }
+      await buscarCercaDe(userPos, 'cerca');
+      return;
+    }
     setError(''); setLoading(true);
     try {
       const destCoords = await geocode(destino.trim());
@@ -345,7 +381,7 @@ async function buscarCercaDe(destCoords) {
                   onChange={setDestino}
                   onSelect={onDestinoSeleccionado}
                 />
-                <p className="small muted" style={{ margin: '6px 0 0' }}>Déjalo vacío para buscar cerca de ti.</p>
+                <p className="small muted" style={{ margin: '6px 0 0' }}>Déjalo vacío para ver los estacionamientos a {RADIO_CERCA_KM} km de ti.</p>
                 {error && <p className="badge off" role="alert">{error}</p>}
                 <button className="go" disabled={loading}>{loading ? <span className="spinner" /> : <Icon name="search" />}{loading ? 'Buscando...' : 'Buscar estacionamientos'}</button>
               </form>
@@ -406,11 +442,19 @@ async function buscarCercaDe(destCoords) {
 
         <section className="opciones" aria-labelledby="opciones-titulo">
           <h2 id="opciones-titulo">
-            {lista.length > 0
-              ? `${lista.length} ${lista.length === 1 ? 'opción' : 'opciones'} junto a tu destino`
-              : 'Opciones junto a tu destino'}
+            {modo === 'cerca'
+              ? (lista.length > 0
+                  ? `${lista.length} ${lista.length === 1 ? 'opción' : 'opciones'} a ${RADIO_CERCA_KM} km de ti`
+                  : `Estacionamientos a ${RADIO_CERCA_KM} km de ti`)
+              : (lista.length > 0
+                  ? `${lista.length} ${lista.length === 1 ? 'opción' : 'opciones'} junto a tu destino`
+                  : 'Opciones junto a tu destino')}
           </h2>
-          {lista.length > 0 && <p className="meta">Ordenadas por distancia al destino. Los cupos se actualizan en tiempo real.</p>}
+          {lista.length > 0 && (
+            <p className="meta">
+              {modo === 'cerca' ? 'Ordenadas por distancia desde tu ubicación.' : 'Ordenadas por distancia al destino.'} Los cupos se actualizan en tiempo real.
+            </p>
+          )}
           {lista.length > 0 ? (
             <ol className="paradas">
               {lista.map(p => {
@@ -424,15 +468,27 @@ async function buscarCercaDe(destCoords) {
                         <h3>{p.nombre}</h3>
                         <p className="addr">{p.direccion}</p>
                       </div>
-                      <div className="dist">
-                        <b><span className="num">{minutosAPie(p.distancia_km)}</span> min</b>
-                        <small>a pie · <span className="num">{formatDistancia(p.distancia_km)}</span></small>
-                      </div>
+                      {modo === 'cerca' && p.distancia_km < 0.05 ? (
+                        <div className="dist">
+                          <b className="aqui">Aquí</b>
+                          <small>a menos de 50 m</small>
+                        </div>
+                      ) : modo === 'cerca' ? (
+                        <div className="dist">
+                          <b><span className="num">{partesDistancia(p.distancia_km).valor}</span> {partesDistancia(p.distancia_km).unidad}</b>
+                          <small>de ti</small>
+                        </div>
+                      ) : (
+                        <div className="dist">
+                          <b><span className="num">{minutosAPie(p.distancia_km)}</span> min</b>
+                          <small>a pie · <span className="num">{formatDistancia(p.distancia_km)}</span></small>
+                        </div>
+                      )}
                     </div>
                     <Capacidad libres={p.cupos_disponibles} total={p.cupo_maximo} />
                     <div className="datos">
                       <span><Icon name="coin" size={16} /><Tarifa {...p} /></span>
-                      {p.ruta && <span><Icon name="car" size={16} /><span><span className="num">{Math.round(p.ruta.duracionMin)}</span> min en auto desde tu partida</span></span>}
+                      {p.ruta && p.ruta.duracionMin >= 1 && <span><Icon name="car" size={16} /><span><span className="num">{Math.round(p.ruta.duracionMin)}</span> min en auto desde tu partida</span></span>}
                     </div>
                     <div className="acciones">
                       <button type="button" className="dark small" onClick={() => iniciarReserva(p)} disabled={lleno}>
@@ -450,7 +506,15 @@ async function buscarCercaDe(destCoords) {
               })}
             </ol>
           ) : (
-            !loading && !error && <div className="empty-state">Ingresa un destino y presiona "Buscar estacionamientos" para ver opciones cercanas.</div>
+            !loading && !error && (
+              <div className="empty-state">
+                {modo === 'cerca'
+                  ? `No hay estacionamientos disponibles a ${RADIO_CERCA_KM} km de tu ubicación.`
+                  : modo === 'destino'
+                    ? `No encontramos estacionamientos a ${RADIO_DESTINO_KM} km de ese destino. Prueba con otro, o déjalo vacío para buscar a ${RADIO_CERCA_KM} km de ti.`
+                    : `Escribe un destino, o déjalo vacío para ver los estacionamientos a ${RADIO_CERCA_KM} km de ti, y presiona "Buscar estacionamientos".`}
+              </div>
+            )
           )}
         </section>
       </div>
@@ -462,7 +526,15 @@ async function buscarCercaDe(destCoords) {
           <li><i className="ley-stop lleno" aria-hidden="true" />Lleno</li>
         </ul>
         <MapContainer center={[center.lat, center.lng]} zoom={14}>
-          <RecenterMap center={[center.lat, center.lng]} />
+          <RecenterMap lat={center.lat} lng={center.lng} />
+          <AjustarVista
+            clave={lista.length ? `${modo}:${lista.map(p => p.id).join(',')}` : ''}
+            puntos={[
+              ...(userPos ? [[userPos.lat, userPos.lng]] : []),
+              ...(destinoCoords ? [[destinoCoords.lat, destinoCoords.lng]] : []),
+              ...lista.map(p => [Number(p.latitud), Number(p.longitud)])
+            ]}
+          />
           <ClickToSetLocation onSelect={setManualLocation} />
           <TileLayer
             attribution='&copy; OpenStreetMap contributors'

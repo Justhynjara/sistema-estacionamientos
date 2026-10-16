@@ -307,6 +307,7 @@ button.badge:hover{filter:brightness(.98);box-shadow:none}
 .parada .dist{text-align:right;white-space:nowrap;line-height:1}
 .parada .dist b{display:block;font-size:1rem;font-weight:800}
 .parada .dist b .num{font-size:1.6rem;font-weight:700;margin-right:2px}
+.parada .dist b.aqui{font-size:1.3rem}
 .parada .dist small{display:block;font-size:.8rem;font-weight:600;color:var(--muted);margin-top:5px}
 .parada .datos{display:flex;flex-wrap:wrap;gap:4px 14px;font-size:.86rem;color:var(--muted)}
 .parada .datos > span{display:inline-flex;gap:6px;align-items:center}
