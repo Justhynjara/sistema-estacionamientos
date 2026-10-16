@@ -1,0 +1,172 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-10-15T00:00:00Z",
+  "title": "Design System: Sistema de Estacionamientos",
+  "extensions": {
+    "colorMeta": {
+      "bg-gris-calzada": { "role": "neutral", "displayName": "Gris Calzada", "canonical": "#eef1f4", "tonalRamp": ["#1c2229", "#323a44", "#4b5560", "#66717d", "#86909b", "#a9b1ba", "#ccd2d9", "#eef1f4"] },
+      "panel": { "role": "neutral", "displayName": "Panel", "canonical": "#ffffff", "tonalRamp": ["#1f2124", "#3a3d42", "#585c62", "#7a7e85", "#9da1a7", "#c1c4c8", "#e3e5e8", "#ffffff"] },
+      "panel-alt": { "role": "neutral", "displayName": "Panel Alterno", "canonical": "#f6f8fa", "tonalRamp": ["#1d2125", "#353b41", "#505860", "#6e7780", "#8f98a1", "#b2bac2", "#d5dbe1", "#f6f8fa"] },
+      "ink": { "role": "neutral", "displayName": "Tinta", "canonical": "#0e1726", "tonalRamp": ["#0e1726", "#1f2c44", "#34435f", "#4f5e7a", "#6f7d97", "#95a1b6", "#bec6d4", "#e6eaf0"] },
+      "muted": { "role": "neutral", "displayName": "Gris Texto", "canonical": "#4a5568", "tonalRamp": ["#171b22", "#2a313c", "#4a5568", "#626d80", "#7f8999", "#a0a8b5", "#c4cad3", "#e8ebef"] },
+      "rule": { "role": "neutral", "displayName": "Filete", "canonical": "#d3d9e1", "tonalRamp": ["#1e2329", "#363d46", "#525a65", "#717a86", "#929ba7", "#b3bbc5", "#d3d9e1", "#eef1f4"] },
+      "rule-soft": { "role": "neutral", "displayName": "Filete Suave", "canonical": "#e6eaef", "tonalRamp": ["#1e2329", "#363d46", "#525a65", "#717a86", "#929ba7", "#b6bdc7", "#e6eaef", "#f6f8fa"] },
+      "route": { "role": "primary", "displayName": "Azul Ruta", "canonical": "#0b5cad", "tonalRamp": ["#04213f", "#08447f", "#0b5cad", "#3a7fc6", "#6aa0d6", "#9cc1e6", "#cfe0f5", "#e8f0fa"] },
+      "route-dark": { "role": "primary", "displayName": "Azul Ruta Profundo", "canonical": "#08447f", "tonalRamp": ["#04213f", "#08447f", "#0b5cad", "#3a7fc6", "#6aa0d6", "#9cc1e6", "#cfe0f5", "#e8f0fa"] },
+      "route-tint": { "role": "primary", "displayName": "Tinte de Ruta", "canonical": "#e8f0fa", "tonalRamp": ["#04213f", "#08447f", "#0b5cad", "#3a7fc6", "#6aa0d6", "#9cc1e6", "#cfe0f5", "#e8f0fa"] },
+      "sign": { "role": "secondary", "displayName": "Azul Letrero", "canonical": "#0a3f7a", "tonalRamp": ["#041a33", "#0a3f7a", "#1f5796", "#4775ad", "#7395c4", "#a1b8da", "#cfdcf0", "#ebf1fa"] },
+      "sign-text": { "role": "secondary", "displayName": "Texto de Letrero", "canonical": "#cfdcf0", "tonalRamp": ["#041a33", "#0a3f7a", "#1f5796", "#4775ad", "#7395c4", "#a1b8da", "#cfdcf0", "#ebf1fa"] },
+      "free": { "role": "tertiary", "displayName": "Verde Libre", "canonical": "#0a7a3d", "tonalRamp": ["#033a1c", "#0a7a3d", "#2f9459", "#5aac7a", "#86c49d", "#b0dbc0", "#d3ecdc", "#e3f3e9"] },
+      "free-bg": { "role": "tertiary", "displayName": "Fondo Libre", "canonical": "#e3f3e9", "tonalRamp": ["#033a1c", "#0a7a3d", "#2f9459", "#5aac7a", "#86c49d", "#b0dbc0", "#d3ecdc", "#e3f3e9"] },
+      "full": { "role": "tertiary", "displayName": "Rojo Lleno", "canonical": "#b42318", "tonalRamp": ["#4f0f0a", "#8a1b12", "#b42318", "#cd4f45", "#de7d75", "#ebaaa4", "#f0b3ac", "#fdecea"] },
+      "full-bg": { "role": "tertiary", "displayName": "Fondo Lleno", "canonical": "#fdecea", "tonalRamp": ["#4f0f0a", "#8a1b12", "#b42318", "#cd4f45", "#de7d75", "#ebaaa4", "#f0b3ac", "#fdecea"] },
+      "focus": { "role": "primary", "displayName": "Foco", "canonical": "#0b5cad", "tonalRamp": ["#04213f", "#08447f", "#0b5cad", "#3a7fc6", "#6aa0d6", "#9cc1e6", "#cfe0f5", "#e8f0fa"] }
+    },
+    "typographyMeta": {
+      "display": { "displayName": "Display", "purpose": "Titular blanco de la banda de letrero (1.7rem en móvil; 1.55rem en la variante delgada)." },
+      "headline": { "displayName": "Headline", "purpose": "Títulos de sección (h2)." },
+      "title": { "displayName": "Title", "purpose": "Nombre de parada y títulos de tarjeta (h3)." },
+      "body": { "displayName": "Body", "purpose": "Texto corriente; legales a 1.65 de interlineado y 70ch." },
+      "label": { "displayName": "Label", "purpose": "Rótulos en mayúsculas de campos, tablas y métricas; nunca antetítulos." },
+      "numeral-board": { "displayName": "Cifra de tablero", "purpose": "KPIs del dueño sobre azul letrero (1.7rem en móvil)." },
+      "numeral-stop": { "displayName": "Cifra de parada", "purpose": "Minutos a pie de cada resultado." },
+      "numeral-inline": { "displayName": "Cifra en línea", "purpose": "Montos, patentes, códigos, horas y cantidades dentro de frases y celdas; solo la cifra." }
+    },
+    "shadows": [
+      { "name": "shadow-sm", "value": "0 1px 2px rgba(14,23,38,.08)", "purpose": "Tarjetas en reposo." },
+      { "name": "shadow-md", "value": "0 6px 18px rgba(14,23,38,.10)", "purpose": "Tablero, ticket, sugerencias de dirección." },
+      { "name": "shadow-lg", "value": "0 16px 40px rgba(14,23,38,.18)", "purpose": "Asistente flotante y aviso de cookies." },
+      { "name": "button-primary", "value": "0 3px 10px rgba(11,92,173,.22)", "purpose": "Solo el botón azul lleno; hover 0 5px 14px rgba(11,92,173,.28)." },
+      { "name": "focus-ring", "value": "outline: 3px solid var(--focus); outline-offset: 2px", "purpose": "Foco visible en todo elemento interactivo; blanco sobre superficies azules u oscuras." },
+      { "name": "input-focus", "value": "0 0 0 3px rgba(11,92,173,.16)", "purpose": "Halo de input enfocado junto al borde azul." }
+    ],
+    "motion": [
+      { "name": "state", "value": ".15s ease", "purpose": "Color, borde y sombra de botones e inputs." },
+      { "name": "press", "value": "transform .12s ease (translateY(1px))", "purpose": "Botón presionado." },
+      { "name": "aparecer", "value": ".22s cubic-bezier(.16,1,.3,1)", "purpose": "Entrada del panel del asistente." },
+      { "name": "pulse", "value": "2.4s ease-out infinite", "purpose": "Punto 'en vivo' de la banda." },
+      { "name": "spin", "value": ".7s linear infinite", "purpose": "Spinner de carga." },
+      { "name": "reduced-motion", "value": "animation:none; transition:none", "purpose": "Con prefers-reduced-motion: reduce se anula todo movimiento." }
+    ],
+    "breakpoints": [
+      { "name": "mobile", "value": "640px" },
+      { "name": "single-column", "value": "900px" }
+    ]
+  },
+  "components": [
+    {
+      "name": "Letrero E",
+      "kind": "custom",
+      "refersTo": "sign-e",
+      "description": "Marca del sitio: el letrero de estacionamiento de la señalética vial chilena.",
+      "html": "<span class=\"ds-sign-e\" aria-hidden=\"true\">E</span>",
+      "css": ".ds-sign-e{--s:30px;width:var(--s);height:var(--s);display:inline-grid;place-items:center;background:var(--sign,#0a3f7a);color:#fff;border-radius:calc(var(--s)*.17);font-family:'Overpass',system-ui,sans-serif;font-weight:900;font-size:calc(var(--s)*.6);line-height:1;padding-top:calc(var(--s)*.08);box-shadow:inset 0 0 0 2px #fff,0 0 0 1px var(--sign,#0a3f7a)}"
+    },
+    {
+      "name": "Botón primario",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "Acción principal: azul ruta con sombra teñida.",
+      "html": "<button class=\"ds-btn\"><svg width=\"18\" height=\"18\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.8\" stroke-linecap=\"round\"><circle cx=\"11\" cy=\"11\" r=\"6.5\"/><path d=\"m20 20-4.2-4.2\"/></svg>Buscar estacionamientos</button>",
+      "css": ".ds-btn{font-family:'Overpass',system-ui,sans-serif;display:inline-flex;align-items:center;gap:8px;padding:11px 18px;border:0;border-radius:6px;background:#0b5cad;color:#fff;font-weight:800;font-size:.93rem;line-height:1.2;cursor:pointer;box-shadow:0 3px 10px rgba(11,92,173,.22);transition:background-color .15s ease,box-shadow .15s ease,transform .12s ease}.ds-btn:hover{background:#08447f;box-shadow:0 5px 14px rgba(11,92,173,.28)}.ds-btn:active{transform:translateY(1px)}.ds-btn:focus-visible{outline:3px solid #0b5cad;outline-offset:2px}"
+    },
+    {
+      "name": "Botón secundario",
+      "kind": "button",
+      "refersTo": "button-secondary",
+      "description": "Acción alternativa: blanco con borde tinta.",
+      "html": "<button class=\"ds-btn-sec\">Ver ruta</button>",
+      "css": ".ds-btn-sec{font-family:'Overpass',system-ui,sans-serif;padding:9.5px 16px;border:1.5px solid #0e1726;border-radius:6px;background:#fff;color:#0e1726;font-weight:800;font-size:.93rem;cursor:pointer;transition:background-color .15s ease}.ds-btn-sec:hover{background:#f6f8fa}.ds-btn-sec:focus-visible{outline:3px solid #0b5cad;outline-offset:2px}"
+    },
+    {
+      "name": "Botón destructivo",
+      "kind": "button",
+      "refersTo": "button-danger",
+      "description": "Contorno rojo, nunca relleno; separado de las demás acciones.",
+      "html": "<button class=\"ds-btn-danger\"><svg width=\"16\" height=\"16\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.8\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M4.5 7h15M9.5 7V4.5h5V7M6.5 7l1 13h9l1-13M10 11v5.5M14 11v5.5\"/></svg>Eliminar</button>",
+      "css": ".ds-btn-danger{font-family:'Overpass',system-ui,sans-serif;display:inline-flex;align-items:center;gap:8px;padding:9.5px 14px;border:1.5px solid currentColor;border-radius:6px;background:#fff;color:#b42318;font-weight:800;font-size:.93rem;cursor:pointer}.ds-btn-danger:hover{background:#fdecea}.ds-btn-danger:focus-visible{outline:3px solid #0b5cad;outline-offset:2px}"
+    },
+    {
+      "name": "Campo de texto",
+      "kind": "input",
+      "refersTo": "input",
+      "description": "Borde de 1.5px; al enfocar, borde azul y halo.",
+      "html": "<label class=\"ds-label\">Hacia</label><input class=\"ds-input\" placeholder=\"Destino (ej: Plaza de Armas, Curicó)\">",
+      "css": ".ds-label{display:block;font-family:'Overpass',system-ui,sans-serif;font-size:.76rem;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:#4a5568;margin:0 0 6px}.ds-input{font-family:'Overpass',system-ui,sans-serif;font-size:15.5px;padding:11px 12px;width:100%;border:1.5px solid #d3d9e1;border-radius:6px;background:#fff;color:#0e1726;transition:border-color .15s ease,box-shadow .15s ease}.ds-input::placeholder{color:#6b7787}.ds-input:focus{outline:none;border-color:#0b5cad;box-shadow:0 0 0 3px rgba(11,92,173,.16)}"
+    },
+    {
+      "name": "Pestañas",
+      "kind": "nav",
+      "refersTo": "tabs",
+      "description": "Pestañas de paneles: la activa en tinta con barra azul de 4px.",
+      "html": "<div class=\"ds-tabs\" role=\"tablist\"><button class=\"ds-tab ds-on\" role=\"tab\" aria-selected=\"true\">Caja</button><button class=\"ds-tab\" role=\"tab\" aria-selected=\"false\">Resumen</button></div>",
+      "css": ".ds-tabs{display:flex;gap:2px;border-bottom:1px solid #d3d9e1;font-family:'Overpass',system-ui,sans-serif}.ds-tab{position:relative;background:transparent;border:0;color:#4a5568;padding:12px 16px 14px;font-weight:700;font-size:.93rem;cursor:pointer}.ds-tab::after{content:'';position:absolute;left:0;right:0;bottom:0;height:4px;background:transparent}.ds-tab:hover{color:#0e1726}.ds-tab.ds-on{color:#0e1726}.ds-tab.ds-on::after{background:#0b5cad}.ds-tab:focus-visible{outline:3px solid #0b5cad;outline-offset:2px}"
+    },
+    {
+      "name": "Chips de estado",
+      "kind": "chip",
+      "refersTo": "chip-free",
+      "description": "Estado en línea: verde libre, rojo lleno.",
+      "html": "<span class=\"ds-chip ds-ok\">Abierto</span> <span class=\"ds-chip ds-off\">Lleno</span>",
+      "css": ".ds-chip{display:inline-flex;align-items:center;gap:6px;font-family:'Overpass',system-ui,sans-serif;font-weight:700;font-size:.8rem;line-height:1.2;padding:4px 9px 3px;border-radius:4px}.ds-chip::before{content:'';width:7px;height:7px;border-radius:50%;background:currentColor}.ds-ok{background:#e3f3e9;color:#0a7a3d}.ds-off{background:#fdecea;color:#b42318}"
+    },
+    {
+      "name": "Parada con capacidad",
+      "kind": "custom",
+      "refersTo": "stop-number",
+      "description": "Resultado como parada numerada sobre el riel, con minutos a pie y barra de cupos proporcional.",
+      "html": "<ol class=\"ds-paradas\"><li class=\"ds-parada\"><span class=\"ds-k\">1</span><div class=\"ds-top\"><div><h3>Parking Centro</h3><p class=\"ds-addr\">Prat 120, Curicó</p></div><div class=\"ds-dist\"><b><span class=\"ds-num\">4</span> min</b><small>a pie · <span class=\"ds-num\">300 m</span></small></div></div><div class=\"ds-cap\"><div class=\"ds-barra\"><i style=\"width:25%\"></i></div><b><span class=\"ds-num\">6</span> libres de <span class=\"ds-num\">24</span></b></div></li><li class=\"ds-parada ds-lleno\"><span class=\"ds-k\">2</span><div class=\"ds-top\"><div><h3>Estacionamiento Plaza</h3><p class=\"ds-addr\">Merced 45, Curicó</p></div><div class=\"ds-dist\"><b><span class=\"ds-num\">7</span> min</b><small>a pie · <span class=\"ds-num\">550 m</span></small></div></div><div class=\"ds-cap ds-lleno\"><div class=\"ds-barra\"><i style=\"width:0\"></i></div><b>Lleno · <span class=\"ds-num\">12</span> cupos</b></div></li></ol>",
+      "css": ".ds-paradas{list-style:none;margin:0 0 0 12px;padding:0 0 0 6px;font-family:'Overpass',system-ui,sans-serif;color:#0e1726}.ds-num{font-family:'Overpass Mono',ui-monospace,monospace;font-variant-numeric:tabular-nums}.ds-parada{position:relative;padding:14px 0 16px 24px;border-bottom:1px solid #e6eaef;display:grid;gap:9px}.ds-parada::before{content:'';position:absolute;left:-6px;top:24px;width:16px;height:6px;background:#0b5cad}.ds-parada::after{content:'';position:absolute;left:-9px;width:6px;top:0;bottom:0;background:#0b5cad}.ds-parada:first-child::after{top:27px}.ds-parada:last-child::after{bottom:auto;height:27px}.ds-k{position:absolute;left:-19px;top:14px;width:26px;height:26px;border-radius:50%;background:#fff;border:3px solid #0e1726;display:grid;place-items:center;font:700 .76rem/1 'Overpass Mono',monospace;z-index:1}.ds-lleno .ds-k{border-color:#b42318;color:#b42318}.ds-parada h3{margin:0;font-size:1.02rem;font-weight:800}.ds-lleno h3{text-decoration:line-through;text-decoration-thickness:2px;text-decoration-color:#b42318}.ds-addr{margin:2px 0 0;color:#4a5568;font-size:.86rem}.ds-top{display:flex;justify-content:space-between;gap:12px}.ds-dist{text-align:right;line-height:1}.ds-dist b{display:block;font-weight:800}.ds-dist b .ds-num{font-size:1.6rem;font-weight:700}.ds-dist small{display:block;font-size:.8rem;font-weight:600;color:#4a5568;margin-top:5px}.ds-cap{display:grid;grid-template-columns:1fr auto;gap:10px;align-items:center;font-size:.86rem}.ds-barra{height:8px;border-radius:4px;background:#e6eaef;overflow:hidden}.ds-barra i{display:block;height:100%;background:#0a7a3d;border-radius:4px}.ds-cap b{color:#0a7a3d;font-weight:700}.ds-cap.ds-lleno b{color:#b42318}"
+    },
+    {
+      "name": "Tablero del dueño",
+      "kind": "card",
+      "refersTo": "board-cell",
+      "description": "KPIs como letrero de terminal: celdas azul letrero con cifras mono grandes.",
+      "html": "<section class=\"ds-tablero\"><div class=\"ds-celda\"><h3>Vehículos atendidos</h3><p class=\"ds-cifra\">38</p></div><div class=\"ds-celda\"><h3>Total cobrado</h3><p class=\"ds-cifra\">$84.500</p><small>promedio $2.224</small></div><div class=\"ds-celda\"><h3>Hora pico</h3><p class=\"ds-cifra ds-med\">14:00–15:00</p></div></section>",
+      "css": ".ds-tablero{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:1px;background:rgba(255,255,255,.16);border-radius:8px;box-shadow:0 6px 18px rgba(14,23,38,.10);overflow:hidden;color:#fff;font-family:'Overpass',system-ui,sans-serif}.ds-celda{padding:20px 22px 22px;background:#0a3f7a}.ds-celda h3{margin:0 0 10px;font-size:.9rem;font-weight:700;color:#cfdcf0}.ds-cifra{font-family:'Overpass Mono',ui-monospace,monospace;font-weight:700;font-size:2.6rem;line-height:1;margin:0;font-variant-numeric:tabular-nums}.ds-med{font-size:1.9rem}.ds-celda small{display:block;margin-top:8px;color:#cfdcf0;font-size:.86rem}"
+    }
+  ],
+  "narrative": {
+    "northStar": "Línea de ruta",
+    "overview": "El sitio habla el idioma de la señalética vial chilena y de los planos de transporte: certeza de un vistazo. La marca es el letrero \"E\" de estacionamiento (E blanca sobre azul señal, con filete blanco interior). La búsqueda se dibuja como una línea de metro: un riel azul de 6px va de \"Desde\" a \"Hacia\" y cada estacionamiento encontrado es una parada numerada; la línea termina en el nodo de la última parada, no se prolonga al vacío. El dueño ve su local como un tablero de terminal: celdas azul letrero con cifras grandes en mono.\n\nDensidad media, superficies planas: paneles blancos sobre un gris frío, tinta azul-negra, el azul de ruta como única voz de acción, y verde/rojo reservados para el estado de los cupos. Lo cancelado o lleno se tacha, no desaparece (herencia de la billetera de pasajes). Las cifras verificables contra la realidad (montos, minutos, patentes, códigos, horas) van en Overpass Mono; todo lo demás, incluidas las palabras que rodean a esas cifras, en Overpass.\n\nRechazos confirmados: la tarjeta-con-emoji de plantilla y el \"dashboard SaaS\" genérico. Cero emojis en la interfaz.",
+    "keyCharacteristics": [
+      "Letrero \"E\" como marca; bandas azul letrero con texto blanco como titular de cada pantalla.",
+      "Riel de 6px con nodos circulares y paradas numeradas, igual en la lista y en el mapa.",
+      "Overpass para texto, Overpass Mono solo para cifras (con `tabular-nums`).",
+      "Minutos a pie como cifra principal de distancia; metros/km como dato secundario.",
+      "Barra de cupos proporcional; lleno = tachado en rojo, en lista y en mapa.",
+      "Horas en formato 24 h; contraste WCAG AA; foco visible; respeto a `prefers-reduced-motion`."
+    ],
+    "rules": [
+      { "name": "The Semáforo Rule", "body": "El verde y el rojo significan cupos (o éxito/error). Nunca se usan como decoración ni como color de marca.", "section": "colors" },
+      { "name": "The Dos Azules Rule", "body": "Azul Ruta es lo que se toca y lo que se recorre; Azul Letrero es lo que se lee como letrero (marca, bandas, tableros). No se intercambian.", "section": "colors" },
+      { "name": "The Cifra Mono Rule", "body": "Overpass Mono es solo para la cifra; la palabra que la acompaña queda en Overpass. En \"$20/min · mínimo $500\" solo \"$20\" y \"$500\" van en mono; en \"3 libres de 24\", solo \"3\" y \"24\". Nunca la frase entera en mono.", "section": "typography" },
+      { "name": "The Reloj de 24 Horas Rule", "body": "Toda hora se muestra en formato 24 h (`hourCycle: 'h23'`), en mono.", "section": "typography" },
+      { "name": "The Filete Primero Rule", "body": "Para separar, primero un filete; la sombra es para lo que realmente flota sobre otra superficie.", "section": "elevation" }
+    ],
+    "dos": [
+      "**Do** usar Overpass Mono solo para la cifra y dejar en Overpass la palabra que la acompaña (\"$20/min\", \"3 libres de 24\", \"12 min\").",
+      "**Do** mostrar la distancia como minutos a pie en grande, con metros o km como dato secundario.",
+      "**Do** tachar en rojo lo lleno, en la lista y en el mapa, y mantenerlo visible en su lugar.",
+      "**Do** hacer que la barra de cupos mida exactamente libres/total.",
+      "**Do** dibujar la línea de ruta de nodo a nodo: empieza en la primera parada y termina en la última.",
+      "**Do** mostrar toda hora en 24 h.",
+      "**Do** usar íconos SVG de trazo 1.8 en `currentColor` y el letrero E como única marca.",
+      "**Do** verificar contraste WCAG AA de cualquier color nuevo y anotarlo junto al token en `index.css`.",
+      "**Do** mantener el foco visible (contorno de 3px) y pasar `--focus` a blanco dentro de superficies azules u oscuras.",
+      "**Do** usar teselas de OpenStreetMap desaturadas; si cambia el proveedor del mapa, cambiar primero las páginas legales."
+    ],
+    "donts": [
+      "**Don't** usar emojis en ninguna parte de la interfaz, ni como ícono ni en textos.",
+      "**Don't** escribir frases completas en mono ni usar mono para etiquetas o títulos.",
+      "**Don't** usar verde o rojo como decoración o acento de marca.",
+      "**Don't** rellenar de rojo un botón destructivo ni ponerlo junto a la acción principal.",
+      "**Don't** ocultar los estacionamientos llenos de la lista o del mapa.",
+      "**Don't** usar formato de 12 h (a. m. / p. m.).",
+      "**Don't** prolongar el riel más allá del último nodo.",
+      "**Don't** sumar sombras a superficies que no flotan; separar con filetes.",
+      "**Don't** convertir los rótulos en mayúsculas en antetítulos sobre los titulares; son etiquetas de un dato o campo."
+    ]
+  }
+}

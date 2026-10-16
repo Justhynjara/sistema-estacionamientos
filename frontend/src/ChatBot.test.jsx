@@ -12,7 +12,7 @@ describe('ChatBot', () => {
 
     await user.click(screen.getByRole('button', { name: /abrir asistente/i }));
 
-    expect(screen.getByText('🤖 Asistente')).toBeInTheDocument();
+    expect(screen.getByText('Asistente')).toBeInTheDocument();
   });
 
   test('responde con la FAQ correcta al hacer click en una sugerencia', async () => {

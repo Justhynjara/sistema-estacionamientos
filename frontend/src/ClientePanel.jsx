@@ -6,21 +6,26 @@ import { imprimirTicket } from './utils/print.js';
 import QRScanner from './QRScanner.jsx';
 import { qrPayload, extraerCodigoQR } from './utils/qr.js';
 import { formatDuracion, formatTarifa } from './utils/tarifa.js';
+import Tarifa from './Tarifa.jsx';
+import Icon from './Icon.jsx';
+import TabsBase from './Tabs.jsx';
+import Capacidad from './Capacidad.jsx';
 
 // Un poco menos que el plazo del servidor (3 min), para no confirmar con una cotización que vence en el camino.
 const COTIZACION_VIGENTE_MS = 170000;
 
 const METODO_LABEL = { EFECTIVO: 'Efectivo', DEBITO: 'Débito', CREDITO: 'Crédito' };
+const ESTADO_TICKET = {
+  ACTIVO: { texto: 'Dentro', cls: 'ok' },
+  RESERVADO: { texto: 'Reservado', cls: 'info' },
+  PAGADO: { texto: 'Pagado', cls: 'neutral' },
+  CERRADO: { texto: 'Cerrado', cls: 'neutral' },
+  CANCELADO: { texto: 'Cancelado', cls: 'off' }
+};
 
+const TABS = [['estacionamientos', 'Mis estacionamientos', 'building'], ['dashboard', 'Dashboard de tickets', 'chart']];
 function Tabs({ tab, setTab }) {
-  const tabs = [['estacionamientos', '🅿️ Mis estacionamientos'], ['dashboard', '📊 Dashboard de tickets']];
-  return (
-    <div className="tabs">
-      {tabs.map(([k, label]) => (
-        <button key={k} className={'tab' + (tab === k ? ' active' : '')} onClick={() => setTab(k)}>{label}</button>
-      ))}
-    </div>
-  );
+  return <TabsBase tabs={TABS} tab={tab} setTab={setTab} label="Secciones del panel" />;
 }
 
 function todayStr() {
@@ -31,7 +36,7 @@ function todayStr() {
 
 function fmtHora(iso) {
   if (!iso) return '—';
-  return new Date(iso).toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit' });
+  return new Date(iso).toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit', hourCycle: 'h23' });
 }
 
 // En el dashboard un ticket puede haber entrado otro día (se cobró en la fecha consultada):
@@ -79,7 +84,7 @@ function GestionTicketPanel({ reloadParking, ticketInicial, onTicketConsumido, e
       const r = await api.get(`/tickets/publico/${encodeURIComponent(c)}`);
       if (r.data.estado === 'ACTIVO') return iniciarCobro(c);
       if (r.data.estado === 'RESERVADO') {
-        setMensaje({ tipo: 'ok', texto: 'Reserva encontrada. Presiona "✅ Validar reserva" para confirmar que el vehículo llegó.' });
+        setMensaje({ tipo: 'ok', texto: 'Reserva encontrada. Presiona "Validar reserva" para confirmar que el vehículo llegó.' });
       } else {
         setMensaje({ tipo: 'off', texto: r.data.estado === 'CERRADO' ? 'Este ticket ya fue cobrado y cerrado.' : 'Esta reserva expiró o fue cancelada.' });
       }
@@ -185,26 +190,24 @@ function GestionTicketPanel({ reloadParking, ticketInicial, onTicketConsumido, e
     <>
       <div className="card">
         <h3>Vehículos y reservas{estacionamientoNombre ? ` en ${estacionamientoNombre}` : ''}</h3>
-        <p style={{ color: 'var(--text-muted)', fontSize: '.85rem' }}>Busca por patente — no necesitas el código QR para validar o cobrar.</p>
-        {activos.length === 0 && <p style={{ color: 'var(--text-muted)' }}>No hay vehículos ni reservas pendientes en este momento.</p>}
+        <p className="muted small">Busca por patente: no necesitas el código QR para validar o cobrar.</p>
+        {activos.length === 0 && <div className="empty-state">No hay vehículos ni reservas pendientes en este momento.</div>}
         {activos.length > 0 && (
           <div className="table-wrap">
             <table className="table">
-              <thead><tr><th>Patente</th>{!estacionamientoId && <th>Estacionamiento</th>}<th>Estado</th><th>Entrada</th><th>Tiempo</th><th></th></tr></thead>
+              <thead><tr><th>Patente</th>{!estacionamientoId && <th>Estacionamiento</th>}<th>Estado</th><th>Entrada</th><th>Tiempo</th><th><span className="sr-only">Acción</span></th></tr></thead>
               <tbody>
                 {activos.map(t => (
                   <tr key={t.id}>
-                    <td>{t.patente || '—'}</td>
+                    <td className="mono"><strong>{t.patente || '—'}</strong></td>
                     {!estacionamientoId && <td>{t.estacionamiento_nombre}</td>}
-                    <td><span className={'badge ' + (t.estado === 'ACTIVO' ? 'ok' : 'off')}>{t.estado === 'ACTIVO' ? 'Dentro' : 'Reservado'}</span></td>
-                    <td>{fmtHora(t.fecha_entrada)}</td>
-                    <td>{tiempoTranscurrido(t.fecha_entrada)}</td>
-                    <td>
-                      <div className="row-form" style={{ margin: 0 }}>
-                        {t.estado === 'RESERVADO'
-                          ? <button type="button" disabled={!!loading} onClick={() => validarReserva(t.codigo_qr)}>✅ Validar</button>
-                          : <button type="button" disabled={!!loading} onClick={() => iniciarCobro(t.codigo_qr)}>💰 Cobrar</button>}
-                      </div>
+                    <td><span className={'badge ' + (t.estado === 'ACTIVO' ? 'ok' : 'info')}>{t.estado === 'ACTIVO' ? 'Dentro' : 'Reservado'}</span></td>
+                    <td className="mono">{fmtHora(t.fecha_entrada)}</td>
+                    <td className="mono">{tiempoTranscurrido(t.fecha_entrada)}</td>
+                    <td className="acciones">
+                      {t.estado === 'RESERVADO'
+                        ? <button type="button" className="small secondary" disabled={!!loading} onClick={() => validarReserva(t.codigo_qr)}><Icon name="check" size={16} />Validar</button>
+                        : <button type="button" className="small" disabled={!!loading} onClick={() => iniciarCobro(t.codigo_qr)}><Icon name="coin" size={16} />Cobrar</button>}
                     </td>
                   </tr>
                 ))}
@@ -215,24 +218,26 @@ function GestionTicketPanel({ reloadParking, ticketInicial, onTicketConsumido, e
       </div>
 
       {cobro && (
-        <div className="card">
-          <h3>Cobro — {cobro.patente || 'sin patente'}</h3>
-          <p>{cobro.estacionamiento_nombre}</p>
+        <div className="card cobro">
+          <div className="card-head">
+            <h3>Cobro <span className="mono">{cobro.patente || 'sin patente'}</span></h3>
+            <span className="badge info">{cobro.estacionamiento_nombre}</span>
+          </div>
           {cobro.minutos != null && (
-            <p style={{ color: 'var(--text-muted)' }}>⏱️ {formatDuracion(cobro.minutos)} estacionado · Tarifa {cobro.tarifa}</p>
+            <p className="muted"><Icon name="clock" size={16} /> {formatDuracion(cobro.minutos)} estacionado · Tarifa {cobro.tarifa}</p>
           )}
           {cobro.descuento > 0 && (
-            <p className="badge ok">🎟️ Descuento por reserva ya pagada: -${cobro.descuento.toLocaleString('es-CL')}</p>
+            <p className="badge ok">Descuento por reserva ya pagada: -${cobro.descuento.toLocaleString('es-CL')}</p>
           )}
-          <p style={{ fontSize: '1.3rem', fontWeight: 800 }}>Total a pagar: ${cobro.monto.toLocaleString('es-CL')}</p>
+          <p className="cobro-total">Total a pagar: ${cobro.monto.toLocaleString('es-CL')}</p>
 
           {!cobro.metodo && (
             <>
-              <p style={{ color: 'var(--text-muted)' }}>¿Con qué medio pagó el conductor?</p>
+              <p className="field-label">¿Con qué medio pagó el conductor?</p>
               <div className="row-form">
-                <button type="button" onClick={() => setCobro({ ...cobro, metodo: 'EFECTIVO' })}>💵 Efectivo</button>
-                <button type="button" onClick={() => setCobro({ ...cobro, metodo: 'DEBITO' })}>💳 Débito</button>
-                <button type="button" onClick={() => setCobro({ ...cobro, metodo: 'CREDITO' })}>💳 Crédito</button>
+                <button type="button" className="secondary" onClick={() => setCobro({ ...cobro, metodo: 'EFECTIVO' })}><Icon name="cash" />Efectivo</button>
+                <button type="button" className="secondary" onClick={() => setCobro({ ...cobro, metodo: 'DEBITO' })}><Icon name="card" />Débito</button>
+                <button type="button" className="secondary" onClick={() => setCobro({ ...cobro, metodo: 'CREDITO' })}><Icon name="card" />Crédito</button>
               </div>
             </>
           )}
@@ -242,6 +247,7 @@ function GestionTicketPanel({ reloadParking, ticketInicial, onTicketConsumido, e
               <div className="row-form">
                 <input
                   type="number"
+                  inputMode="numeric"
                   min={0}
                   placeholder="¿Con cuánto le pagan?"
                   value={cobro.recibido}
@@ -257,27 +263,27 @@ function GestionTicketPanel({ reloadParking, ticketInicial, onTicketConsumido, e
               )}
               <div className="row-form">
                 <button type="button" onClick={confirmarCobro} disabled={!cobro.recibido || vuelto < 0 || loading === 'cobro-confirm'}>
-                  {loading === 'cobro-confirm' && <span className="spinner" />}✅ Confirmar cobro
+                  {loading === 'cobro-confirm' ? <span className="spinner" /> : <Icon name="check" />}Confirmar cobro
                 </button>
-                <button type="button" className="secondary" onClick={() => setCobro({ ...cobro, metodo: null })}>← Cambiar método</button>
+                <button type="button" className="secondary" onClick={() => setCobro({ ...cobro, metodo: null })}><Icon name="arrowLeft" size={16} />Cambiar método</button>
               </div>
             </>
           )}
 
           {(cobro.metodo === 'DEBITO' || cobro.metodo === 'CREDITO') && (
             <>
-              <p className="badge ok">Cobra ${cobro.monto.toLocaleString('es-CL')} en el POS ({METODO_LABEL[cobro.metodo]}) y confirma aquí.</p>
+              <p className="badge info">Cobra ${cobro.monto.toLocaleString('es-CL')} en el POS ({METODO_LABEL[cobro.metodo]}) y confirma aquí.</p>
               <div className="row-form">
                 <button type="button" onClick={confirmarCobro} disabled={loading === 'cobro-confirm'}>
-                  {loading === 'cobro-confirm' && <span className="spinner" />}✅ Confirmar cobro con {METODO_LABEL[cobro.metodo]}
+                  {loading === 'cobro-confirm' ? <span className="spinner" /> : <Icon name="check" />}Confirmar cobro con {METODO_LABEL[cobro.metodo]}
                 </button>
-                <button type="button" className="secondary" onClick={() => setCobro({ ...cobro, metodo: null })}>← Cambiar método</button>
+                <button type="button" className="secondary" onClick={() => setCobro({ ...cobro, metodo: null })}><Icon name="arrowLeft" size={16} />Cambiar método</button>
               </div>
             </>
           )}
 
-          <div className="row-form">
-            <button type="button" className="secondary" onClick={() => setCobro(null)}>Cancelar</button>
+          <div className="row-form" style={{ marginTop: 12 }}>
+            <button type="button" className="link-button" onClick={() => setCobro(null)}>Cancelar cobro</button>
           </div>
         </div>
       )}
@@ -291,20 +297,20 @@ function GestionTicketPanel({ reloadParking, ticketInicial, onTicketConsumido, e
 
       <div className="card">
         <h3>Validar reserva o cobrar con código</h3>
-        <p>Escanea el QR del conductor: si ya está dentro te lleva directo a cobrar. También puedes ingresar el código manualmente.</p>
+        <p className="muted small">Escanea el QR del conductor: si ya está dentro te lleva directo a cobrar. También puedes ingresar el código a mano.</p>
         {mensaje && (
-          <p className={'badge ' + mensaje.tipo}>
-            {mensaje.texto}
-            {mensaje.imprimir && <button type="button" className="secondary" style={{ marginLeft: 10 }} onClick={mensaje.imprimir}>🖨️ Imprimir comprobante</button>}
-          </p>
+          <div className={'badge ' + mensaje.tipo}>
+            <span style={{ flex: 1 }}>{mensaje.texto}</span>
+            {mensaje.imprimir && <button type="button" className="secondary small" onClick={mensaje.imprimir}><Icon name="printer" size={16} />Imprimir comprobante</button>}
+          </div>
         )}
         <div className="row-form">
-          <input placeholder="Código del ticket o reserva" value={codigo} onChange={e => setCodigo(e.target.value)} aria-label="Código del ticket o reserva" />
-          <button type="button" className="secondary" onClick={() => setEscaneando(true)}>📷 Escanear QR</button>
+          <input className="mono" placeholder="Código del ticket o reserva" value={codigo} onChange={e => setCodigo(e.target.value)} aria-label="Código del ticket o reserva" />
+          <button type="button" className="secondary" onClick={() => setEscaneando(true)}><Icon name="camera" />Escanear QR</button>
         </div>
-        <div className="row-form">
-          <button type="button" onClick={() => validarReserva()} disabled={!!loading}>{loading === 'checkin' && <span className="spinner" />}✅ Validar reserva</button>
-          <button type="button" onClick={() => iniciarCobro()} disabled={!!loading}>{loading === 'cobro' && <span className="spinner" />}💰 Cobrar</button>
+        <div className="row-form" style={{ marginTop: 10 }}>
+          <button type="button" className="secondary" onClick={() => validarReserva()} disabled={!!loading}>{loading === 'checkin' ? <span className="spinner" /> : <Icon name="check" />}Validar reserva</button>
+          <button type="button" onClick={() => iniciarCobro()} disabled={!!loading}>{loading === 'cobro' ? <span className="spinner" /> : <Icon name="coin" />}Cobrar</button>
         </div>
       </div>
     </>
@@ -353,10 +359,12 @@ function EstacionamientosTab({ parking, reloadParking, ticketInicial, onTicketCo
           {parking.map(p => (
             <div className="card" key={p.id}>
               <h3>{p.nombre}</h3>
-              <p>{p.direccion}</p>
-              <p>💰 {formatTarifa(p)}</p>
-              <p className={'badge ' + (p.cupos_disponibles > 0 ? 'ok' : 'off')}>🅿️ {p.cupos_disponibles} / {p.cupo_maximo} disponibles</p>
-              <button type="button" onClick={() => setSeleccionadoId(p.id)}>📋 Abrir {p.nombre}</button>
+              <p className="muted small" style={{ margin: 0 }}>{p.direccion}</p>
+              <Capacidad libres={p.cupos_disponibles} total={p.cupo_maximo} />
+              <p className="small" style={{ margin: 0 }}><Tarifa {...p} /></p>
+              <div className="row-form">
+                <button type="button" onClick={() => setSeleccionadoId(p.id)} aria-label={`Abrir ${p.nombre}`}>Abrir<Icon name="arrowRight" size={16} /></button>
+              </div>
             </div>
           ))}
           {parking.length === 0 && <div className="empty-state">Aún no tienes estacionamientos asignados. Pide al administrador que registre uno a tu nombre.</div>}
@@ -367,24 +375,28 @@ function EstacionamientosTab({ parking, reloadParking, ticketInicial, onTicketCo
 
   return (
     <div>
-      <button type="button" className="secondary" onClick={() => setSeleccionadoId(null)} style={{ marginBottom: 14 }}>← Volver a mis estacionamientos</button>
+      <button type="button" className="link-button" onClick={() => setSeleccionadoId(null)} style={{ marginTop: 8 }}><Icon name="arrowLeft" size={16} />Volver a mis estacionamientos</button>
 
       <div className="card">
-        <h3>{seleccionado.nombre}</h3>
-        <p>{seleccionado.direccion}</p>
-        <p>💰 {formatTarifa(seleccionado)}</p>
-        <p className={'badge ' + (seleccionado.cupos_disponibles > 0 ? 'ok' : 'off')}>🅿️ {seleccionado.cupos_disponibles} / {seleccionado.cupo_maximo} disponibles</p>
-        {!emitiendo && (
-          <button type="button" onClick={() => iniciarEmision(seleccionado)} disabled={seleccionado.cupos_disponibles <= 0}>🎫 Emitir ticket en {seleccionado.nombre}</button>
-        )}
+        <div className="card-head">
+          <div>
+            <h2>{seleccionado.nombre}</h2>
+            <p className="muted small" style={{ margin: '2px 0 0' }}>{seleccionado.direccion} · <Tarifa {...seleccionado} /></p>
+          </div>
+          {!emitiendo && (
+            <button type="button" onClick={() => iniciarEmision(seleccionado)} disabled={seleccionado.cupos_disponibles <= 0}><Icon name="ticket" />Emitir ticket en {seleccionado.nombre}</button>
+          )}
+        </div>
+        <div style={{ marginTop: 14 }}><Capacidad libres={seleccionado.cupos_disponibles} total={seleccionado.cupo_maximo} /></div>
       </div>
 
       {emitiendo && (
-        <div className="card" style={{ textAlign: 'center', borderColor: 'var(--primary)' }}>
-          <h3>🎫 Emitir ticket en {emitiendo.p.nombre}</h3>
-          <p style={{ color: 'var(--text-muted)' }}>{emitiendo.p.direccion}</p>
-          <div className="row-form" style={{ justifyContent: 'center' }}>
+        <div className="card">
+          <h3>Emitir ticket en {emitiendo.p.nombre}</h3>
+          <p className="muted small">{emitiendo.p.direccion}</p>
+          <div className="row-form">
             <input
+              className="mono"
               placeholder="Patente del vehículo (opcional)"
               value={emitiendo.patente}
               onChange={e => setEmitiendo({ ...emitiendo, patente: e.target.value })}
@@ -392,23 +404,23 @@ function EstacionamientosTab({ parking, reloadParking, ticketInicial, onTicketCo
               autoFocus
             />
           </div>
-          <div className="row-form" style={{ justifyContent: 'center' }}>
+          <div className="row-form" style={{ marginTop: 12 }}>
             <button type="button" onClick={confirmarEmision} disabled={emitiendo.loading}>
-              {emitiendo.loading && <span className="spinner" />}✅ Confirmar emisión en {emitiendo.p.nombre}
+              {emitiendo.loading ? <span className="spinner" /> : <Icon name="check" />}Confirmar emisión en {emitiendo.p.nombre}
             </button>
             <button type="button" className="secondary" onClick={() => setEmitiendo(null)} disabled={emitiendo.loading}>Cancelar</button>
           </div>
         </div>
       )}
       {ticketEmitido && (
-        <div className="card" style={{ textAlign: 'center' }}>
-          <h3>🎫 Ticket emitido en {ticketEmitido.nombre}</h3>
-          <p>Entrega este código QR al conductor: con la cámara de su teléfono verá cuánto lleva estacionado y cuánto debe pagar.</p>
+        <div className="card centrado">
+          <h3>Ticket emitido en {ticketEmitido.nombre}</h3>
+          <p className="muted">Entrega este código QR al conductor: con la cámara de su teléfono verá cuánto lleva estacionado y cuánto debe pagar.</p>
           <div style={{ display: 'flex', justifyContent: 'center', margin: '12px 0' }}>
             <QRCodeCanvas value={qrPayload(ticketEmitido.codigo)} downloadable filename={`ticket-${ticketEmitido.codigo.slice(0, 8)}`} label="Código QR del ticket" />
           </div>
-          <p style={{ fontFamily: 'monospace', color: 'var(--text-muted)', fontSize: '.8rem', wordBreak: 'break-all' }}>{ticketEmitido.codigo}</p>
-          <div className="row-form" style={{ justifyContent: 'center' }}>
+          <p className="codigo-largo">{ticketEmitido.codigo}</p>
+          <div className="row-form">
             <button type="button" onClick={() => imprimirTicket({
               nombreEstacionamiento: ticketEmitido.nombre,
               direccion: ticketEmitido.direccion,
@@ -419,7 +431,7 @@ function EstacionamientosTab({ parking, reloadParking, ticketInicial, onTicketCo
                 ['Tarifa', ticketEmitido.tarifa]
               ],
               pie: 'Conserve este ticket para retirar su vehículo'
-            })}>🖨️ Imprimir ticket</button>
+            })}><Icon name="printer" />Imprimir ticket</button>
             <button type="button" className="secondary" onClick={() => setTicketEmitido(null)}>Cerrar</button>
           </div>
         </div>
@@ -499,7 +511,7 @@ function DashboardTab({ parking }) {
 
   return (
     <div>
-      <div className="card">
+      <div className="card" style={{ padding: '14px 16px' }}>
         <div className="row-form">
           <select value={estacionamientoId} onChange={e => setEstacionamientoId(e.target.value)} aria-label="Filtrar por estacionamiento">
             <option value="">Todos mis estacionamientos</option>
@@ -509,7 +521,7 @@ function DashboardTab({ parking }) {
         </div>
       </div>
 
-      {loading && <p><span className="spinner" />Cargando datos...</p>}
+      {loading && <p className="loading-line"><span className="spinner" />Cargando datos...</p>}
 
       {error && !loading && (
         <div className="card" role="alert">
@@ -517,88 +529,88 @@ function DashboardTab({ parking }) {
             {data ? `${error} Se muestran los últimos datos cargados.` : error}
           </p>
           <div className="row-form" style={{ marginTop: 8 }}>
-            <button type="button" className="secondary" onClick={() => setRecarga(n => n + 1)}>🔄 Reintentar</button>
+            <button type="button" className="secondary" onClick={() => setRecarga(n => n + 1)}><Icon name="refresh" />Reintentar</button>
           </div>
         </div>
       )}
 
       {data && !loading && (
         <>
-          <div className="grid">
-            <div className="card">
-              <h3>🚗 Vehículos ingresados</h3>
-              <p style={{ fontSize: '2rem', fontWeight: 800, margin: 0 }}>{data.totalTickets}</p>
+          <section className="tablero" aria-label="Resumen del día">
+            <div className="celda">
+              <h3>Vehículos ingresados</h3>
+              <p className="cifra">{data.totalTickets}</p>
               {esHoy && data.vehiculosDentro != null && (
-                <small style={{ color: 'var(--text-muted)' }}>{data.vehiculosDentro} dentro ahora</small>
+                <small>{data.vehiculosDentro} dentro ahora</small>
               )}
             </div>
-            <div className="card">
-              <h3>💰 Total cobrado en caja</h3>
-              <p style={{ fontSize: '2rem', fontWeight: 800, margin: 0 }}>${data.totalCobrado.toLocaleString('es-CL')}</p>
+            <div className="celda">
+              <h3>Cobrado en caja</h3>
+              <p className="cifra">${data.totalCobrado.toLocaleString('es-CL')}</p>
               {data.cobros != null && (
-                <small style={{ color: 'var(--text-muted)' }}>
+                <small>
                   {data.cobros} {data.cobros === 1 ? 'cobro' : 'cobros'}
                   {data.ticketPromedio != null && ` · promedio $${data.ticketPromedio.toLocaleString('es-CL')}`}
                 </small>
               )}
               {porMetodo && data.totalCobrado > 0 && (
-                <ul style={{ listStyle: 'none', padding: 0, margin: '8px 0 0', fontSize: '.9rem' }}>
+                <ul>
                   {['EFECTIVO', 'DEBITO', 'CREDITO'].map(m => (
-                    <li key={m}>{METODO_LABEL[m]}: <strong>${porMetodo[m].toLocaleString('es-CL')}</strong></li>
+                    <li key={m}><span>{METODO_LABEL[m]}</span> <strong>${porMetodo[m].toLocaleString('es-CL')}</strong></li>
                   ))}
                   {porMetodo.SIN_REGISTRO > 0 && (
-                    <li>Sin medio registrado: <strong>${porMetodo.SIN_REGISTRO.toLocaleString('es-CL')}</strong></li>
+                    <li><span>Sin medio registrado</span> <strong>${porMetodo.SIN_REGISTRO.toLocaleString('es-CL')}</strong></li>
                   )}
                 </ul>
               )}
               {abonos && abonos.cantidad > 0 && (
-                <p style={{ fontSize: '.85rem', color: 'var(--text-muted)', margin: '8px 0 0' }}>
+                <p className="detalle" style={{ margin: '8px 0 0' }}>
                   Además: ${abonos.monto.toLocaleString('es-CL')} en {abonos.cantidad} {abonos.cantidad === 1 ? 'abono' : 'abonos'} de reserva pagados online (Webpay), descontados al cobrar.
                 </p>
               )}
             </div>
-            <div className="card">
-              <h3>⏱️ Permanencia promedio</h3>
+            <div className="celda">
+              <h3>Permanencia promedio</h3>
               {data.permanenciaPromedioMin != null
-                ? <p style={{ fontSize: '1.4rem', fontWeight: 800, margin: 0 }}>{formatDuracion(data.permanenciaPromedioMin)}</p>
-                : <p style={{ color: 'var(--text-muted)' }}>Sin cobros este día</p>}
+                ? <p className="cifra mediana">{formatDuracion(data.permanenciaPromedioMin)}</p>
+                : <p className="detalle">Sin cobros este día</p>}
             </div>
-            <div className="card">
-              <h3>🔥 Hora de mayor flujo</h3>
+            <div className="celda">
+              <h3>Hora de mayor flujo</h3>
               {data.horaPico
-                ? <p style={{ fontSize: '1.4rem', fontWeight: 800, margin: 0 }}>{String(data.horaPico.hora).padStart(2, '0')}:00 – {String(data.horaPico.hora + 1).padStart(2, '0')}:00<br /><small style={{ fontWeight: 500, color: 'var(--text-muted)' }}>{data.horaPico.entradas} vehículos ingresados</small></p>
-                : <p style={{ color: 'var(--text-muted)' }}>Sin movimiento este día</p>}
+                ? <><p className="cifra mediana">{String(data.horaPico.hora).padStart(2, '0')}:00–{String(data.horaPico.hora + 1).padStart(2, '0')}:00</p><small>{data.horaPico.entradas} {data.horaPico.entradas === 1 ? 'vehículo ingresado' : 'vehículos ingresados'}</small></>
+                : <p className="detalle">Sin movimiento este día</p>}
             </div>
-          </div>
+          </section>
 
           <div className="card">
             <h3>Flujo de vehículos por hora</h3>
-            <div role="img" aria-label={resumenFlujo} style={{ display: 'flex', alignItems: 'flex-end', gap: 3, height: 140, marginTop: 12 }}>
+            {!data.horaPico ? (
+              <p className="flujo-vacio">Sin movimiento este día. Cuando ingresen vehículos, verás aquí cuántos entran en cada hora.</p>
+            ) : (<>
+            <div className="flujo" role="img" aria-label={resumenFlujo}>
               {data.flujoPorHora.map(h => (
-                <div key={h.hora} title={`${h.hora}:00 — ${h.entradas} vehículos`} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'flex-end', height: '100%' }}>
-                  <div style={{
-                    width: '100%',
-                    height: `${Math.max(3, (h.entradas / maxEntradas) * 100)}%`,
-                    background: h.entradas > 0 ? 'linear-gradient(180deg,var(--primary-light),var(--primary))' : '#e5e7eb',
-                    borderRadius: '4px 4px 0 0',
-                    transition: 'height .2s ease'
-                  }} />
+                <div
+                  key={h.hora}
+                  title={`${h.hora}:00 — ${h.entradas} vehículos`}
+                  className={'col' + (h.entradas === 0 ? ' cero' : '') + (data.horaPico && data.horaPico.hora === h.hora ? ' pico' : '')}
+                >
+                  <i style={{ height: `${Math.max(2, (h.entradas / maxEntradas) * 100)}%` }} />
                 </div>
               ))}
             </div>
-            <div aria-hidden="true" style={{ display: 'flex', gap: 3, marginTop: 4 }}>
+            <div className="flujo-ejes" aria-hidden="true">
               {data.flujoPorHora.map(h => (
-                <div key={h.hora} style={{ flex: 1, textAlign: 'center', fontSize: '.62rem', color: 'var(--text-muted)' }}>
-                  {h.hora % 3 === 0 ? h.hora : ''}
-                </div>
+                <span key={h.hora}>{h.hora % 3 === 0 ? h.hora : ''}</span>
               ))}
             </div>
+            </>)}
           </div>
 
           <div className="card">
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8 }}>
               <h3 style={{ margin: 0 }}>Detalle de tickets</h3>
-              <button type="button" className="secondary" onClick={() => exportarCSV(data.tickets, fecha)} disabled={data.tickets.length === 0}>⬇️ Exportar CSV</button>
+              <button type="button" className="secondary small" onClick={() => exportarCSV(data.tickets, fecha)} disabled={data.tickets.length === 0}><Icon name="download" size={16} />Exportar CSV</button>
             </div>
             <div className="table-wrap">
               <table className="table">
@@ -607,12 +619,12 @@ function DashboardTab({ parking }) {
                   {ticketsPagina.map(t => (
                     <tr key={t.id}>
                       <td>{t.estacionamiento_nombre}</td>
-                      <td>{t.patente || '—'}</td>
-                      <td>{fmtHoraEnDia(t.fecha_entrada, fecha)}</td>
-                      <td>{fmtHoraEnDia(t.fecha_salida, fecha)}</td>
-                      <td><span className={'badge ' + (t.estado === 'ACTIVO' ? 'ok' : 'off')} style={t.estado !== 'ACTIVO' ? { color: 'var(--text-muted)', background: '#f0f0f5' } : {}}>{t.estado}</span></td>
+                      <td className="mono">{t.patente || '—'}</td>
+                      <td className="mono">{fmtHoraEnDia(t.fecha_entrada, fecha)}</td>
+                      <td className="mono">{fmtHoraEnDia(t.fecha_salida, fecha)}</td>
+                      <td><span className={'badge ' + (ESTADO_TICKET[t.estado]?.cls || 'neutral')}>{ESTADO_TICKET[t.estado]?.texto || t.estado}</span></td>
                       <td>{METODO_LABEL[t.metodo_pago] || '—'}</td>
-                      <td>{t.monto != null ? `$${Number(t.monto).toLocaleString('es-CL')}` : '—'}</td>
+                      <td className="mono">{t.monto != null ? `$${Number(t.monto).toLocaleString('es-CL')}` : '—'}</td>
                     </tr>
                   ))}
                 </tbody>

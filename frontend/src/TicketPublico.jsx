@@ -1,11 +1,12 @@
 import { useEffect, useState } from 'react';
 import { api } from './services/api.js';
 import { calcularTarifa, formatCLP, formatCronometro, formatDuracion, formatTarifa } from './utils/tarifa.js';
+import Icon, { SignE } from './Icon.jsx';
 
 const REFRESCO_MS = 30000;
 
 function hora(iso) {
-  return new Date(iso).toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit' });
+  return new Date(iso).toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit', hourCycle: 'h23' });
 }
 
 // Lo que ve quien escanea el QR del ticket con la cámara del teléfono (normalmente el conductor):
@@ -46,20 +47,24 @@ export default function TicketPublico({ codigo, onEntrarDueno, onCerrar }) {
 
   const ahoraServidor = ahora + desfase;
 
-  function contenido() {
-    if (error) return <p className="badge off">⚠️ {error}</p>;
-    if (!t) return <p><span className="spinner" />Cargando tu ticket…</p>;
-
-    const encabezado = (
-      <>
-        <h2 style={{ marginBottom: 2 }}>🅿️ {t.estacionamiento_nombre}</h2>
-        <p style={{ color: 'var(--text-muted)', marginTop: 0 }}>{t.estacionamiento_direccion}{t.patente ? ` · Patente ${t.patente}` : ''}</p>
-        <p className="mono" style={{ color: 'var(--text-muted)', fontSize: '.78rem', letterSpacing: '.08em', margin: '2px 0 12px' }}>
-          TICKET N.º {codigo}
-        </p>
-        <div className="barcode-rule" style={{ margin: '0 0 16px' }} />
-      </>
+  // Cabecera tipo letrero: el estacionamiento y su dirección, como el cartel de la entrada.
+  function cabecera() {
+    return (
+      <div className="ticket-head">
+        <SignE size={42} />
+        <div>
+          <h2>{t ? t.estacionamiento_nombre : 'Tu ticket'}</h2>
+          {t && <p>{t.estacionamiento_direccion}{t.patente ? <> · Patente <span className="mono">{t.patente}</span></> : ''}</p>}
+        </div>
+      </div>
     );
+  }
+
+  function contenido() {
+    if (error) return <p className="badge off">{error}</p>;
+    if (!t) return <p className="loading-line"><span className="spinner" />Cargando tu ticket…</p>;
+
+    const codigoTicket = <p className="ticket-codigo">Ticket N.º <span className="mono">{codigo}</span></p>;
 
     if (t.estado === 'ACTIVO') {
       const { minutos, bruto } = calcularTarifa(t.fecha_entrada, t.precio_minuto, t.tarifa_minima, ahoraServidor);
@@ -68,22 +73,26 @@ export default function TicketPublico({ codigo, onEntrarDueno, onCerrar }) {
       const enMinimo = bruto === Number(t.tarifa_minima) && t.tarifa_minima > 0;
       return (
         <>
-          {encabezado}
-          <p style={{ margin: '14px 0 2px', color: 'var(--text-muted)' }}>Llevas estacionado</p>
-          <p aria-label="Tiempo estacionado" className="mono" style={{ fontSize: '2.4rem', fontWeight: 700, margin: 0 }}>
-            {formatCronometro(ahoraServidor - new Date(t.fecha_entrada).getTime())}
-          </p>
-          <p style={{ color: 'var(--text-muted)', marginTop: 2 }}>Entraste a las {hora(t.fecha_entrada)} · {formatDuracion(minutos)} cobrados</p>
-
-          <p style={{ margin: '18px 0 2px', color: 'var(--text-muted)' }}>Monto a pagar hasta ahora</p>
-          <p aria-label="Monto a pagar" className="mono" style={{ fontSize: '2rem', fontWeight: 700, margin: 0 }}>{formatCLP(monto)}</p>
-          {descuento > 0 && <p className="badge ok">🎟️ Incluye descuento por tu reserva ya pagada: -{formatCLP(descuento)}</p>}
-          <p style={{ color: 'var(--text-muted)', fontSize: '.9rem' }}>
-            Tarifa: {formatTarifa(t)}.{enMinimo ? ' Aún estás en el valor base mínimo.' : ''}
-          </p>
-          <p style={{ color: 'var(--text-muted)', fontSize: '.85rem' }}>
-            El monto sube por cada minuto que pasa. El valor final se calcula cuando pagas al salir, con el dueño del estacionamiento.
-          </p>
+          {codigoTicket}
+          <span className="badge ok">Vehículo dentro</span>
+          <div className="ticket-metrica" style={{ marginTop: 12 }}>
+            <p className="etq">Llevas estacionado</p>
+            <p aria-label="Tiempo estacionado" className="valor">
+              {formatCronometro(ahoraServidor - new Date(t.fecha_entrada).getTime())}
+            </p>
+            <p className="muted small" style={{ margin: 0 }}>Entraste a las <span className="mono">{hora(t.fecha_entrada)}</span> · {formatDuracion(minutos)} cobrados</p>
+          </div>
+          <div className="ticket-metrica" style={{ marginTop: 12 }}>
+            <p className="etq">Monto a pagar hasta ahora</p>
+            <p aria-label="Monto a pagar" className="valor">{formatCLP(monto)}</p>
+            {descuento > 0 && <p className="badge ok">Incluye descuento por tu reserva ya pagada: -{formatCLP(descuento)}</p>}
+            <p className="muted small">
+              Tarifa: {formatTarifa(t)}.{enMinimo ? ' Aún estás en el valor base mínimo.' : ''}
+            </p>
+            <p className="muted small">
+              El monto sube por cada minuto que pasa. El valor final se calcula cuando pagas al salir, con el dueño del estacionamiento.
+            </p>
+          </div>
         </>
       );
     }
@@ -92,11 +101,11 @@ export default function TicketPublico({ codigo, onEntrarDueno, onCerrar }) {
       const quedan = Math.max(0, Math.ceil((new Date(t.reserva_expira).getTime() - ahoraServidor) / 60000));
       return (
         <>
-          {encabezado}
+          {codigoTicket}
           {quedan > 0
-            ? <p className="badge ok">🎫 Reserva vigente: te quedan {formatDuracion(quedan)} para llegar (hasta las {hora(t.reserva_expira)}).</p>
-            : <p className="badge off">⌛ Tu reserva venció y el cupo puede haberse liberado.</p>}
-          <p style={{ color: 'var(--text-muted)' }}>Muestra este QR al dueño al llegar para validar tu cupo. Tarifa: {formatTarifa(t)}.</p>
+            ? <p className="badge ok">Reserva vigente: te quedan {formatDuracion(quedan)} para llegar (hasta las {hora(t.reserva_expira)}).</p>
+            : <p className="badge off">Tu reserva venció y el cupo puede haberse liberado.</p>}
+          <p className="muted">Muestra este QR al dueño al llegar para validar tu cupo. Tarifa: {formatTarifa(t)}.</p>
         </>
       );
     }
@@ -104,31 +113,31 @@ export default function TicketPublico({ codigo, onEntrarDueno, onCerrar }) {
     if (t.estado === 'CERRADO') {
       return (
         <>
-          {encabezado}
-          <p className="badge ok">✅ Ticket cerrado{t.monto != null ? `: pagaste ${formatCLP(t.monto)}` : ''}.</p>
-          <p style={{ color: 'var(--text-muted)' }}>Estuviste {formatDuracion(t.minutos)} (de las {hora(t.fecha_entrada)} a las {hora(t.fecha_salida)}). ¡Gracias por tu preferencia!</p>
+          {codigoTicket}
+          <p className="badge ok">Ticket cerrado{t.monto != null ? `: pagaste ${formatCLP(t.monto)}` : ''}.</p>
+          <p className="muted">Estuviste {formatDuracion(t.minutos)} (de las {hora(t.fecha_entrada)} a las {hora(t.fecha_salida)}). Gracias por tu preferencia.</p>
         </>
       );
     }
 
     return (
       <>
-        {encabezado}
+        {codigoTicket}
         <p className="badge off">Este ticket ya no está vigente ({t.estado.toLowerCase()}).</p>
       </>
     );
   }
 
   return (
-    <div style={{ maxWidth: 520, margin: '0 auto' }}>
-      <div className="ticket-perf" />
-      <div className="card ticket-card">
+    <article className="ticket" aria-label="Tu ticket de estacionamiento">
+      {cabecera()}
+      <div className="ticket-body">
         {contenido()}
-        <div className="row-form" style={{ marginTop: 16 }}>
-          {onEntrarDueno && <button type="button" onClick={onEntrarDueno}>🔑 Soy el dueño: iniciar sesión para cobrar</button>}
-          <button type="button" className="secondary" onClick={onCerrar}>← Ir al inicio</button>
+        <div className="ticket-acciones">
+          {onEntrarDueno && <button type="button" className="dark" onClick={onEntrarDueno}><Icon name="key" />Soy el dueño: iniciar sesión para cobrar</button>}
+          <button type="button" className="secondary" onClick={onCerrar}><Icon name="arrowLeft" size={16} />Ir al inicio</button>
         </div>
       </div>
-    </div>
+    </article>
   );
 }

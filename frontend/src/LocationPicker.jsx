@@ -3,16 +3,12 @@ import { MapContainer, TileLayer, Marker, useMap, useMapEvents } from 'react-lea
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { geocode } from './utils/geo.js';
+import Icon from './Icon.jsx';
 
 const SANTIAGO = { lat: -33.4489, lng: -70.6693 };
 
-function pinIcon() {
-  return L.divIcon({
-    html: '<div style="font-size:26px;line-height:26px;transform:translate(-50%,-100%)">📍</div>',
-    className: '', iconSize: [26, 26], iconAnchor: [0, 0]
-  });
-}
-const icon = pinIcon();
+// Alfiler dibujado (no un emoji): la punta queda exactamente sobre el punto marcado.
+const icon = L.divIcon({ html: '<div class="map-pin"></div>', className: '', iconSize: [20, 20], iconAnchor: [3, 24] });
 
 function RecenterMap({ center }) {
   const map = useMap();
@@ -46,11 +42,11 @@ export default function LocationPicker({ value, onChange }) {
     <div style={{ margin: '6px 0 14px' }}>
       <div className="row-form">
         <input placeholder="Buscar dirección para ubicar en el mapa" value={busqueda} onChange={e => setBusqueda(e.target.value)} aria-label="Buscar dirección" />
-        <button type="button" onClick={buscarDireccion} disabled={buscando} className="secondary">{buscando ? 'Buscando...' : '🔎 Buscar'}</button>
+        <button type="button" onClick={buscarDireccion} disabled={buscando} className="secondary">{buscando ? <span className="spinner" /> : <Icon name="search" />}{buscando ? 'Buscando...' : 'Buscar'}</button>
       </div>
-      {error && <p className="badge off">⚠️ {error}</p>}
-      <p style={{ fontSize: '.85rem', color: 'var(--text-muted)', margin: '0 0 6px' }}>O haz clic directamente en el mapa para fijar la ubicación exacta.</p>
-      <div style={{ borderRadius: 12, overflow: 'hidden' }}>
+      {error && <p className="badge off">{error}</p>}
+      <p className="muted small" style={{ margin: '8px 0 6px' }}>O haz clic directamente en el mapa para fijar la ubicación exacta.</p>
+      <div style={{ borderRadius: 8, overflow: 'hidden', border: '1px solid var(--rule)' }}>
         <MapContainer center={[center.lat, center.lng]} zoom={value ? 15 : 12} style={{ height: 260, width: '100%' }}>
           <RecenterMap center={value ? [value.lat, value.lng] : null} />
           <ClickToPick onPick={onChange} />
@@ -58,7 +54,7 @@ export default function LocationPicker({ value, onChange }) {
           {value && <Marker position={[value.lat, value.lng]} icon={icon} />}
         </MapContainer>
       </div>
-      {value && <p className="badge ok" style={{ marginTop: 8 }}>📍 {value.lat.toFixed(6)}, {value.lng.toFixed(6)}</p>}
+      {value && <p className="badge ok" style={{ marginTop: 8 }}>Ubicación marcada: <span className="mono">{value.lat.toFixed(6)}, {value.lng.toFixed(6)}</span></p>}
     </div>
   );
 }

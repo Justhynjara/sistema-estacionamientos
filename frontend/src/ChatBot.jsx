@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import Icon from './Icon.jsx';
 
 const FAQ = [
   {
@@ -32,7 +33,7 @@ const FAQ = [
   {
     pregunta: '¿Cómo descargo o imprimo mi ticket/comprobante?',
     keywords: ['descargar', 'imprimir', 'comprobante', 'ticket', 'qr'],
-    respuesta: 'En la pantalla de tu ticket o reserva confirmada verás los botones "⬇️ Descargar QR" e "🖨️ Imprimir". Puedes guardar el código QR como imagen o imprimir el comprobante desde el navegador.'
+    respuesta: 'En la pantalla de tu ticket o reserva confirmada verás los botones "Descargar QR" e "Imprimir". Puedes guardar el código QR como imagen o imprimir el comprobante desde el navegador.'
   },
   {
     pregunta: 'Olvidé mi contraseña',
@@ -52,7 +53,7 @@ const FAQ = [
   }
 ];
 
-const SALUDO = { rol: 'bot', texto: '¡Hola! 👋 Soy el asistente del Sistema de Estacionamientos. Puedes preguntarme sobre cómo buscar, reservar o pagar un estacionamiento.' };
+const SALUDO = { rol: 'bot', texto: '¡Hola! Soy el asistente del Sistema de Estacionamientos. Puedes preguntarme sobre cómo buscar, reservar o pagar un estacionamiento.' };
 const FALLBACK = 'No tengo una respuesta exacta para eso. Prueba con alguna de las preguntas frecuentes de abajo, o si es algo puntual de tu reserva, contacta directamente al estacionamiento con tu código de comprobante.';
 
 function normalizar(texto) {
@@ -109,13 +110,13 @@ export default function ChatBot({ onAbrirSolicitud }) {
         aria-label={abierto ? 'Cerrar asistente' : 'Abrir asistente'}
         title="¿Dudas? Pregúntale al asistente"
       >
-        {abierto ? '✕' : '💬'}
+        <Icon name={abierto ? 'x' : 'chat'} size={24} />
       </button>
 
       {abierto && (
         <div className="chatbot-panel">
           <div className="chatbot-header">
-            <span>🤖 Asistente</span>
+            <span><Icon name="chat" />Asistente</span>
             <button type="button" onClick={() => setAbierto(false)}>Cerrar</button>
           </div>
           <div className="chatbot-messages">
@@ -123,14 +124,14 @@ export default function ChatBot({ onAbrirSolicitud }) {
               <div key={i}>
                 <div className={'chatbot-msg ' + m.rol}>{m.texto}</div>
                 {m.accion === 'ser_cliente' && (
-                  <button type="button" style={{ marginTop: 6 }} onClick={onAbrirSolicitud}>📋 Completar solicitud</button>
+                  <button type="button" className="small" onClick={onAbrirSolicitud}><Icon name="clipboard" size={16} />Completar solicitud</button>
                 )}
               </div>
             ))}
             <div ref={finRef} />
           </div>
           <div className="chatbot-suggestions">
-            <button type="button" onClick={() => enviar('¿Quieres ser cliente?')}>🏢 ¿Quieres ser cliente?</button>
+            <button type="button" onClick={() => enviar('¿Quieres ser cliente?')}>¿Quieres ser cliente?</button>
             {FAQ.filter(f => f.id !== 'ser_cliente').slice(0, 3).map((f, i) => (
               <button key={i} type="button" onClick={() => enviar(f.pregunta)}>{f.pregunta}</button>
             ))}

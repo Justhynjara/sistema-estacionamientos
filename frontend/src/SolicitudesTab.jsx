@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react';
 import { api } from './services/api.js';
 import { formatTarifa } from './utils/tarifa.js';
+import Icon from './Icon.jsx';
 
 const ESTADO_LABEL = {
-  PENDIENTE: { texto: 'Pendiente de soporte', cls: 'off' },
+  PENDIENTE: { texto: 'Pendiente de soporte', cls: 'info' },
   APROBADA: { texto: 'Aprobada — falta crear acceso', cls: 'ok' },
   RECHAZADA: { texto: 'Rechazada', cls: 'off' },
   PROCESADA: { texto: 'Procesada', cls: 'ok' }
@@ -18,26 +19,26 @@ function DetalleSolicitud({ s, onCerrar, onProcesar, procesando }) {
 
   return (
     <div className="card">
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-        <h3 style={{ margin: 0 }}>{s.nombre_establecimiento}</h3>
-        <button type="button" className="secondary" onClick={onCerrar}>Cerrar</button>
+      <div className="card-head">
+        <h3>{s.nombre_establecimiento}</h3>
+        <button type="button" className="secondary small" onClick={onCerrar}>Cerrar</button>
       </div>
       <p><strong>Solicitante:</strong> {s.nombre_solicitante} — {s.email}{s.telefono ? ` — ${s.telefono}` : ''}</p>
       <p><strong>Dirección:</strong> {s.direccion}</p>
       <p><strong>Tarifa:</strong> {formatTarifa(s)} &nbsp; <strong>Cupos estimados:</strong> {s.cupo_estimado}</p>
       {s.descripcion && <p><strong>Descripción:</strong> {s.descripcion}</p>}
-      {s.comentario_soporte && <p className="badge ok">Nota de soporte: {s.comentario_soporte}</p>}
+      {s.comentario_soporte && <p className="badge info">Nota de soporte: {s.comentario_soporte}</p>}
       {detalle?.fotos?.length > 0 && (
         <div className="grid" style={{ gridTemplateColumns: 'repeat(auto-fit,minmax(140px,1fr))' }}>
           {detalle.fotos.map((f, i) => (
-            <img key={i} src={f} alt={`Foto ${i + 1}`} style={{ width: '100%', borderRadius: 10, border: '1px solid var(--border)' }} />
+            <img key={i} src={f} alt={`Foto ${i + 1} de ${s.nombre_establecimiento}`} style={{ width: '100%', borderRadius: 6, border: '1px solid var(--rule)' }} />
           ))}
         </div>
       )}
       {s.estado === 'APROBADA' && (
         <div className="row-form" style={{ marginTop: 12 }}>
           <button type="button" disabled={procesando} onClick={() => onProcesar(s.id)}>
-            {procesando && <span className="spinner" />}✅ Marcar como procesada (ya creé el usuario y el estacionamiento)
+            {procesando ? <span className="spinner" /> : <Icon name="check" />}Marcar como procesada (ya creé el usuario y el estacionamiento)
           </button>
         </div>
       )}
@@ -70,7 +71,7 @@ export default function SolicitudesTab() {
     <>
       <div className="card">
         <h3>Solicitudes de nuevos clientes</h3>
-        <p style={{ color: 'var(--text-muted)' }}>
+        <p className="lead">
           Cuando soporte aprueba una postulación, aparece aquí. Crea el usuario (pestaña Usuarios) y registra el estacionamiento
           (pestaña Estacionamientos) con los datos de la solicitud, y luego márcala como procesada.
         </p>
@@ -91,16 +92,16 @@ export default function SolicitudesTab() {
 
       <div className="table-wrap">
         <table className="table">
-          <thead><tr><th>Establecimiento</th><th>Solicitante</th><th>Tarifa</th><th>Cupos</th><th>Estado</th><th></th></tr></thead>
+          <thead><tr><th>Establecimiento</th><th>Solicitante</th><th>Tarifa</th><th>Cupos</th><th>Estado</th><th><span className="sr-only">Acción</span></th></tr></thead>
           <tbody>
             {solicitudes.map(s => (
               <tr key={s.id}>
                 <td>{s.nombre_establecimiento}</td>
                 <td>{s.nombre_solicitante}</td>
-                <td>{formatTarifa(s)}</td>
-                <td>{s.cupo_estimado}</td>
+                <td className="mono">{formatTarifa(s)}</td>
+                <td className="mono">{s.cupo_estimado}</td>
                 <td><span className={'badge ' + ESTADO_LABEL[s.estado].cls}>{ESTADO_LABEL[s.estado].texto}</span></td>
-                <td><button type="button" className="secondary" onClick={() => setSeleccionada(s)}>Ver detalle</button></td>
+                <td className="acciones"><button type="button" className="secondary small" onClick={() => setSeleccionada(s)}>Ver detalle</button></td>
               </tr>
             ))}
           </tbody>

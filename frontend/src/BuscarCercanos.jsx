@@ -9,24 +9,38 @@ import AddressAutocomplete from './AddressAutocomplete.jsx';
 import { geocode } from './utils/geo.js';
 import { imprimirTicket } from './utils/print.js';
 import { qrPayload } from './utils/qr.js';
-import { formatTarifa } from './utils/tarifa.js';
 import { redirectToWebpay } from './utils/webpay.js';
+import Icon from './Icon.jsx';
+import Capacidad from './Capacidad.jsx';
+import Tarifa from './Tarifa.jsx';
 
 const SOCKET_URL = API_ORIGIN;
 const RADIUS_KM = 5;
 const REROUTE_THRESHOLD_M = 30;
 
-function emojiIcon(emoji) {
-  return L.divIcon({
-    html: `<div style="font-size:26px;line-height:26px;transform:translate(-50%,-100%)">${emoji}</div>`,
-    className: '',
-    iconSize: [26, 26],
-    iconAnchor: [0, 0]
-  });
+// Marcadores dibujados con el mismo lenguaje que la lista: tu ubicación es el origen de la línea,
+// el destino es la estación final y cada estacionamiento es una parada con el número de la lista.
+function divIcon(html, size) {
+  return L.divIcon({ html, className: '', iconSize: [size, size], iconAnchor: [size / 2, size / 2], popupAnchor: [0, -size / 2] });
 }
-const userIcon = emojiIcon('🔵');
-const destinoIcon = emojiIcon('🏁');
-const parkingIcon = emojiIcon('🅿️');
+const userIcon = divIcon('<div class="map-yo"></div>', 18);
+const destinoIcon = divIcon('<div class="map-destino"></div>', 16);
+function paradaIcon(n, lleno, sel) {
+  return divIcon(`<div class="map-stop${lleno ? ' lleno' : ''}${sel ? ' sel' : ''}"><span>${n}</span></div>`, 34);
+}
+
+function formatDistancia(km) {
+  return km < 1 ? `${Math.round(km * 1000)} m` : `${km.toFixed(1).replace('.', ',')} km`;
+}
+
+// Lo que le importa a quien estaciona es cuánto camina hasta su destino: a paso normal
+// (unos 80 m por minuto), redondeado hacia arriba y nunca menos de un minuto.
+const METROS_POR_MINUTO_A_PIE = 80;
+function minutosAPie(km) {
+  return Math.max(1, Math.ceil((km * 1000) / METROS_POR_MINUTO_A_PIE));
+}
+
+const GEO_ERROR = 'No pudimos leer tu GPS. Escribe una dirección o toca el mapa.';
 
 function haversineMeters(a, b) {
   const R = 6371000;
@@ -79,7 +93,7 @@ function Countdown({ expira }) {
   if (restanteMs <= 0) return <span className="badge off">La reserva expiró</span>;
   const min = Math.floor(restanteMs / 60000);
   const seg = Math.floor((restanteMs % 60000) / 1000);
-  return <span className="badge ok">⏱️ Válida por {min}:{String(seg).padStart(2, '0')} min</span>;
+  return <span className="badge ok">Válida por <span className="mono">{min}:{String(seg).padStart(2, '0')}</span> min</span>;
 }
 
 export default function BuscarCercanos({ reservaCodigoInicial } = {}) {
@@ -108,10 +122,10 @@ export default function BuscarCercanos({ reservaCodigoInicial } = {}) {
   useEffect(() => { manualModeRef.current = manualMode; }, [manualMode]);
 
   useEffect(() => {
-    if (!navigator.geolocation) { setGeoError('Tu navegador no soporta geolocalización'); return; }
+    if (!navigator.geolocation) { setGeoError('Tu navegador no tiene GPS. Escribe una dirección o toca el mapa.'); return; }
     const watchId = navigator.geolocation.watchPosition(
       pos => { if (!manualModeRef.current) setUserPos({ lat: pos.coords.latitude, lng: pos.coords.longitude }); },
-      () => { if (!manualModeRef.current) setGeoError('No se pudo obtener tu ubicación automáticamente. Escribe tu dirección o haz clic en el mapa para marcarla.'); },
+      () => { if (!manualModeRef.current) setGeoError(GEO_ERROR); },
       { enableHighAccuracy: true, maximumAge: 5000 }
     );
     return () => navigator.geolocation.clearWatch(watchId);
@@ -142,7 +156,7 @@ export default function BuscarCercanos({ reservaCodigoInicial } = {}) {
     setGeoError('');
     navigator.geolocation.getCurrentPosition(
       pos => setUserPos({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
-      () => setGeoError('No se pudo obtener tu ubicación automáticamente. Escribe tu dirección o haz clic en el mapa para marcarla.'),
+      () => setGeoError(GEO_ERROR),
       { enableHighAccuracy: true }
     );
   }
@@ -278,98 +292,187 @@ async function buscarCercaDe(destCoords) {
 
   const center = destinoCoords || userPos || { lat: -33.4489, lng: -70.6693 };
 
+  const lista = parkings.map((p, i) => ({ ...p, n: i + 1 }));
+  const gpsActivo = Boolean(userPos) && !manualMode;
+  const origenHint = origenLoading ? 'Ubicando la dirección…'
+    : geoError ? geoError
+    : !userPos ? 'Esperando tu GPS… también puedes escribir una dirección o tocar el mapa.'
+    : manualMode ? 'Partida fijada a mano. Toca el mapa para moverla.'
+    : 'Partida: tu ubicación por GPS.';
+
   return (
-    <div>
-      <div className="card">
-        <h2><span className="step">1</span>Tu ubicación de partida</h2>
-        <p>Se usa tu GPS automáticamente. Si falla o prefieres otra, escribe una dirección o haz clic directamente en el mapa.</p>
-        {geoError && <p className="badge off">⚠️ {geoError}</p>}
-        <form onSubmit={usarOrigenEscrito} className="row-form">
-          <AddressAutocomplete
-            placeholder="Tu dirección de partida (ej: Av. Providencia 1234, Santiago)"
-            ariaLabel="Tu dirección de partida"
-            value={origen}
-            onChange={setOrigen}
-            onSelect={setManualLocation}
-          />
-          <button disabled={origenLoading}>{origenLoading && <span className="spinner"/>}{origenLoading ? 'Ubicando...' : 'Usar esta dirección'}</button>
-          <button type="button" onClick={usarGPS} className="secondary">📍 Usar mi GPS</button>
-        </form>
-        <p className={'badge ' + (userPos ? 'ok' : 'off')}>{userPos ? (manualMode ? '📌 Ubicación fijada manualmente' : '🛰️ Ubicación por GPS') : '⏳ Sin ubicación aún'}</p>
+    <div className="buscador">
+      <div className="buscador-col">
+        <section className="rail" aria-label="Buscar estacionamiento">
+          <div className="rail-stop">
+            <div className="rail-track"><span className="rail-node" /></div>
+            <div className="rail-body">
+              <form onSubmit={usarOrigenEscrito}>
+                <p className="field-label">Desde</p>
+                <div className="inputline">
+                  <AddressAutocomplete
+                    placeholder="Tu ubicación o una dirección"
+                    ariaLabel="Tu dirección de partida"
+                    value={origen}
+                    onChange={setOrigen}
+                    onSelect={setManualLocation}
+                  />
+                  <button
+                    type="button"
+                    className={'gps-toggle' + (gpsActivo ? ' on' : '')}
+                    onClick={usarGPS}
+                    aria-pressed={gpsActivo}
+                    aria-label="Usar mi ubicación por GPS"
+                    title="Usar mi ubicación por GPS"
+                  >
+                    {origenLoading ? <span className="spinner" /> : <Icon name="gps" size={20} />}
+                  </button>
+                </div>
+                <button className="sr-only" disabled={origenLoading}>Usar esta dirección de partida</button>
+              </form>
+              <p className={'campo-hint' + (geoError ? ' error' : '')} role="status">{origenHint}</p>
+            </div>
+          </div>
+          <div className="rail-stop">
+            <div className="rail-track"><span className="rail-node dest" /></div>
+            <div className="rail-body">
+              <form onSubmit={buscar}>
+                <p className="field-label">Hacia</p>
+                <AddressAutocomplete
+                  placeholder="Destino (ej: Plaza de Armas, Curicó)"
+                  ariaLabel="Destino"
+                  value={destino}
+                  onChange={setDestino}
+                  onSelect={onDestinoSeleccionado}
+                />
+                <p className="small muted" style={{ margin: '6px 0 0' }}>Déjalo vacío para buscar cerca de ti.</p>
+                {error && <p className="badge off" role="alert">{error}</p>}
+                <button className="go" disabled={loading}>{loading ? <span className="spinner" /> : <Icon name="search" />}{loading ? 'Buscando...' : 'Buscar estacionamientos'}</button>
+              </form>
+            </div>
+          </div>
+        </section>
+
+        {reservaPendiente && (
+          <section className="panel-accion" aria-labelledby="reserva-titulo">
+            <h3 id="reserva-titulo"><Icon name="ticket" />Reservar cupo en {reservaPendiente.nombre}</h3>
+            <p className="small">Ingresa la patente del vehículo que va a estacionar. Para confirmar, se te pedirá un micropago de <strong>$100 CLP</strong> por Webpay — evita reservas falsas y tu cupo queda apartado por <strong>10 minutos</strong>. Si llegas a tiempo, se descuenta de lo que pagues al salir; si la reserva expira sin usarse, <strong>el monto no se reembolsa</strong>. Si el último cupo se ocupa mientras pagas, anulamos el cobro automáticamente.</p>
+            {reservaError && <p className="badge off">{reservaError}</p>}
+            <form onSubmit={confirmarReserva}>
+              <label htmlFor="patente-reserva">Patente</label>
+              <input
+                id="patente-reserva"
+                className="mono"
+                placeholder="AB1234"
+                aria-label="Patente del vehículo"
+                value={patenteReserva}
+                onChange={e => setPatenteReserva(e.target.value.toUpperCase())}
+                autoFocus
+                required
+              />
+              <div className="row-form">
+                <button disabled={reservandoId === reservaPendiente.id}>{reservandoId === reservaPendiente.id ? <span className="spinner" /> : <Icon name="card" />}Pagar $100 y reservar</button>
+                <button type="button" className="secondary" onClick={() => setReservaPendiente(null)}>Cancelar</button>
+              </div>
+            </form>
+          </section>
+        )}
+
+        {reserva && (
+          <section className="panel-accion centrado" aria-labelledby="reserva-ok-titulo">
+            <h3 id="reserva-ok-titulo" style={{ justifyContent: 'center' }}><Icon name="checkCircle" />Reserva confirmada en {reserva.nombre}</h3>
+            <p className="small muted">Muestra este código QR al llegar para validar tu cupo, o descárgalo.</p>
+            <div style={{ display: 'flex', justifyContent: 'center', margin: '12px 0' }}>
+              <QRCodeCanvas value={qrPayload(reserva.codigo)} downloadable filename={`reserva-${reserva.codigo.slice(0, 8)}`} label="Código QR de tu reserva" />
+            </div>
+            <p className="codigo-largo">{reserva.codigo}</p>
+            <Countdown expira={reserva.expira} />
+            <div className="row-form" style={{ marginTop: 12 }}>
+              {reserva.latitud && reserva.longitud && (
+                <button type="button" className="secondary" onClick={() => abrirWaze({ latitud: reserva.latitud, longitud: reserva.longitud })}><Icon name="nav" />Navegar con Waze</button>
+              )}
+              <button type="button" onClick={() => imprimirTicket({
+                nombreEstacionamiento: reserva.nombre,
+                direccion: reserva.direccion,
+                codigo: reserva.codigo,
+                detalle: [['Válido hasta', new Date(reserva.expira).toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit', hourCycle: 'h23' })]],
+                pie: 'Presenta este comprobante al llegar'
+              })}><Icon name="printer" />Imprimir</button>
+              <button type="button" className="secondary" onClick={() => setReserva(null)}>Cerrar</button>
+            </div>
+          </section>
+        )}
+        {reservaError && !reservaPendiente && <p className="badge off">{reservaError}</p>}
+
+        <section className="opciones" aria-labelledby="opciones-titulo">
+          <h2 id="opciones-titulo">
+            {lista.length > 0
+              ? `${lista.length} ${lista.length === 1 ? 'opción' : 'opciones'} junto a tu destino`
+              : 'Opciones junto a tu destino'}
+          </h2>
+          {lista.length > 0 && <p className="meta">Ordenadas por distancia al destino. Los cupos se actualizan en tiempo real.</p>}
+          {lista.length > 0 ? (
+            <ol className="paradas">
+              {lista.map(p => {
+                const lleno = p.cupos_disponibles <= 0;
+                const sel = selectedId === p.id;
+                return (
+                  <li className={'parada' + (lleno ? ' lleno' : '') + (sel ? ' sel' : '')} key={p.id}>
+                    <span className="k" aria-hidden="true">{p.n}</span>
+                    <div className="top">
+                      <div>
+                        <h3>{p.nombre}</h3>
+                        <p className="addr">{p.direccion}</p>
+                      </div>
+                      <div className="dist">
+                        <b><span className="num">{minutosAPie(p.distancia_km)}</span> min</b>
+                        <small>a pie · <span className="num">{formatDistancia(p.distancia_km)}</span></small>
+                      </div>
+                    </div>
+                    <Capacidad libres={p.cupos_disponibles} total={p.cupo_maximo} />
+                    <div className="datos">
+                      <span><Icon name="coin" size={16} /><Tarifa {...p} /></span>
+                      {p.ruta && <span><Icon name="car" size={16} /><span><span className="num">{Math.round(p.ruta.duracionMin)}</span> min en auto desde tu partida</span></span>}
+                    </div>
+                    <div className="acciones">
+                      <button type="button" className="dark small" onClick={() => iniciarReserva(p)} disabled={lleno}>
+                        {lleno ? 'Sin cupos' : 'Reservar · $100'}
+                      </button>
+                      <button type="button" className="secondary small" onClick={() => verRuta(p)} disabled={lleno} aria-pressed={sel}>
+                        <Icon name="route" size={16} />{sel ? 'Ruta trazada' : 'Ver ruta'}
+                      </button>
+                      <button type="button" className="waze" onClick={() => abrirWaze(p)}>
+                        <Icon name="nav" size={16} />Navegar con Waze
+                      </button>
+                    </div>
+                  </li>
+                );
+              })}
+            </ol>
+          ) : (
+            !loading && !error && <div className="empty-state">Ingresa un destino y presiona "Buscar estacionamientos" para ver opciones cercanas.</div>
+          )}
+        </section>
       </div>
 
-      <div className="card">
-        <h2><span className="step">2</span>Destino</h2>
-        {error && <p className="badge off">⚠️ {error}</p>}
-        <form onSubmit={buscar} className="row-form">
-          <AddressAutocomplete
-            placeholder="Destino (ej: Plaza de Armas, Curicó) — vacío = buscar cerca de mí"
-            ariaLabel="Destino"
-            value={destino}
-            onChange={setDestino}
-            onSelect={onDestinoSeleccionado}
-          />
-          <button disabled={loading}>{loading && <span className="spinner"/>}{loading ? 'Buscando...' : '🔎 Buscar estacionamientos'}</button>
-        </form>
-      </div>
-
-      {reservaPendiente && (
-        <div className="card">
-          <h3>🎫 Reservar cupo en {reservaPendiente.nombre}</h3>
-          <p>Ingresa la patente del vehículo que va a estacionar. Para confirmar, se te pedirá un micropago de <strong>$100 CLP</strong> por Webpay — evita reservas falsas y tu cupo queda apartado por <strong>10 minutos</strong>. Si llegas a tiempo, se descuenta de lo que pagues al salir; si la reserva expira sin usarse, <strong>el monto no se reembolsa</strong>. Si el último cupo se ocupa mientras pagas, anulamos el cobro automáticamente.</p>
-          {reservaError && <p className="badge off">⚠️ {reservaError}</p>}
-          <form onSubmit={confirmarReserva} className="row-form">
-            <input
-              placeholder="Patente (ej: AB1234)"
-              aria-label="Patente del vehículo"
-              value={patenteReserva}
-              onChange={e => setPatenteReserva(e.target.value.toUpperCase())}
-              autoFocus
-              required
-            />
-            <button disabled={reservandoId === reservaPendiente.id}>{reservandoId === reservaPendiente.id && <span className="spinner" />}💳 Pagar $100 y reservar</button>
-            <button type="button" className="secondary" onClick={() => setReservaPendiente(null)}>Cancelar</button>
-          </form>
-        </div>
-      )}
-
-      {reserva && (
-        <div className="card" style={{ textAlign: 'center' }}>
-          <h3>🎫 Reserva confirmada en {reserva.nombre}</h3>
-          <p>Muestra este código QR al llegar para validar tu cupo, o descárgalo:</p>
-          <div style={{ display: 'flex', justifyContent: 'center', margin: '12px 0' }}>
-            <QRCodeCanvas value={qrPayload(reserva.codigo)} downloadable filename={`reserva-${reserva.codigo.slice(0, 8)}`} label="Código QR de tu reserva" />
-          </div>
-          <p style={{ fontFamily: 'monospace', color: 'var(--text-muted)', fontSize: '.8rem', wordBreak: 'break-all' }}>{reserva.codigo}</p>
-          <Countdown expira={reserva.expira} />
-          <div className="row-form" style={{ justifyContent: 'center', marginTop: 10 }}>
-            {reserva.latitud && reserva.longitud && (
-              <button type="button" className="secondary" onClick={() => abrirWaze({ latitud: reserva.latitud, longitud: reserva.longitud })}>🧭 Navegar con Waze</button>
-            )}
-            <button type="button" onClick={() => imprimirTicket({
-              nombreEstacionamiento: reserva.nombre,
-              direccion: reserva.direccion,
-              codigo: reserva.codigo,
-              detalle: [['Válido hasta', new Date(reserva.expira).toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit' })]],
-              pie: 'Presenta este comprobante al llegar'
-            })}>🖨️ Imprimir</button>
-            <button type="button" className="secondary" onClick={() => setReserva(null)}>Cerrar</button>
-          </div>
-        </div>
-      )}
-      {reservaError && <p className="badge off">⚠️ {reservaError}</p>}
-
-      <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
-        <MapContainer center={[center.lat, center.lng]} zoom={14} style={{ height: 360, width: '100%' }}>
+      <div className="buscador-mapa">
+        <ul className="mapa-leyenda" aria-label="Leyenda del mapa">
+          <li><i className="ley-ruta" aria-hidden="true" />Tu ruta</li>
+          <li><i className="ley-stop" aria-hidden="true" />Con cupos</li>
+          <li><i className="ley-stop lleno" aria-hidden="true" />Lleno</li>
+        </ul>
+        <MapContainer center={[center.lat, center.lng]} zoom={14}>
           <RecenterMap center={[center.lat, center.lng]} />
           <ClickToSetLocation onSelect={setManualLocation} />
           <TileLayer
             attribution='&copy; OpenStreetMap contributors'
             url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
           />
+          {selectedRoute && <Polyline positions={selectedRoute.coords} pathOptions={{ color: '#ffffff', weight: 11, opacity: 1 }} />}
+          {selectedRoute && <Polyline positions={selectedRoute.coords} pathOptions={{ color: '#0b5cad', weight: 6, opacity: 1 }} />}
           {userPos && (
             <Marker position={[userPos.lat, userPos.lng]} icon={userIcon}>
-              <Popup>Tu ubicación {manualMode ? '(fijada manualmente)' : '(GPS)'}<br />Haz clic en otro punto del mapa para moverla</Popup>
+              <Popup>Tu ubicación {manualMode ? '(fijada a mano)' : '(GPS)'}<br />Haz clic en otro punto del mapa para moverla</Popup>
             </Marker>
           )}
           {destinoCoords && (
@@ -377,44 +480,16 @@ async function buscarCercaDe(destCoords) {
               <Popup>Destino</Popup>
             </Marker>
           )}
-          {parkings.map(p => (
-            <Marker key={p.id} position={[Number(p.latitud), Number(p.longitud)]} icon={parkingIcon}>
+          {lista.map(p => (
+            <Marker key={p.id} position={[Number(p.latitud), Number(p.longitud)]} icon={paradaIcon(p.n, p.cupos_disponibles <= 0, selectedId === p.id)}>
               <Popup>
-                <strong>{p.nombre}</strong><br />
-                {p.cupos_disponibles} / {p.cupo_maximo} disponibles<br />
-                <button onClick={() => verRuta(p)}>Ver ruta</button>
+                <strong>{p.n}. {p.nombre}</strong><br />
+                {p.cupos_disponibles > 0 ? `${p.cupos_disponibles} libres de ${p.cupo_maximo}` : 'Lleno'}<br />
+                <button type="button" onClick={() => verRuta(p)} disabled={p.cupos_disponibles <= 0}>Ver ruta</button>
               </Popup>
             </Marker>
           ))}
-          {selectedRoute && <Polyline positions={selectedRoute.coords} color="#1f6feb" weight={5} />}
         </MapContainer>
-      </div>
-
-      <div className="grid">
-        {parkings.map(p => (
-          <div className={'card' + (selectedId === p.id ? ' selected' : '')} key={p.id}>
-            <h3>{p.nombre}</h3>
-            <p>{p.direccion}</p>
-            <p>💰 {formatTarifa(p)}</p>
-            <p className={'badge ' + (p.cupos_disponibles > 0 ? 'ok' : 'off')}>🅿️ {p.cupos_disponibles} / {p.cupo_maximo} disponibles</p>
-            <p>📍 {p.distancia_km.toFixed(2)} km del destino</p>
-            {p.ruta && <p>🚗 {p.ruta.distanciaKm.toFixed(1)} km · ⏱️ {Math.round(p.ruta.duracionMin)} min desde tu ubicación</p>}
-            <div className="row-form">
-              <button onClick={() => verRuta(p)} disabled={p.cupos_disponibles <= 0}>
-                {selectedId === p.id ? '✅ Ruta trazada' : '🗺️ Ver ruta'}
-              </button>
-              <button type="button" className="secondary" onClick={() => abrirWaze(p)}>
-                🧭 Navegar con Waze
-              </button>
-              <button type="button" className="secondary" onClick={() => iniciarReserva(p)} disabled={p.cupos_disponibles <= 0}>
-                🎫 Reservar cupo
-              </button>
-            </div>
-          </div>
-        ))}
-        {!loading && parkings.length === 0 && !error && (
-          <div className="empty-state">Ingresa un destino y presiona "Buscar estacionamientos" para ver opciones cercanas.</div>
-        )}
       </div>
     </div>
   );

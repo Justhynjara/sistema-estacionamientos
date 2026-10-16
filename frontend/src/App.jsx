@@ -11,6 +11,35 @@ import LegalPage from './legal/LegalPage.jsx';
 import Footer from './legal/Footer.jsx';
 import CookieNotice from './legal/CookieNotice.jsx';
 import {CONTACTO_LEGAL} from './legal/contenido.js';
+import Icon,{SignE} from './Icon.jsx';
+
+const NOMBRE_ROL={ADMIN:'Administrador',CLIENTE:'Dueño',SOPORTE:'Soporte',USUARIO:'Conductor'};
+const TITULO_PANEL={ADMIN:'Administración',CLIENTE:'Panel del dueño',SOPORTE:'Soporte',USUARIO:'Buscar estacionamiento'};
+
+function Header({user,onSalir,onAcceso,onPostular}){
+  return <header className="site-header">
+    <a className="brand" href="/"><SignE/>Sistema de Estacionamientos</a>
+    <div className="actions">
+      {user
+        ? <>
+            <span className="role-pill">{NOMBRE_ROL[user.rol]||user.rol}</span>
+            <button type="button" className="secondary small" onClick={onSalir}><Icon name="logout" size={16}/>Salir</button>
+          </>
+        : <>
+            {onPostular && <button type="button" className="navlink opcional" onClick={onPostular}>Postular mi estacionamiento</button>}
+            {onAcceso && <button type="button" className="secondary small" onClick={onAcceso}><Icon name="key" size={16}/>Acceso dueños</button>}
+          </>}
+    </div>
+  </header>;
+}
+
+function LoginShell({children}){
+  return <div className="login-shell">
+    <header className="site-header"><a className="brand" href="/"><SignE/>Sistema de Estacionamientos</a></header>
+    <main className="login-main"><div className="card login-card">{children}</div></main>
+    <Footer/>
+  </div>;
+}
 
 function Login({onLogin,onCancel,onForgot}){
   const [email,setEmail]=useState(''),[password,setPassword]=useState('');
@@ -22,20 +51,21 @@ function Login({onLogin,onCancel,onForgot}){
     catch{alert('Credenciales inválidas')}
     finally{setLoading(false)}
   }
-  return <div className="login-shell"><div className="card login-card">
-    <div style={{fontSize:'2.2rem'}}>🅿️</div>
-    <h1>Acceso Cliente / Administrador</h1>
-    <p>Solo dueños de estacionamientos y administradores necesitan iniciar sesión.</p>
+  return <LoginShell>
+    <div className="login-head"><SignE size={40}/><h1>Acceso Cliente / Administrador</h1></div>
+    <p className="lead">Solo dueños de estacionamientos y administradores necesitan iniciar sesión. Para buscar o reservar un cupo no hace falta una cuenta.</p>
     <form onSubmit={submit}>
-      <input value={email} onChange={e=>setEmail(e.target.value)} placeholder="Email" aria-label="Email"/>
-      <input type="password" value={password} onChange={e=>setPassword(e.target.value)} placeholder="Contraseña" aria-label="Contraseña"/>
-      <button disabled={loading}>{loading && <span className="spinner"/>}{loading?'Ingresando...':'Iniciar sesión'}</button>
+      <label htmlFor="login-email">Email</label>
+      <input id="login-email" type="email" autoComplete="username" value={email} onChange={e=>setEmail(e.target.value)} placeholder="nombre@correo.cl" aria-label="Email"/>
+      <label htmlFor="login-clave">Contraseña</label>
+      <input id="login-clave" type="password" autoComplete="current-password" value={password} onChange={e=>setPassword(e.target.value)} aria-label="Contraseña"/>
+      <button type="submit" disabled={loading}>{loading && <span className="spinner"/>}{loading?'Ingresando...':'Iniciar sesión'}</button>
     </form>
-    <button type="button" onClick={onForgot} className="link-button">¿Olvidaste tu contraseña?</button>
-    <button type="button" onClick={onCancel} className="link-button">← Volver a la búsqueda</button>
-  </div>
-  <Footer/>
-  </div>
+    <div className="enlaces">
+      <button type="button" onClick={onCancel} className="link-button"><Icon name="arrowLeft" size={16}/>Volver a la búsqueda</button>
+      <button type="button" onClick={onForgot} className="link-button">¿Olvidaste tu contraseña?</button>
+    </div>
+  </LoginShell>;
 }
 
 function ForgotPassword({onBack}){
@@ -51,19 +81,20 @@ function ForgotPassword({onBack}){
     }catch(err){ setMensaje(err.response?.data?.error || 'Ocurrió un error, intenta más tarde'); }
     finally{ setLoading(false); }
   }
-  return <div className="login-shell"><div className="card login-card">
-    <h1>Recuperar contraseña</h1>
-    <p>Ingresa tu email y te enviaremos un enlace para definir una nueva contraseña.</p>
+  return <LoginShell>
+    <div className="login-head"><SignE size={40}/><h1>Recuperar contraseña</h1></div>
+    <p className="lead">Ingresa tu email y te enviaremos un enlace para definir una nueva contraseña.</p>
     {mensaje
       ? <p className="badge ok">{mensaje}</p>
       : <form onSubmit={submit}>
-          <input value={email} onChange={e=>setEmail(e.target.value)} placeholder="Email" aria-label="Email" required/>
-          <button disabled={loading}>{loading && <span className="spinner"/>}{loading?'Enviando...':'Enviar enlace'}</button>
+          <label htmlFor="forgot-email">Email</label>
+          <input id="forgot-email" type="email" value={email} onChange={e=>setEmail(e.target.value)} placeholder="nombre@correo.cl" aria-label="Email" required/>
+          <button type="submit" disabled={loading}>{loading && <span className="spinner"/>}{loading?'Enviando...':'Enviar enlace'}</button>
         </form>}
-    <button type="button" onClick={onBack} className="link-button">← Volver al inicio de sesión</button>
-  </div>
-  <Footer/>
-  </div>
+    <div className="enlaces">
+      <button type="button" onClick={onBack} className="link-button"><Icon name="arrowLeft" size={16}/>Volver al inicio de sesión</button>
+    </div>
+  </LoginShell>;
 }
 
 function ResetPassword({token,onDone}){
@@ -80,40 +111,50 @@ function ResetPassword({token,onDone}){
     }catch(err){ setError(err.response?.data?.error || 'No se pudo actualizar la contraseña'); }
     finally{ setLoading(false); }
   }
-  return <div className="login-shell"><div className="card login-card">
-    <h1>Definir nueva contraseña</h1>
+  return <LoginShell>
+    <div className="login-head"><SignE size={40}/><h1>Definir nueva contraseña</h1></div>
     {mensaje
       ? <>
           <p className="badge ok">{mensaje}</p>
-          <button type="button" onClick={onDone}>Ir a iniciar sesión</button>
+          <button type="button" onClick={onDone} style={{width:'100%'}}>Ir a iniciar sesión</button>
         </>
       : <form onSubmit={submit}>
           {error && <p className="badge off">{error}</p>}
-          <input type="password" value={password} onChange={e=>setPassword(e.target.value)} placeholder="Nueva contraseña (mín. 8 caracteres)" aria-label="Nueva contraseña" required minLength={8}/>
-          <button disabled={loading}>{loading && <span className="spinner"/>}{loading?'Guardando...':'Guardar contraseña'}</button>
+          <label htmlFor="reset-clave">Nueva contraseña</label>
+          <input id="reset-clave" type="password" autoComplete="new-password" value={password} onChange={e=>setPassword(e.target.value)} placeholder="Mínimo 8 caracteres" aria-label="Nueva contraseña" required minLength={8}/>
+          <button type="submit" disabled={loading}>{loading && <span className="spinner"/>}{loading?'Guardando...':'Guardar contraseña'}</button>
         </form>}
-  </div>
-  <Footer/>
-  </div>
+  </LoginShell>;
 }
 
 function PagoBanner({estado,monto,orden,onClose}){
   if(!estado) return null;
   const montoTxt=monto?` de $${Number(monto).toLocaleString('es-CL')}`:'';
   const textos={
-    aprobado:{cls:'ok',texto:`✅ Pago aprobado${monto?` por $${Number(monto).toLocaleString('es-CL')}`:''}.`},
-    rechazado:{cls:'off',texto:'❌ El pago fue rechazado. Intenta con otra tarjeta.'},
-    cancelado:{cls:'off',texto:'⚠️ Pago cancelado.'},
+    aprobado:{cls:'ok',texto:`Pago aprobado${monto?` por $${Number(monto).toLocaleString('es-CL')}`:''}.`},
+    rechazado:{cls:'off',texto:'El pago fue rechazado. Intenta con otra tarjeta.'},
+    cancelado:{cls:'off',texto:'Pago cancelado.'},
     // El cupo se ocupó entre que empezaste a pagar y la confirmación: el backend anula el cargo en Webpay.
-    reembolsado:{cls:'off',texto:`⚠️ No pudimos reservar: el último cupo se ocupó justo antes de confirmar tu pago. Anulamos el cobro${montoTxt} en Webpay, así que no se te cobrará nada. Según tu banco, la devolución puede tardar unos días hábiles en verse en tu cartola.`},
-    sin_cupo:{cls:'off',texto:`⚠️ No pudimos reservar: el último cupo se ocupó justo antes de confirmar tu pago${montoTxt}. Todavía no logramos anular el cobro en Webpay; lo seguiremos intentando automáticamente. Si en 5 días hábiles no ves la devolución, escríbenos a ${CONTACTO_LEGAL}${orden?` indicando la orden de compra ${orden}`:''}.`},
-    error:{cls:'off',texto:'⚠️ Ocurrió un error al confirmar el pago.'}
+    reembolsado:{cls:'off',texto:`No pudimos reservar: el último cupo se ocupó justo antes de confirmar tu pago. Anulamos el cobro${montoTxt} en Webpay, así que no se te cobrará nada. Según tu banco, la devolución puede tardar unos días hábiles en verse en tu cartola.`},
+    sin_cupo:{cls:'off',texto:`No pudimos reservar: el último cupo se ocupó justo antes de confirmar tu pago${montoTxt}. Todavía no logramos anular el cobro en Webpay; lo seguiremos intentando automáticamente. Si en 5 días hábiles no ves la devolución, escríbenos a ${CONTACTO_LEGAL}${orden?` indicando la orden de compra ${orden}`:''}.`},
+    error:{cls:'off',texto:'Ocurrió un error al confirmar el pago.'}
   };
   const info=textos[estado];
   if(!info) return null;
-  return <div className="container" style={{paddingBottom:0}}>
+  return <div className="pago-banner">
     {/* Botón real (no un <p onClick>): así se puede cerrar el aviso con el teclado, no solo con el mouse. */}
-    <button type="button" className={'badge '+info.cls} onClick={onClose} aria-label={`${info.texto} Cerrar aviso`}>{info.texto} ✕</button>
+    <button type="button" className={'badge '+info.cls} onClick={onClose} aria-label={`${info.texto} Cerrar aviso`}>
+      <span>{info.texto}</span><Icon name="x" size={16} className="cerrar"/>
+    </button>
+  </div>;
+}
+
+function SignBand({titulo,children,slim}){
+  return <div className={'sign-band'+(slim?' slim':'')}>
+    <div className="inner">
+      <h1>{titulo}</h1>
+      {children}
+    </div>
   </div>;
 }
 
@@ -187,7 +228,9 @@ function App(){
    return ()=>window.removeEventListener('auth:logout',onLogout);
  },[]);
 
- if(checkingSession) return <div className="login-shell"><p><span className="spinner" />Cargando sesión…</p></div>;
+ const abrirLogin=()=>{setShowLogin(true);setAuthView('login');};
+
+ if(checkingSession) return <div className="login-shell"><main className="login-main"><p className="loading-line"><span className="spinner"/>Cargando sesión…</p></main></div>;
 
  if(resetToken){
    return <ResetPassword token={resetToken} onDone={()=>{setResetToken(null); setShowLogin(true); setAuthView('login');}}/>;
@@ -195,20 +238,17 @@ function App(){
 
  if(legalPage){
    return <>
-     <nav>
-       <div className="brand"><span className="logo">🅿️</span> Sistema de Estacionamientos</div>
-     </nav>
-     <LegalPage pagina={legalPage} onVolver={cerrarLegal}/>
+     <Header/>
+     <main className="container legal"><LegalPage pagina={legalPage} onVolver={cerrarLegal}/></main>
      <Footer/>
    </>;
  }
 
  if(mostrarSolicitud){
    return <>
-     <nav>
-       <div className="brand"><span className="logo">🅿️</span> Sistema de Estacionamientos</div>
-     </nav>
-     <main className="container">
+     <Header/>
+     <SignBand titulo="Postula tu estacionamiento" slim/>
+     <main className="container" style={{maxWidth:880}}>
        <SolicitudClienteForm onCerrar={()=>setMostrarSolicitud(false)}/>
      </main>
      <Footer/>
@@ -224,14 +264,11 @@ function App(){
  // cae directo al cobro más abajo (ClientePanel).
  if(ticketCodigo && (!user || user.rol!=='CLIENTE')){
    return <>
-     <nav>
-       <div className="brand"><span className="logo">🅿️</span> Sistema de Estacionamientos{user && <span className="role-pill">{user.rol}</span>}</div>
-       {user && <button onClick={salir}>Salir</button>}
-     </nav>
+     <Header user={user} onSalir={salir}/>
      <main className="container">
        <TicketPublico
          codigo={ticketCodigo}
-         onEntrarDueno={user ? undefined : ()=>{setShowLogin(true);setAuthView('login');}}
+         onEntrarDueno={user ? undefined : abrirLogin}
          onCerrar={cerrarTicket}
        />
      </main>
@@ -242,31 +279,26 @@ function App(){
 
  if(!user){
    return <>
-     <nav>
-       <div className="brand"><span className="logo">🅿️</span> Sistema de Estacionamientos</div>
-       <button onClick={()=>{setShowLogin(true);setAuthView('login');}}>Acceso Cliente / Admin</button>
-     </nav>
+     <Header onAcceso={abrirLogin} onPostular={()=>setMostrarSolicitud(true)}/>
+     <SignBand titulo="Encuentra estacionamiento cerca de tu destino">
+       <p><span className="live"><span className="live-dot" aria-hidden="true"/>Cupos en tiempo real</span><br/>Sin registro. Reserva tu cupo por $100, que se descuentan al salir.</p>
+     </SignBand>
      <PagoBanner estado={pago?.estado} monto={pago?.monto} orden={pago?.orden} onClose={()=>setPago(null)}/>
-     <main className="container">
-       <div className="hero">
-         <h1>Encuentra estacionamiento cerca de tu destino</h1>
-         <p>Sin registro, sin espera: ubica cupos disponibles y traza tu ruta en segundos.</p>
-       </div>
-       <div className="landing-choice-grid">
-         <div className="card landing-choice usuario">
-           <div className="landing-icon">🚗</div>
-           <h2>Busco estacionamiento</h2>
-           <p>Encuentra cupos cerca de tu destino y reserva tu lugar en segundos, sin crear cuenta.</p>
-           <span className="badge ok">👇 Justo aquí abajo</span>
-         </div>
-         <div className="card landing-choice admin" onClick={()=>{setShowLogin(true);setAuthView('login');}}>
-           <div className="landing-icon">🔑</div>
-           <h2>Soy dueño o administrador</h2>
-           <p>Gestiona tus estacionamientos, cobra tickets y revisa tus reportes de flujo y recaudación.</p>
-           <button type="button">Iniciar sesión →</button>
-         </div>
-       </div>
+     <main>
        <BuscarCercanos reservaCodigoInicial={reservaCodigo}/>
+       <section className="owner-strip" aria-labelledby="owner-strip-titulo">
+         <div className="inner">
+           <SignE size={40}/>
+           <div>
+             <h2 id="owner-strip-titulo">¿Administras un estacionamiento?</h2>
+             <p>Emite y cobra tickets con QR, mira tu ocupación en tiempo real y revisa lo recaudado en el día.</p>
+           </div>
+           <div className="acciones">
+             <button type="button" className="secondary" onClick={()=>setMostrarSolicitud(true)}>Postular mi estacionamiento</button>
+             <button type="button" className="dark" onClick={abrirLogin}>Ingresar<Icon name="arrowRight" size={16}/></button>
+           </div>
+         </div>
+       </section>
      </main>
      <ChatBot onAbrirSolicitud={()=>setMostrarSolicitud(true)}/>
      <Footer/>
@@ -275,10 +307,10 @@ function App(){
  }
 
  return <>
- <nav>
-   <div className="brand"><span className="logo">🅿️</span> Sistema de Estacionamientos <span className="role-pill">{user.rol}</span></div>
-   <button onClick={salir}>Salir</button>
- </nav>
+ <Header user={user} onSalir={salir}/>
+ <SignBand titulo={TITULO_PANEL[user.rol]||'Panel'} slim>
+   <p>{user.nombre}</p>
+ </SignBand>
  <PagoBanner estado={pago?.estado} monto={pago?.monto} orden={pago?.orden} onClose={()=>setPago(null)}/>
  <main className="container">
   {user.rol==='ADMIN'

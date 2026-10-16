@@ -9,7 +9,7 @@ test.afterAll(async () => { await esc?.limpiar(); });
 
 async function iniciarSesion(page, { email, password }) {
   await page.goto('/');
-  await page.getByRole('button', { name: 'Acceso Cliente / Admin' }).click();
+  await page.getByRole('button', { name: 'Acceso dueños' }).click();
   await page.getByLabel('Email').fill(email);
   await page.getByLabel('Contraseña').fill(password);
   await page.getByRole('button', { name: 'Iniciar sesión' }).click();
@@ -21,9 +21,9 @@ test('el dueño emite un ticket, el conductor ve su tiempo y monto con el QR, y 
   await expect(page.getByRole('heading', { name: esc.parking.nombre })).toBeVisible();
 
   // Primero hay que abrir el estacionamiento desde la lista: ya no se emite directo desde la tarjeta.
-  // (El regex va anclado al emoji del botón: "Abrir" a secas también matchea el botón flotante
-  // del ChatBot, "Abrir asistente".)
-  await page.getByRole('button', { name: /📋 Abrir/ }).click();
+  // (Nombre completo del botón: "Abrir" a secas también matchearía el botón flotante del ChatBot,
+  // "Abrir asistente", en las pantallas donde aparece.)
+  await page.getByRole('button', { name: `Abrir ${esc.parking.nombre}` }).click();
 
   // La patente se ingresa en un campo del formulario inline, no en un prompt() nativo.
   await page.getByRole('button', { name: /Emitir ticket/ }).click();

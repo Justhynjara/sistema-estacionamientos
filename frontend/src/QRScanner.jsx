@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import Icon from './Icon.jsx';
 
 export default function QRScanner({ onResult, onClose }) {
   const videoRef = useRef(null);
@@ -43,10 +44,10 @@ export default function QRScanner({ onResult, onClose }) {
   }, [onResult]);
 
   return (
-    <div className="card" style={{ textAlign: 'center' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <h3 style={{ margin: 0 }}>📷 Escanear código QR</h3>
-        <button type="button" className="secondary" onClick={onClose}>Cerrar</button>
+    <div className="card centrado">
+      <div className="card-head">
+        <h3><Icon name="camera" /> Escanear código QR</h3>
+        <button type="button" className="secondary small" onClick={onClose}>Cerrar</button>
       </div>
       {!soportado && <p className="badge off" style={{ marginTop: 10 }}>Tu navegador no soporta escaneo de QR. Usa el campo de código o busca por patente en la lista de arriba.</p>}
       {error && <p className="badge off" style={{ marginTop: 10 }}>{error}</p>}
@@ -55,10 +56,10 @@ export default function QRScanner({ onResult, onClose }) {
           ref={videoRef}
           muted
           playsInline
-          style={{ width: '100%', maxWidth: 360, borderRadius: 12, background: '#000', marginTop: 10 }}
+          style={{ width: '100%', maxWidth: 360, borderRadius: 8, background: '#0e1726', marginTop: 10 }}
         />
       )}
-      <p style={{ color: 'var(--text-muted)', fontSize: '.85rem', marginTop: 10 }}>Apunta la cámara al código QR del ticket o la reserva.</p>
+      <p className="muted small" style={{ marginTop: 10 }}>Apunta la cámara al código QR del ticket o la reserva.</p>
     </div>
   );
 }

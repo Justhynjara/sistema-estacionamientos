@@ -1,417 +1,598 @@
+/* En Overpass el punto medio (·) queda pegado al texto que le sigue ("Santiago ·$25"): solo ese
+   carácter se toma de la sans del sistema para que el separador quede centrado entre sus espacios. */
+@font-face{font-family:'Punto medio';src:local('Segoe UI'),local('Roboto'),local('Helvetica Neue'),local('Arial');unicode-range:U+00B7}
+
 :root{
-  /* Sistema "boleta de estacionamiento": el ticket térmico que se imprime al cobrar es el
-     artefacto real del producto, así que es la fuente de la identidad visual en vez de un
-     morado de plantilla SaaS. Papel hueso + tinta casi negra + un solo acento amarillo vial,
-     con verde/rojo tipo tinta de timbre para los estados. Todos los pares texto/fondo de abajo
-     están verificados ≥4.5:1 (texto normal) o ≥3:1 (bordes/foco) contra su fondo real.
-  */
-  --paper:#f4efe1;
-  --paper-alt:#ece4cf;
-  --ink:#241d15;
-  --ink-muted:#6a5e4c;
-  /* 5.51:1 sobre --paper */
+  /* Sistema "línea de ruta": el lenguaje de la señalética vial y de los planos de transporte.
+     Paneles blancos sobre un gris frío, tinta azul-negra, el azul del letrero de estacionamiento
+     como marca y como trazo de la ruta, y verde/rojo solo para el estado de los cupos.
+     Contrastes verificados: --muted 7.4:1 sobre blanco y 6.6:1 sobre --bg; --route 6.4:1 sobre
+     blanco (y texto blanco sobre --route); --free 5.4:1 y --full 6.3:1 sobre blanco. */
+  --bg:#eef1f4;
+  --panel:#ffffff;
+  --panel-alt:#f6f8fa;
+  --ink:#0e1726;
+  --muted:#4a5568;
+  --rule:#d3d9e1;
+  --rule-soft:#e6eaef;
 
-  --primary:#f2c40f;
-  /* alias de compatibilidad: código y tests existentes leen --primary/--primary-dark como "el
-     color de marca"; aquí son el amarillo vial, no un morado. */
-  --primary-dark:#241d15;
-  --primary-light:#f6d647;
-  --accent:#2563eb;
-  /* tinta de timbre "aprobado": ≥3:1 contra papel, tinta y amarillo a la vez (foco de teclado). */
+  --route:#0b5cad;
+  --route-dark:#08447f;
+  --route-tint:#e8f0fa;
+  --sign:#0a3f7a;
+  --sign-text:#cfdcf0;
 
-  --ok:#0f6b39;
-  --ok-bg:#e4ecd7;
-  --off:#b3231f;
-  --off-bg:#f6ddd3;
+  --free:#0a7a3d;
+  --free-bg:#e3f3e9;
+  --full:#b42318;
+  --full-bg:#fdecea;
+  --info:#0b5cad;
+  --info-bg:#e8f0fa;
 
-  --bg:var(--paper);
-  --surface:#faf7ec;
+  --focus:#0b5cad;
+
+  /* Alias de compatibilidad para estilos en línea que aún leen los nombres anteriores. */
   --text:var(--ink);
-  --text-muted:var(--ink-muted);
-  --border:#c2b083;
+  --text-muted:var(--muted);
+  --border:var(--rule);
+  --surface:var(--panel);
+  --primary:var(--route);
+  --ok:var(--free);
+  --off:var(--full);
+
+  --face:'Punto medio','Overpass',system-ui,-apple-system,'Segoe UI',Roboto,Arial,sans-serif;
+  --num:'Punto medio','Overpass Mono',ui-monospace,SFMono-Regular,Menlo,monospace;
 
   --radius:8px;
-  --radius-sm:4px;
-  --shadow-sm:0 1px 2px rgba(36,29,21,.14);
-  --shadow-md:0 6px 16px rgba(36,29,21,.16);
-  --shadow-lg:0 14px 32px rgba(36,29,21,.22);
+  --radius-sm:6px;
+  --shadow-sm:0 1px 2px rgba(14,23,38,.08);
+  --shadow-md:0 6px 18px rgba(14,23,38,.10);
+  --shadow-lg:0 16px 40px rgba(14,23,38,.18);
+  --header-h:58px;
+  color-scheme:light;
 }
 
 *{box-sizing:border-box}
-
 html,body{height:100%}
-
 body{
   margin:0;
-  font-family:'Inter',system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;
+  font-family:var(--face);
+  font-size:15.5px;
+  line-height:1.5;
   background:var(--bg);
-  color:var(--text);
+  color:var(--ink);
   -webkit-font-smoothing:antialiased;
 }
-
-/* Pie de página pegado al fondo: sin esto, una página con poco contenido (p. ej. un solo
-   estacionamiento) deja al pie flotando a media pantalla en vez de quedar abajo del todo. */
-#root{
-  display:flex;
-  flex-direction:column;
-  min-height:100vh;
-}
+#root{display:flex;flex-direction:column;min-height:100vh}
 main.container{flex:1 0 auto}
 
-h1,h2,h3{font-family:'Syne',Inter,system-ui,sans-serif;letter-spacing:-.01em}
+h1,h2,h3{font-family:var(--face);font-weight:800;letter-spacing:-.01em;line-height:1.2;text-wrap:balance}
+h2{font-size:1.2rem}
+h3{font-size:1.05rem}
+p{margin:.5em 0}
+a{color:var(--route);text-underline-offset:3px}
+a:hover{color:var(--route-dark)}
+::selection{background:#cfe0f5;color:var(--ink)}
 
-/* Números, montos, horas, patentes y códigos de ticket: son dato/medición real, no decoración,
-   así que van en la mono que evoca el dot-matrix de una boleta térmica. */
-.mono,
+/* Números que se pueden verificar contra la realidad: montos, minutos, patentes, códigos. */
+.mono,.num,
 .table td.num,
-input[inputmode="numeric"]{
-  font-family:'JetBrains Mono',ui-monospace,monospace;
+input[inputmode="numeric"],input[type="number"]{
+  font-family:var(--num);
   font-variant-numeric:tabular-nums;
 }
 
-button{cursor:pointer;font-family:inherit}
+.icon{flex:none;vertical-align:-3px}
+.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0}
 
-.container{max-width:1100px;margin:auto;padding:24px}
+/* ---------- Marca: letrero E ---------- */
+.sign-e{
+  --sign-size:30px;
+  width:var(--sign-size);height:var(--sign-size);flex:none;
+  display:inline-grid;place-items:center;
+  background:var(--sign);color:#fff;border-radius:calc(var(--sign-size) * .17);
+  font-family:var(--face);font-weight:900;font-size:calc(var(--sign-size) * .6);line-height:1;
+  padding-top:calc(var(--sign-size) * .08);
+  box-shadow:inset 0 0 0 2px #fff,0 0 0 1px var(--sign);
+}
 
+/* ---------- Encabezado ---------- */
+.site-header{
+  position:sticky;top:0;z-index:1000;
+  min-height:var(--header-h);
+  background:var(--panel);
+  border-bottom:1px solid var(--rule);
+  display:flex;align-items:center;justify-content:space-between;gap:12px;
+  padding:10px 28px;flex-wrap:wrap;
+}
+.site-header .brand{display:flex;align-items:center;gap:11px;font-weight:800;font-size:1.02rem;letter-spacing:-.01em;color:var(--ink);text-decoration:none}
+.site-header .actions{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.site-header .navlink{
+  background:none;border:0;box-shadow:none;color:var(--muted);font-weight:600;font-size:.92rem;padding:8px 12px;
+}
+.site-header .navlink:hover{color:var(--ink);background:var(--panel-alt);transform:none;box-shadow:none}
+.role-pill{
+  font-size:.74rem;font-weight:800;letter-spacing:.05em;text-transform:uppercase;
+  background:var(--route-tint);color:var(--route-dark);
+  padding:4px 9px 3px;border-radius:4px;
+}
+
+/* Banda azul tipo letrero: el titular de cada pantalla. */
+.sign-band{
+  background:var(--sign);color:#fff;
+  padding:26px 28px 24px;
+  --focus:#ffffff;
+}
+.sign-band .inner{max-width:1240px;margin:0 auto;display:flex;flex-wrap:wrap;justify-content:space-between;align-items:flex-end;gap:12px 32px}
+.sign-band h1{margin:0;font-weight:900;font-size:2.3rem;line-height:1.04;letter-spacing:-.02em;max-width:20ch}
+.sign-band p{margin:0;color:var(--sign-text);font-weight:600;max-width:42ch}
+.sign-band .live{display:inline-flex;gap:8px;align-items:center;color:#fff;font-weight:700}
+.live-dot{width:9px;height:9px;border-radius:50%;background:#5fe39a;animation:pulse 2.4s ease-out infinite}
+@keyframes pulse{0%{box-shadow:0 0 0 0 rgba(95,227,154,.6)}70%{box-shadow:0 0 0 8px rgba(95,227,154,0)}100%{box-shadow:0 0 0 0 rgba(95,227,154,0)}}
+.sign-band.slim{padding:18px 28px}
+.sign-band.slim h1{font-size:1.55rem;max-width:none}
+
+.container{max-width:1240px;width:100%;margin:0 auto;padding:24px 28px}
+
+/* ---------- Paneles ---------- */
 .card{
-  background:var(--surface);
-  border:1px solid var(--border);
+  background:var(--panel);
+  border:1px solid var(--rule);
   border-radius:var(--radius);
   padding:22px;
-  margin:14px 0;
+  margin:16px 0;
   box-shadow:var(--shadow-sm);
-  transition:box-shadow .2s ease, transform .2s ease;
-  animation:fadeUp .35s ease both;
 }
-.card:hover{box-shadow:var(--shadow-md)}
-.card h2{margin-top:0;font-size:1.15rem}
-.card h3{margin-top:0}
+.card > h2:first-child,.card > h3:first-child{margin-top:0}
+.card h2{font-size:1.15rem}
+.card-head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap}
+.card-head h2,.card-head h3{margin:0}
+.lead{color:var(--muted);margin:.35em 0 1em;max-width:70ch}
+.muted{color:var(--muted)}
+.small{font-size:.86rem}
 
-.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:18px}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:16px}
+.grid .card{display:flex;flex-direction:column;gap:6px;margin:0}
+.grid .card .row-form{margin-top:auto;padding-top:8px}
 
-.grid .card{
-  display:flex;flex-direction:column;gap:6px;margin:0;
-}
-.grid .card button{margin-top:auto}
-.grid .card:hover{transform:translateY(-3px)}
-
-input,select{
-  padding:12px 14px;
+/* ---------- Formularios ---------- */
+label{font-weight:700;font-size:.9rem}
+.field-label{display:block;font-size:.76rem;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin:0 0 6px}
+input,select,textarea{
+  font:inherit;
+  padding:11px 12px;
   width:100%;
   margin:6px 0 14px;
-  border:1.5px solid var(--border);
+  border:1.5px solid var(--rule);
   border-radius:var(--radius-sm);
-  font-size:.95rem;
-  background:var(--paper-alt);
+  background:var(--panel);
   color:var(--ink);
   transition:border-color .15s ease, box-shadow .15s ease;
 }
-input:focus,select:focus{
-  outline:none;
-  border-color:var(--accent);
-  box-shadow:0 0 0 4px rgba(37,99,235,.18);
-  background:var(--surface);
-}
-.table select{width:auto;margin:0}
+input::placeholder,textarea::placeholder{color:#6b7787}
+input:focus,select:focus,textarea:focus{outline:none;border-color:var(--route);box-shadow:0 0 0 3px rgba(11,92,173,.16)}
+input[type="file"]{padding:9px;background:var(--panel-alt)}
+.table select{width:auto;margin:0;padding:7px 10px}
 
+/* ---------- Botones ---------- */
 button{
-  padding:12px 20px;
-  border:0;
-  border-radius:var(--radius-sm);
-  background:var(--primary);
-  color:var(--ink);
-  font-weight:700;
-  font-size:.92rem;
-  box-shadow:0 4px 10px rgba(36,29,21,.28);
-  transition:transform .12s ease, box-shadow .12s ease, opacity .12s ease;
+  font:inherit;cursor:pointer;
+  display:inline-flex;align-items:center;justify-content:center;gap:8px;
+  padding:11px 18px;
+  border:0;border-radius:var(--radius-sm);
+  background:var(--route);color:#fff;
+  font-weight:800;font-size:.93rem;line-height:1.2;
+  box-shadow:0 3px 10px rgba(11,92,173,.22);
+  transition:background-color .15s ease, box-shadow .15s ease, transform .12s ease;
 }
-button:hover{transform:translateY(-1px);box-shadow:0 6px 14px rgba(36,29,21,.32)}
-button:active{transform:translateY(0);box-shadow:0 2px 6px rgba(36,29,21,.24)}
-button:disabled{opacity:.55;cursor:not-allowed;transform:none;box-shadow:none}
-
-/* Franja tipo código de barras: el único motivo decorativo del sistema, usado con moderación
-   como divisor (bajo el hero, en el encabezado del ticket) en vez de una foto o un ícono. */
-.barcode-rule{
-  height:16px;
-  background-image:repeating-linear-gradient(90deg,
-    var(--ink) 0px, var(--ink) 2px,
-    transparent 2px, transparent 5px,
-    var(--ink) 5px, var(--ink) 6px,
-    transparent 6px, transparent 9px,
-    var(--ink) 9px, var(--ink) 12px,
-    transparent 12px, transparent 15px,
-    var(--ink) 15px, var(--ink) 16px,
-    transparent 16px, transparent 20px);
-  opacity:.5;
-  margin:0 auto;
-  max-width:220px;
-}
-
-nav{
-  background:var(--ink);
-  color:var(--paper);
-  padding:16px 24px;
-  display:flex;
-  align-items:center;
-  justify-content:space-between;
-  gap:12px;
-  box-shadow:0 4px 20px rgba(36,29,21,.35);
-  position:sticky;
-  top:0;
-  z-index:1000;
-  flex-wrap:wrap;
-  border-bottom:3px solid var(--primary);
-}
-nav .brand{
-  display:flex;align-items:center;gap:10px;
-  font-family:'Syne',sans-serif;font-weight:700;font-size:1.15rem;
-}
-nav .brand .logo{font-size:1.5rem}
-nav .role-pill{
-  font-size:.72rem;font-weight:700;letter-spacing:.06em;
-  background:var(--primary);color:var(--ink);
-  padding:4px 10px;border-radius:999px;margin-left:8px;text-transform:uppercase;
-}
-nav button{
-  background:rgba(244,239,225,.12);
-  color:var(--paper);
-  box-shadow:none;
-  border:1px solid rgba(244,239,225,.4);
-}
-nav button:hover{background:rgba(244,239,225,.2);transform:none;box-shadow:none}
-
-.hero{
-  text-align:center;
-  padding:8px 8px 4px;
-  margin-bottom:6px;
-}
-.hero h1{font-size:1.7rem;margin:0 0 6px}
-.hero p{color:var(--text-muted);margin:0 0 14px;font-size:.98rem}
-
-/* Insignia tipo timbre de goma: borde propio, esquinas de sello y una leve rotación, en vez de
-   la píldora de fondo plano que trae cualquier UI kit por defecto. */
-.badge{
-  font-weight:700;display:inline-flex;align-items:center;gap:6px;
-  text-transform:uppercase;letter-spacing:.03em;font-size:.78rem;
-}
-.badge.ok,.badge.off{
-  padding:5px 12px;border-radius:6px;
-  border:2px solid currentColor;
-}
-.badge.ok{color:var(--ok);background:var(--ok-bg)}
-.badge.off{color:var(--off);background:var(--off-bg)}
-/* Cuando el badge es en realidad un botón (p. ej. "cerrar" el aviso de pago): anula el fondo
-   amarillo y el texto oscuro que trae <button> por defecto, para que siga viéndose como un badge. */
-button.badge{border:2px solid currentColor;box-shadow:none;font-size:inherit;font-family:inherit}
-button.badge.ok{color:var(--ok);background:var(--ok-bg)}
-button.badge.off{color:var(--off);background:var(--off-bg)}
-
-.step{
-  display:inline-flex;align-items:center;justify-content:center;
-  width:26px;height:26px;border-radius:50%;
-  background:var(--primary);
-  color:var(--ink);font-size:.8rem;font-weight:700;
-  margin-right:8px;flex:none;
-  border:2px solid var(--ink);
-}
-
-.tabs{display:flex;gap:6px;margin-bottom:0;border-bottom:2px solid var(--border);padding-bottom:0}
-.tab{
-  background:transparent;color:var(--text-muted);
-  padding:10px 18px;border-radius:var(--radius-sm) var(--radius-sm) 0 0;
-  box-shadow:none;font-weight:600;
-  border-bottom:3px solid transparent;margin-bottom:-2px;
-}
-.tab:hover{background:var(--paper-alt);color:var(--ink);transform:none;box-shadow:none}
-.tab.active{background:var(--surface);color:var(--ink);border-bottom:3px solid var(--primary)}
-
-.table-wrap{overflow-x:auto;border-radius:var(--radius)}
-.table{width:100%;border-collapse:collapse;background:var(--surface);min-width:520px}
-.table th{
-  text-align:left;padding:12px 14px;background:var(--paper-alt);color:var(--text-muted);
-  font-size:.78rem;text-transform:uppercase;letter-spacing:.05em;font-weight:700;
-}
-.table td{text-align:left;padding:12px 14px;border-bottom:1px solid var(--border);font-size:.92rem}
-.table tr:last-child td{border-bottom:none}
-.table tr:hover td{background:var(--paper-alt)}
-
-.param-row{display:flex;align-items:center;gap:14px;padding:14px 0;border-bottom:1px solid var(--border)}
-.param-row:last-child{border-bottom:none}
-.param-row input{width:160px;margin:0}
-
-.row-form{display:flex;gap:10px;align-items:flex-start;flex-wrap:wrap}
-.row-form input{margin:0;flex:1;min-width:200px}
-.row-form button{white-space:nowrap}
-button.secondary{
-  background:var(--surface);color:var(--ink);border:1.5px solid var(--ink);
-  box-shadow:none;
-}
-button.secondary:hover{background:var(--paper-alt);box-shadow:none}
-button.secondary:active{transform:translateY(0)}
-
-.card.selected{outline:2px solid var(--ink);outline-offset:2px}
-
-.leaflet-container{z-index:0;border-radius:var(--radius)}
-
+button:hover{background:var(--route-dark);box-shadow:0 5px 14px rgba(11,92,173,.28)}
+button:active{transform:translateY(1px)}
+button:disabled{background:var(--rule-soft);color:#6b7787;box-shadow:none;cursor:not-allowed;transform:none}
+button.secondary{background:var(--panel);color:var(--ink);border:1.5px solid var(--ink);box-shadow:none;padding:9.5px 16px}
+button.secondary:hover{background:var(--panel-alt)}
+button.secondary:disabled{border-color:var(--rule);background:var(--panel);color:#6b7787}
+button.dark{background:var(--ink);box-shadow:none}
+button.dark:hover{background:#1f2c44}
+button.dark:disabled{background:var(--rule-soft)}
+/* Acciones destructivas: contorno rojo, nunca relleno, y separadas del resto en su propia celda. */
+button.danger{background:var(--panel);color:var(--full);border:1.5px solid currentColor;box-shadow:none;padding:9.5px 14px}
+button.danger:hover{background:var(--full-bg)}
+button.danger:disabled{color:#6b7787;background:var(--panel)}
+button.small,.btn-small{padding:7px 12px;font-size:.86rem}
+button.secondary.small,button.danger.small{padding:5.5px 10px}
 .link-button{
-  background:transparent;color:var(--ink);padding:6px 0;margin-top:8px;
-  box-shadow:none;font-weight:600;text-decoration:underline;text-underline-offset:3px;
+  background:transparent;color:var(--route);padding:6px 2px;box-shadow:none;font-weight:700;
+  text-decoration:underline;text-underline-offset:3px;
 }
-.link-button:hover{background:transparent;color:var(--accent);transform:none;box-shadow:none}
+.link-button:hover{background:transparent;color:var(--route-dark);box-shadow:none}
+
+.row-form{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.row-form input,.row-form select{margin:0;flex:1;min-width:190px}
+.row-form button{white-space:nowrap}
+.stack{display:grid;gap:12px}
+
+/* ---------- Estado: chip (en línea) y aviso (bloque) ---------- */
+.badge{
+  display:inline-flex;align-items:center;gap:6px;
+  font-weight:700;font-size:.8rem;line-height:1.2;
+  padding:4px 9px 3px;border-radius:4px;
+  background:var(--panel-alt);color:var(--muted);
+  white-space:nowrap;
+}
+.badge::before{content:"";width:7px;height:7px;border-radius:50%;background:currentColor;flex:none;margin-top:-1px}
+.badge.ok{background:var(--free-bg);color:var(--free)}
+.badge.off{background:var(--full-bg);color:var(--full)}
+.badge.info{background:var(--info-bg);color:var(--info)}
+.badge.neutral{background:var(--panel-alt);color:var(--muted)}
+
+/* Un párrafo con .badge es un aviso: ocupa su línea, va en frase normal y lleva un ícono dibujado. */
+p.badge,div.badge,button.badge{
+  display:flex;align-items:flex-start;gap:10px;
+  width:100%;white-space:normal;text-align:left;
+  font-size:.92rem;font-weight:600;line-height:1.45;
+  padding:11px 14px;border-radius:var(--radius-sm);
+  border:1px solid currentColor;margin:10px 0;
+  box-shadow:none;
+}
+p.badge.ok,div.badge.ok,button.badge.ok{border-color:#9fd3b4}
+p.badge.off,div.badge.off,button.badge.off{border-color:#f0b3ac}
+p.badge.info,div.badge.info,button.badge.info{border-color:#a9c6ea}
+p.badge::before,div.badge::before,button.badge::before{
+  width:18px;height:18px;border-radius:0;margin-top:1px;
+  -webkit-mask:var(--aviso-icon) center/contain no-repeat;mask:var(--aviso-icon) center/contain no-repeat;
+  --aviso-icon:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round'%3E%3Ccircle cx='12' cy='12' r='9'/%3E%3Cpath d='M12 11v5.5M12 7.5v.1'/%3E%3C/svg%3E");
+}
+p.badge.off::before,div.badge.off::before,button.badge.off::before{
+  --aviso-icon:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round'%3E%3Ccircle cx='12' cy='12' r='9'/%3E%3Cpath d='M12 7.5v5.5M12 16.5v.1'/%3E%3C/svg%3E");
+}
+p.badge.ok::before,div.badge.ok::before,button.badge.ok::before{
+  --aviso-icon:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='12' r='9'/%3E%3Cpath d='m8 12.3 2.8 2.8L16.5 9.4'/%3E%3C/svg%3E");
+}
+button.badge{cursor:pointer;justify-content:flex-start}
+button.badge:hover{filter:brightness(.98);box-shadow:none}
+.pago-banner{max-width:1240px;margin:16px auto 0;padding:0 28px;width:100%}
+.pago-banner button.badge{margin:0}
+.pago-banner .cerrar{margin-left:auto;flex:none;opacity:.8}
+
+/* ---------- Pasos del riel (línea de ruta) ---------- */
+.rail{display:grid}
+.rail-stop{display:grid;grid-template-columns:28px minmax(0,1fr);gap:12px}
+.rail-track{position:relative;display:flex;justify-content:center}
+.rail-track::before{content:"";position:absolute;top:0;bottom:0;width:6px;background:var(--route);border-radius:3px}
+.rail-stop:first-child .rail-track::before{top:14px}
+.rail-stop:last-child .rail-track::before{bottom:auto;height:14px}
+.rail-node{position:relative;z-index:1;margin-top:5px;width:18px;height:18px;border-radius:50%;background:#fff;border:5px solid var(--route)}
+.rail-node.dest{width:16px;height:16px;margin-top:6px;background:var(--route-dark);border-color:var(--route-dark);box-shadow:0 0 0 3px #fff,0 0 0 5px var(--route-dark)}
+.rail-body{padding-bottom:18px;min-width:0}
+.rail-stop:last-child .rail-body{padding-bottom:0}
+
+/* ---------- Buscador (landing) ---------- */
+.buscador{display:grid;grid-template-columns:minmax(0,460px) minmax(0,1fr);align-items:start;border-bottom:1px solid var(--rule);background:var(--panel)}
+.buscador-col{padding:24px 26px 32px;border-right:1px solid var(--rule);min-width:0}
+.buscador-mapa{position:sticky;top:var(--header-h);height:calc(100vh - var(--header-h));min-height:460px;background:var(--panel-alt)}
+.buscador-mapa .leaflet-container{height:100%;width:100%}
+.buscador .inputline{display:flex;gap:8px;align-items:stretch}
+.buscador .inputline .address-autocomplete{flex:1;min-width:0}
+.buscador .inputline input{margin:0}
+/* Un solo control para la partida: encendido (azul lleno) cuando la partida es tu GPS. */
+.gps-toggle{flex:none;width:48px;padding:0;display:grid;place-items:center;background:var(--panel);color:var(--route);border:1.5px solid var(--rule);box-shadow:none}
+.gps-toggle:hover{background:var(--route-tint);color:var(--route-dark);box-shadow:none}
+.gps-toggle.on{background:var(--route);border-color:var(--route);color:#fff}
+.gps-toggle.on:hover{background:var(--route-dark);border-color:var(--route-dark);color:#fff}
+.campo-hint{margin:6px 0 0;font-size:.84rem;color:var(--muted);line-height:1.35}
+.campo-hint.error{color:var(--full);font-weight:700}
+.buscador .go{width:100%;padding:13px 16px;font-size:1rem;margin-top:14px}
+.buscador .panel-accion{border:1px solid var(--rule);border-radius:var(--radius);padding:18px;margin-top:20px;background:var(--panel)}
+.buscador .panel-accion h3{margin:0 0 6px;display:flex;gap:8px;align-items:center}
+
+.opciones{margin-top:24px;border-top:1px solid var(--rule);padding-top:18px}
+.opciones h2{margin:0;font-size:1.08rem}
+.opciones .meta{margin:2px 0 12px;color:var(--muted);font-size:.88rem}
+.paradas{list-style:none;margin:0 0 0 12px;padding:0 0 0 6px}
+.parada{position:relative;padding:14px 0 16px 24px;border-bottom:1px solid var(--rule-soft);display:grid;gap:9px}
+.parada::before{content:"";position:absolute;left:-6px;top:24px;width:16px;height:6px;background:var(--route)}
+/* Cada parada dibuja su tramo de línea: la primera parte en su nodo y la última termina en él. */
+.parada::after{content:"";position:absolute;left:-9px;width:6px;top:0;bottom:0;background:var(--route)}
+.parada:first-child::after{top:27px}
+.parada:last-child::after{bottom:auto;height:27px}
+.parada:only-child::after{display:none}
+.parada .k{position:absolute;left:-19px;top:14px;width:26px;height:26px;border-radius:50%;background:#fff;border:3px solid var(--ink);display:grid;place-items:center;font-family:var(--num);font-size:.76rem;font-weight:700;z-index:1}
+.parada.lleno .k{border-color:var(--full);color:var(--full)}
+.parada.sel{background:linear-gradient(90deg,var(--route-tint),transparent 85%)}
+.parada.sel .k{background:var(--route);border-color:var(--route);color:#fff}
+.parada .top{display:flex;justify-content:space-between;gap:12px;align-items:flex-start}
+.parada h3{margin:0;font-size:1.02rem;line-height:1.25}
+.parada.lleno h3{text-decoration:line-through;text-decoration-thickness:2px;text-decoration-color:var(--full)}
+.parada .addr{margin:2px 0 0;color:var(--muted);font-size:.86rem}
+.parada .dist{text-align:right;white-space:nowrap;line-height:1}
+.parada .dist b{display:block;font-size:1rem;font-weight:800}
+.parada .dist b .num{font-size:1.6rem;font-weight:700;margin-right:2px}
+.parada .dist small{display:block;font-size:.8rem;font-weight:600;color:var(--muted);margin-top:5px}
+.parada .datos{display:flex;flex-wrap:wrap;gap:4px 14px;font-size:.86rem;color:var(--muted)}
+.parada .datos > span{display:inline-flex;gap:6px;align-items:center}
+.tarifa{white-space:nowrap}
+.parada .acciones{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.parada .acciones .waze{background:none;box-shadow:none;color:var(--route);padding:7px 6px;font-size:.86rem}
+.parada .acciones .waze:hover{background:none;color:var(--route-dark);box-shadow:none}
+
+/* Barra de cupos: su largo es la proporción exacta de cupos libres. */
+.capacidad{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px;align-items:center;font-size:.86rem}
+.capacidad .barra{height:8px;border-radius:4px;background:var(--rule-soft);overflow:hidden}
+.capacidad .barra i{display:block;height:100%;background:var(--free);border-radius:4px}
+.capacidad b{font-weight:700;color:var(--free);white-space:nowrap}
+.capacidad.lleno b{color:var(--full)}
 
 .empty-state{
-  text-align:center;color:var(--text-muted);padding:32px 16px;
-  border:2px dashed var(--border);border-radius:var(--radius);
-  grid-column:1/-1;background:rgba(255,255,255,.4);
+  color:var(--muted);padding:24px 18px;text-align:center;
+  border:1.5px dashed var(--rule);border-radius:var(--radius);background:var(--panel-alt);
+  grid-column:1/-1;
 }
+
+/* Marcadores del mapa (Leaflet divIcon). */
+.map-stop{position:relative;width:34px;height:34px;border-radius:50%;background:#fff;border:4px solid var(--ink);display:grid;place-items:center;font:700 15px/1 var(--num);color:var(--ink);box-shadow:0 2px 6px rgba(14,23,38,.3)}
+.map-stop.lleno{border-color:var(--full);color:var(--full);background:var(--full-bg)}
+.map-stop.lleno::after,.ley-stop.lleno::after{content:"";position:absolute;left:-5px;right:-5px;top:50%;height:3px;margin-top:-1.5px;background:var(--full);transform:rotate(-45deg);border-radius:2px}
+.map-stop.sel{background:var(--route);border-color:#fff;color:#fff;box-shadow:0 0 0 2px var(--route),0 2px 8px rgba(14,23,38,.3)}
+.map-yo{width:18px;height:18px;border-radius:50%;background:#fff;border:5px solid var(--route);box-shadow:0 1px 4px rgba(14,23,38,.3)}
+.map-destino{width:16px;height:16px;border-radius:50%;background:var(--route-dark);box-shadow:0 0 0 3px #fff,0 0 0 5.5px var(--route-dark),0 2px 6px rgba(14,23,38,.3)}
+.map-pin{width:20px;height:20px;border-radius:50% 50% 50% 0;transform:rotate(-45deg);background:var(--route);border:3px solid #fff;box-shadow:0 2px 6px rgba(14,23,38,.35)}
+.leaflet-container{font-family:var(--face);z-index:0}
+.leaflet-popup-content{font-size:.9rem;margin:12px 14px}
+.leaflet-popup-content button{margin-top:8px;padding:7px 12px;font-size:.86rem}
+
+/* ---------- Franja para dueños ---------- */
+.owner-strip{background:var(--panel);border-top:1px solid var(--rule)}
+.owner-strip .inner{max-width:1240px;margin:0 auto;padding:22px 28px;display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:18px;align-items:center}
+.owner-strip h2{margin:0;font-size:1.08rem}
+.owner-strip p{margin:3px 0 0;color:var(--muted);max-width:62ch}
+.owner-strip .acciones{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end}
+
+/* ---------- Pestañas ---------- */
+.tabs{display:flex;gap:2px;border-bottom:1px solid var(--rule);overflow-x:auto;margin-bottom:4px}
+.tab{
+  background:transparent;color:var(--muted);box-shadow:none;border-radius:0;
+  padding:12px 16px 14px;font-weight:700;white-space:nowrap;position:relative;
+}
+.tab::after{content:"";position:absolute;left:0;right:0;bottom:0;height:4px;background:transparent}
+.tab:hover{background:transparent;color:var(--ink);box-shadow:none}
+.tab.active{color:var(--ink)}
+.tab.active::after{background:var(--route)}
+.tab:active{transform:none}
+
+/* ---------- Tablero de cifras (dashboard) ---------- */
+.tablero{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:1px;background:rgba(255,255,255,.16);border-radius:var(--radius);box-shadow:var(--shadow-md);margin:16px 0;overflow:hidden;color:#fff;--focus:#fff}
+.tablero .celda{padding:20px 22px 22px;background:var(--sign);min-width:0}
+.tablero .celda h3{margin:0 0 10px;font-size:.9rem;font-weight:700;color:var(--sign-text)}
+.tablero .cifra{font-family:var(--num);font-weight:700;font-size:2.6rem;line-height:1;margin:0;font-variant-numeric:tabular-nums;color:#fff}
+.tablero .cifra.mediana{font-size:1.9rem}
+.tablero small,.tablero .detalle{display:block;margin-top:8px;color:var(--sign-text);font-size:.86rem}
+.tablero ul{list-style:none;padding:0;margin:12px 0 0;display:grid;gap:4px;font-size:.88rem;color:var(--sign-text)}
+.tablero li{display:flex;justify-content:space-between;gap:10px;border-top:1px solid rgba(255,255,255,.14);padding-top:4px}
+.tablero li strong{font-family:var(--num);font-variant-numeric:tabular-nums;color:#fff}
+
+.flujo{display:flex;align-items:flex-end;gap:3px;height:150px;margin-top:14px;border-bottom:1px solid var(--rule)}
+.flujo .col{flex:1;display:flex;flex-direction:column;justify-content:flex-end;height:100%}
+.flujo .col i{display:block;width:100%;background:var(--route);border-radius:3px 3px 0 0;min-height:2px}
+.flujo .col.cero i{background:var(--rule-soft)}
+.flujo .col.pico i{background:var(--route-dark)}
+.flujo-ejes{display:flex;gap:3px;margin-top:5px}
+.flujo-ejes span{flex:1;text-align:center;font-family:var(--num);font-size:.68rem;color:var(--muted)}
+.flujo-vacio{margin:10px 0 0;padding:14px 16px;border:1.5px dashed var(--rule);border-radius:var(--radius-sm);background:var(--panel-alt);color:var(--muted);font-size:.9rem}
+
+/* ---------- Tablas ---------- */
+.table-wrap{overflow-x:auto;border:1px solid var(--rule);border-radius:var(--radius);background:var(--panel);margin-top:12px}
+.card .table-wrap{border-radius:var(--radius-sm)}
+.table{width:100%;border-collapse:collapse;min-width:560px}
+.table th{
+  text-align:left;padding:11px 14px;background:var(--panel-alt);color:var(--muted);
+  font-size:.74rem;text-transform:uppercase;letter-spacing:.07em;font-weight:800;border-bottom:1px solid var(--rule);
+}
+.table td{text-align:left;padding:11px 14px;border-bottom:1px solid var(--rule-soft);font-size:.93rem;vertical-align:middle}
+.table tr:last-child td{border-bottom:none}
+.table tbody tr:hover td{background:#f8fafc}
+.table td.acciones{text-align:right}
+.table .row-form{justify-content:flex-end;flex-wrap:nowrap}
+
+.param-row{display:flex;align-items:center;gap:14px;padding:14px 0;border-bottom:1px solid var(--rule-soft);flex-wrap:wrap}
+.param-row:last-child{border-bottom:none}
+.param-row > div{flex:1;min-width:220px}
+.param-row code{font-family:var(--num);font-size:.86rem;font-weight:700}
+.param-row input{width:160px;margin:0}
 
 .spinner{
   display:inline-block;width:16px;height:16px;border-radius:50%;
-  border:2.5px solid rgba(36,29,21,.2);border-top-color:var(--ink);
-  animation:spin .7s linear infinite;vertical-align:-3px;margin-right:6px;
+  border:2.5px solid rgba(14,23,38,.18);border-top-color:currentColor;
+  animation:spin .7s linear infinite;flex:none;
 }
-
-.login-shell{
-  min-height:100vh;
-  display:flex;flex-direction:column;align-items:center;justify-content:center;
-  padding:24px;
-}
-.login-shell .site-footer{margin-top:24px;width:100%;border-radius:var(--radius)}
-.login-card{max-width:400px;width:100%;text-align:center}
-.login-card h1{font-size:1.4rem}
-.login-card p{color:var(--text-muted);font-size:.88rem}
-
+.loading-line{display:flex;align-items:center;gap:10px;color:var(--muted)}
 @keyframes spin{to{transform:rotate(360deg)}}
-@keyframes fadeUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
 
-.landing-choice-grid{
-  display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));
-  gap:18px;margin:22px 0 30px;
-}
-.landing-choice{
-  margin:0;padding:26px 22px;text-align:center;
-  display:flex;flex-direction:column;align-items:center;gap:8px;
-  border-width:2px;
-}
-.landing-choice .landing-icon{
-  font-size:2.6rem;line-height:1;
-  width:66px;height:66px;display:flex;align-items:center;justify-content:center;
-  border-radius:50%;margin-bottom:4px;
-  border:2px solid currentColor;
-}
-.landing-choice h2{font-size:1.2rem;margin:0}
-.landing-choice p{color:var(--text-muted);font-size:.9rem;margin:0 0 8px}
-.landing-choice.usuario{border-color:var(--primary);background:linear-gradient(180deg,#fdf6dc 0%,var(--surface) 55%)}
-.landing-choice.usuario .landing-icon{color:#8a6d00;background:rgba(242,196,15,.22)}
-.landing-choice.admin{border-color:var(--ink);background:linear-gradient(180deg,var(--paper-alt) 0%,var(--surface) 55%);cursor:pointer}
-.landing-choice.admin .landing-icon{color:var(--ink);background:rgba(36,29,21,.08)}
-.landing-choice.admin:hover{transform:translateY(-3px);box-shadow:var(--shadow-lg)}
-.landing-choice.admin button{margin-top:4px}
+/* ---------- Acceso ---------- */
+.login-shell{min-height:100vh;display:flex;flex-direction:column}
+.login-main{flex:1;display:grid;place-items:center;padding:32px 16px}
+.login-card{max-width:420px;width:100%;margin:0}
+.login-card .login-head{display:flex;gap:14px;align-items:center;margin-bottom:6px}
+.login-card h1{font-size:1.35rem;margin:0}
+.login-card .lead{font-size:.92rem}
+.login-card form button[type="submit"],.login-card form > button{width:100%}
+.login-card .enlaces{display:flex;justify-content:space-between;flex-wrap:wrap;gap:4px;margin-top:10px}
 
-.address-autocomplete{position:relative;flex:1;min-width:200px}
+/* ---------- Ticket público: pase con cabecera de letrero ---------- */
+.ticket{max-width:540px;margin:0 auto;background:var(--panel);border:1px solid var(--rule);border-radius:var(--radius);box-shadow:var(--shadow-md);overflow:hidden}
+.ticket-head{background:var(--sign);color:#fff;padding:18px 22px;display:flex;gap:14px;align-items:center;--focus:#fff}
+.ticket-head h2{margin:0;font-size:1.15rem;color:#fff}
+.ticket-head p{margin:2px 0 0;color:var(--sign-text);font-size:.88rem}
+.ticket-body{padding:20px 22px 22px}
+.ticket-codigo{font-size:.8rem;color:var(--muted);word-break:break-all;margin:0 0 14px}
+.ticket-metrica{border-top:1px solid var(--rule-soft);padding:14px 0 4px}
+.ticket-metrica .etq{margin:0;color:var(--muted);font-size:.8rem;font-weight:800;letter-spacing:.07em;text-transform:uppercase}
+.ticket-metrica .valor{font-family:var(--num);font-weight:700;font-size:2.5rem;line-height:1.05;margin:4px 0 2px;font-variant-numeric:tabular-nums}
+.ticket-acciones{display:flex;gap:10px;flex-wrap:wrap;margin-top:18px;padding-top:16px;border-top:1px solid var(--rule-soft)}
+
+/* ---------- Autocompletar direcciones ---------- */
+.address-autocomplete{position:relative;flex:1;min-width:0}
 .address-suggestions{
   position:absolute;z-index:1200;top:100%;left:0;right:0;margin-top:4px;
-  background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);
-  box-shadow:var(--shadow-md);max-height:240px;overflow-y:auto;padding:6px;
+  background:var(--panel);border:1px solid var(--rule);border-radius:var(--radius);
+  box-shadow:var(--shadow-md);max-height:260px;overflow-y:auto;padding:6px;
 }
-/* Botón real (no un <div> con onClick): así se puede llegar con Tab y activar con Enter/Espacio.
-   Anula el estilo global de <button> (fondo amarillo, texto oscuro) para que siga viéndose como
-   una fila de lista, no como un botón de acción. */
 .address-suggestions .item{
-  width:100%;text-align:left;padding:9px 10px;border-radius:6px;cursor:pointer;font-size:.88rem;
-  display:flex;gap:8px;align-items:flex-start;
-  background:none;color:var(--text);font-weight:400;box-shadow:none;
+  width:100%;justify-content:flex-start;text-align:left;padding:9px 10px;border-radius:var(--radius-sm);font-size:.9rem;
+  display:flex;gap:9px;align-items:flex-start;
+  background:none;color:var(--ink);font-weight:500;box-shadow:none;
 }
+.address-suggestions .item .icon{color:var(--muted);margin-top:1px}
 .address-suggestions .item:hover,
-.address-suggestions .item:focus-visible{background:var(--paper-alt);outline:2px solid var(--accent);outline-offset:-2px}
-.address-suggestions .hint{padding:8px 10px;color:var(--text-muted);font-size:.85rem}
+.address-suggestions .item:focus-visible{background:var(--route-tint);outline:2px solid var(--route);outline-offset:-2px}
+.address-suggestions .hint{padding:8px 10px;color:var(--muted);font-size:.86rem}
 
+/* ---------- Asistente ---------- */
 .chatbot-toggle{
   position:fixed;right:22px;bottom:22px;z-index:1500;
-  width:58px;height:58px;border-radius:50%;padding:0;
-  font-size:1.5rem;display:flex;align-items:center;justify-content:center;
+  width:56px;height:56px;border-radius:50%;padding:0;
   box-shadow:var(--shadow-lg);
 }
 .chatbot-panel{
-  position:fixed;right:22px;bottom:92px;z-index:1500;
-  width:min(340px,calc(100vw - 44px));max-height:min(480px,calc(100vh - 140px));
-  background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);
+  position:fixed;right:22px;bottom:90px;z-index:1500;
+  width:min(360px,calc(100vw - 44px));max-height:min(500px,calc(100vh - 140px));
+  background:var(--panel);border:1px solid var(--rule);border-radius:var(--radius);
   box-shadow:var(--shadow-lg);display:flex;flex-direction:column;overflow:hidden;
-  animation:fadeUp .2s ease both;
+  animation:aparecer .22s cubic-bezier(.16,1,.3,1) both;
 }
-.chatbot-header{
-  background:var(--ink);
-  color:var(--paper);padding:14px 16px;font-weight:700;display:flex;justify-content:space-between;align-items:center;
-}
-.chatbot-header button{background:rgba(244,239,225,.16);color:var(--paper);box-shadow:none;padding:4px 10px;font-size:.8rem}
-.chatbot-messages{flex:1;overflow-y:auto;padding:12px;display:flex;flex-direction:column;gap:10px;background:var(--paper-alt)}
-.chatbot-msg{padding:10px 13px;border-radius:12px;font-size:.87rem;line-height:1.4;max-width:88%}
-.chatbot-msg.bot{background:var(--surface);border:1px solid var(--border);align-self:flex-start;border-bottom-left-radius:4px}
-.chatbot-msg.user{background:var(--primary);color:var(--ink);align-self:flex-end;border-bottom-right-radius:4px;font-weight:600}
-.chatbot-suggestions{display:flex;flex-wrap:wrap;gap:6px;padding:0 12px 10px;background:var(--paper-alt)}
-.chatbot-suggestions button{
-  background:var(--surface);color:var(--ink);border:1.5px solid var(--ink);
-  box-shadow:none;padding:6px 12px;font-size:.78rem;font-weight:600;
-}
-.chatbot-suggestions button:hover{background:var(--paper-alt)}
-.chatbot-input{display:flex;gap:8px;padding:10px;border-top:1px solid var(--border)}
+.chatbot-header{background:var(--sign);color:#fff;padding:12px 14px 12px 16px;font-weight:800;display:flex;justify-content:space-between;align-items:center;gap:10px;--focus:#fff}
+.chatbot-header span{display:inline-flex;gap:8px;align-items:center}
+.chatbot-header button{background:rgba(255,255,255,.14);color:#fff;box-shadow:none;padding:6px 10px;font-size:.82rem}
+.chatbot-header button:hover{background:rgba(255,255,255,.24);box-shadow:none}
+.chatbot-messages{flex:1;overflow-y:auto;padding:14px;display:flex;flex-direction:column;gap:10px;background:var(--panel-alt)}
+.chatbot-msg{padding:10px 13px;border-radius:10px;font-size:.9rem;line-height:1.45;max-width:88%}
+.chatbot-msg.bot{background:var(--panel);border:1px solid var(--rule);align-self:flex-start;border-bottom-left-radius:3px}
+.chatbot-msg.user{background:var(--route);color:#fff;align-self:flex-end;border-bottom-right-radius:3px;font-weight:600}
+.chatbot-messages > div{display:flex;flex-direction:column}
+.chatbot-messages > div > button{align-self:flex-start;margin-top:6px}
+.chatbot-suggestions{display:flex;flex-wrap:wrap;gap:6px;padding:0 14px 12px;background:var(--panel-alt)}
+.chatbot-suggestions button{background:var(--panel);color:var(--ink);border:1px solid var(--rule);box-shadow:none;padding:6px 11px;font-size:.8rem;font-weight:700;border-radius:999px}
+.chatbot-suggestions button:hover{border-color:var(--route);color:var(--route);background:var(--panel)}
+.chatbot-input{display:flex;gap:8px;padding:10px;border-top:1px solid var(--rule)}
 .chatbot-input input{margin:0;flex:1}
 .chatbot-input button{padding:10px 16px}
 
-.site-footer{
-  background:var(--ink);color:var(--paper);margin-top:32px;
-  padding:20px 24px;text-align:center;font-size:.85rem;
-}
-.site-footer nav{
-  background:none;box-shadow:none;padding:0;position:static;border-bottom:0;
-  justify-content:center;flex-wrap:wrap;gap:4px 18px;margin-bottom:10px;
-}
-.site-footer a{color:var(--paper);text-decoration:underline;font-weight:600}
-.site-footer a:hover{color:var(--primary)}
-.site-footer p{margin:0;color:rgba(244,239,225,.75)}
+/* ---------- Pie ---------- */
+.site-footer{background:var(--ink);color:#c9d2de;margin-top:0;padding:22px 28px;font-size:.86rem;--focus:#fff}
+.site-footer .inner{max-width:1240px;margin:0 auto;display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:10px 24px}
+.site-footer .brand{display:flex;align-items:center;gap:10px;color:#fff;font-weight:800}
+.site-footer nav{display:flex;flex-wrap:wrap;gap:4px 20px}
+.site-footer a{color:#fff;text-decoration:underline;text-decoration-color:rgba(255,255,255,.4);font-weight:600}
+.site-footer a:hover{color:#fff;text-decoration-color:#fff}
+.site-footer p{margin:0}
 
 .cookie-notice{
-  position:fixed;left:16px;right:16px;bottom:16px;z-index:1500;
-  background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);
+  position:fixed;left:16px;right:16px;bottom:16px;z-index:1400;
+  background:var(--panel);border:1px solid var(--rule);border-radius:var(--radius);
   box-shadow:var(--shadow-lg);padding:14px 18px;
   display:flex;align-items:center;gap:16px;flex-wrap:wrap;
   max-width:720px;margin:0 auto;
 }
-.cookie-notice p{margin:0;flex:1;min-width:220px;font-size:.85rem;color:var(--text)}
-.cookie-notice button{white-space:nowrap;margin:0}
+.cookie-notice p{margin:0;flex:1;min-width:220px;font-size:.88rem}
 
-/* Ticket/boleta: el único componente que se permite el motivo de perforación completo, porque
-   es literalmente el objeto que representa (el momento "más distintivo" del sistema). */
-.ticket-card{
-  position:relative;
-  background:var(--surface);
-  border:1px solid var(--border);
-  border-top:none;
-  border-top-left-radius:0;
-  border-top-right-radius:0;
-}
-.ticket-perf{
-  height:10px;
-  background-image:repeating-linear-gradient(90deg,
-    transparent 0 4px, var(--paper) 4px 12px);
-  background-color:var(--ink-muted);
-  border-radius:var(--radius) var(--radius) 0 0;
-  margin:14px 0 0;
-}
-.ticket-card h2{font-family:'Syne',sans-serif}
+/* ---------- Páginas legales ---------- */
+.legal{max-width:780px;margin:0 auto}
+.legal article{line-height:1.65}
+.legal article h2{font-size:1.6rem;margin-top:0}
+.legal article h3{font-size:1.08rem;margin-top:1.6em}
+.legal article p,.legal article li{max-width:70ch}
 
-/* Foco visible para navegación por teclado: sin esto, Tab no muestra dónde estás parado. */
-a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible{
-  outline:2px solid var(--accent);outline-offset:2px;
+/* QR */
+.qr{display:inline-flex;flex-direction:column;align-items:center;gap:8px}
+.qr canvas{border-radius:var(--radius-sm);background:#fff;padding:8px;border:1px solid var(--rule)}
+.codigo-largo{font-family:var(--num);color:var(--muted);font-size:.8rem;word-break:break-all}
+.centrado{text-align:center}
+.centrado .row-form{justify-content:center}
+
+@keyframes aparecer{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+
+/* Foco visible para navegación por teclado. */
+a:focus-visible,button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible,[tabindex]:focus-visible{
+  outline:3px solid var(--focus);outline-offset:2px;
 }
 
-::selection{background:var(--primary);color:var(--ink)}
-
+@media (max-width:900px){
+  /* En una columna, el mapa va justo después del formulario (no antes, ni al final de la lista):
+     la columna se "disuelve" para poder intercalar el mapa entre sus partes. */
+  .buscador{grid-template-columns:1fr}
+  .buscador-col{display:contents}
+  .buscador .rail{order:1;padding:20px 16px 22px}
+  .buscador-mapa{order:2;position:relative;top:0;height:300px;min-height:0;border-block:1px solid var(--rule)}
+  .buscador-col > .panel-accion,.buscador-col > p.badge{order:3;margin:16px 16px 0;width:auto}
+  .buscador .opciones{order:4;margin:0;border-top:0;padding:18px 16px 26px}
+  .owner-strip .inner{grid-template-columns:1fr;padding:20px 16px}
+  .owner-strip .sign-e{display:none}
+  .owner-strip .acciones{justify-content:flex-start}
+}
 @media (max-width:640px){
-  .container{padding:14px}
-  nav{padding:12px 16px}
+  .container{padding:16px}
+  .site-header{padding:10px 16px;flex-wrap:nowrap}
+  .site-header .brand{font-size:.9rem;line-height:1.15;min-width:0}
+  .site-header .navlink.opcional{display:none}
+  .sign-band{padding:20px 16px}
+  .sign-band.slim{padding:14px 16px}
+  .sign-band h1{font-size:1.7rem}
+  .sign-band.slim h1{font-size:1.25rem}
+  .pago-banner{padding:0 16px}
   .card{padding:16px}
-  .row-form{flex-direction:column}
-  .row-form input{width:100%}
-  .cookie-notice{flex-direction:column;align-items:stretch;text-align:center}
+  .row-form input,.row-form select{min-width:0;width:100%;flex-basis:100%}
+  .cookie-notice{flex-direction:column;align-items:stretch}
+  .site-footer{padding:20px 16px}
+  .tablero .cifra{font-size:1.7rem}
 }
+@media (prefers-reduced-motion:reduce){
+  *,*::before,*::after{animation:none!important;transition:none!important}
+}
+
+/* ---------- Cobro en caja ---------- */
+.cobro-total{font-size:1.5rem;font-weight:900;margin:10px 0 16px;letter-spacing:-.01em}
+.card h3 .icon,.card h2 .icon{vertical-align:-3px}
+.card-head h3 .mono{font-size:.95em}
+
+/* Mapa base del buscador atenuado (mismo OpenStreetMap declarado en las políticas): calles y nombres
+   quedan de fondo para que la ruta azul y las paradas sean lo primero que se lee. */
+.buscador-mapa .leaflet-tile-pane{filter:grayscale(1) contrast(.78) brightness(1.1)}
+.mapa-leyenda{position:absolute;z-index:500;right:12px;top:12px;margin:0;padding:8px 12px;list-style:none;display:flex;gap:14px;flex-wrap:wrap;background:var(--panel);border:1px solid var(--rule);border-radius:var(--radius-sm);box-shadow:var(--shadow-sm);font-size:.8rem;font-weight:700;color:var(--ink);pointer-events:none}
+.mapa-leyenda li{display:flex;align-items:center;gap:6px}
+.ley-ruta{display:block;width:22px;height:6px;border-radius:3px;background:var(--route);box-shadow:0 0 0 2px #fff,0 0 0 3px var(--rule)}
+.ley-stop{position:relative;display:block;width:16px;height:16px;border-radius:50%;background:#fff;border:3px solid var(--ink)}
+.ley-stop.lleno{border-color:var(--full);background:var(--full-bg)}
+.ley-stop.lleno::after{left:-3px;right:-3px;height:2px;margin-top:-1px}
+
+/* El botón flotante del asistente no debe tapar los enlaces legales del pie. */
+body:has(.chatbot-toggle) .site-footer .inner{padding-right:72px}
+
+.site-header button{white-space:nowrap}
+.table-wrap .empty-state{border:0;border-radius:0;border-top:1px solid var(--rule-soft)}
+.site-header .actions{flex-wrap:nowrap}
+
+/* La banda de la portada se alinea con el encabezado (ancho completo); la de los paneles, con el contenido centrado. */
+.sign-band:not(.slim) .inner{max-width:none}
+/* Encabezado alineado con el contenido: centrado a 1240px en paneles y páginas de texto; a todo el
+   ancho en la portada, donde el buscador y el mapa ocupan la pantalla completa. */
+.site-header{padding-inline:max(28px, calc((100% - 1240px) / 2 + 28px))}
+body:has(.buscador) .site-header{padding-inline:28px}
+body:has(.buscador) .site-footer .inner,body:has(.buscador) .owner-strip .inner{max-width:none}
+@media (max-width:640px){.site-header,body:has(.buscador) .site-header{padding-inline:16px}}
+/* Pestañas en celular: con dos, se reparten el ancho; con más (administración), quedan en una
+   franja que se desliza de lado, sin barra de desplazamiento gris debajo. */
+@media (max-width:640px){
+  .tabs{scrollbar-width:none}
+  .tabs::-webkit-scrollbar{display:none}
+  .tab{padding:10px 12px 14px;font-size:.88rem}
+  .tabs:not(:has(> .tab:nth-child(3))) .tab{flex:1 1 0;white-space:normal;justify-content:flex-start;text-align:left}
+}
+/* Tablero del dueño en celular: una cifra por fila, más compacta para que el día quepa sin tanto desplazamiento. */
+@media (max-width:640px){
+  .tablero .celda{padding:14px 18px 16px}
+  .tablero .cifra{font-size:2.1rem}
+  .tablero .cifra.mediana{font-size:1.6rem}
+}
+/* El número de la parada queda sobre la diagonal roja (con halo del fondo) para que el mapa siga numerado como la lista. */
+.map-stop span{position:relative;z-index:1}
+.map-stop.lleno span{text-shadow:0 0 2px var(--full-bg),0 0 2px var(--full-bg),0 0 3px var(--full-bg)}
+.map-stop.lleno::after{opacity:.75}

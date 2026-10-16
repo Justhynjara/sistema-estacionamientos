@@ -13,12 +13,12 @@ const parking = [{ id: 'p1', nombre: 'Parking Centro', direccion: 'Centro', prec
 const activo = { id: 't1', codigo_qr: 'QR-1', patente: 'AB1234', fecha_entrada: new Date().toISOString(), estado: 'ACTIVO', estacionamiento_id: 'p1', estacionamiento_nombre: 'Parking Centro', precio_minuto: 25, tarifa_minima: 500 };
 
 // Antes de ver la tabla de vehículos hay que abrir el estacionamiento desde la lista (el flujo ya
-// no muestra todo mezclado). Luego hay dos botones "💰 Cobrar" (uno por fila de la tabla, otro
+// no muestra todo mezclado). Luego hay dos botones "Cobrar" (uno por fila de la tabla, otro
 // para cobrar por código manual); este helper hace click en el de la fila.
 async function abrirParkingYCobrarDeLaFila(user) {
   await user.click(await screen.findByRole('button', { name: /abrir parking centro/i }));
   await screen.findByText('AB1234');
-  const botones = screen.getAllByRole('button', { name: /💰 cobrar/i });
+  const botones = screen.getAllByRole('button', { name: /^cobrar$/i });
   await user.click(botones[0]);
 }
 
@@ -45,9 +45,9 @@ describe('ClientePanel — cobro sin Webpay', () => {
 
     expect(await screen.findByText('Total a pagar: $3.000')).toBeInTheDocument();
     expect(screen.queryByLabelText('Monto recibido')).not.toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /💵 efectivo/i })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /💳 débito/i })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /💳 crédito/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /^efectivo$/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /^débito$/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /^crédito$/i })).toBeInTheDocument();
     // No hay ningún botón de Webpay: el cobro del dueño ya no pasa por ahí.
     expect(screen.queryByText(/webpay/i)).not.toBeInTheDocument();
   });
@@ -66,7 +66,7 @@ describe('ClientePanel — cobro sin Webpay', () => {
 
     await abrirParkingYCobrarDeLaFila(user);
     await screen.findByText('Total a pagar: $3.000');
-    await user.click(screen.getByRole('button', { name: /💳 débito/i }));
+    await user.click(screen.getByRole('button', { name: /^débito$/i }));
 
     expect(screen.queryByLabelText('Monto recibido')).not.toBeInTheDocument();
     const confirmar = screen.getByRole('button', { name: /confirmar cobro con débito/i });
@@ -88,7 +88,7 @@ describe('ClientePanel — cobro sin Webpay', () => {
 
     await abrirParkingYCobrarDeLaFila(user);
     await screen.findByText('Total a pagar: $3.000');
-    await user.click(screen.getByRole('button', { name: /💵 efectivo/i }));
+    await user.click(screen.getByRole('button', { name: /^efectivo$/i }));
 
     const input = screen.getByLabelText('Monto recibido');
     const confirmar = screen.getByRole('button', { name: /confirmar cobro/i });
@@ -181,7 +181,7 @@ describe('ClientePanel — cobro sin Webpay', () => {
 
     await abrirParkingYCobrarDeLaFila(user);
     await screen.findByText('Total a pagar: $3.000');
-    await user.click(screen.getByRole('button', { name: /💳 débito/i }));
+    await user.click(screen.getByRole('button', { name: /^débito$/i }));
 
     dateNow.mockReturnValue(T0 + 4 * 60000);
     await user.click(screen.getByRole('button', { name: /confirmar cobro con débito/i }));
@@ -209,7 +209,7 @@ describe('ClientePanel — dashboard', () => {
     const user = userEvent.setup();
     render(<ClientePanel />);
 
-    await user.click(await screen.findByRole('button', { name: /dashboard de tickets/i }));
+    await user.click(await screen.findByRole('tab', { name: /dashboard de tickets/i }));
     await screen.findByText('$3.000');
     expect(api.get.mock.calls.filter(([u]) => u === '/tickets/dashboard')).toHaveLength(1);
 
@@ -233,7 +233,7 @@ describe('ClientePanel — dashboard', () => {
     });
     const user = userEvent.setup();
     render(<ClientePanel />);
-    await user.click(await screen.findByRole('button', { name: /dashboard de tickets/i }));
+    await user.click(await screen.findByRole('tab', { name: /dashboard de tickets/i }));
 
     await screen.findByText('$6.000');
     expect(screen.getByText(/3 cobros · promedio \$2\.000/)).toBeInTheDocument();
@@ -256,7 +256,7 @@ describe('ClientePanel — dashboard', () => {
     });
     const user = userEvent.setup();
     render(<ClientePanel />);
-    await user.click(await screen.findByRole('button', { name: /dashboard de tickets/i }));
+    await user.click(await screen.findByRole('tab', { name: /dashboard de tickets/i }));
 
     expect(await screen.findByRole('alert')).toHaveTextContent(/no se pudieron cargar los datos del dashboard/i);
     falla = false;

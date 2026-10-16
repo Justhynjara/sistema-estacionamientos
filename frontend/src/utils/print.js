@@ -42,7 +42,7 @@ export async function imprimirTicket({
       .codigo { text-align: center; font-size: 10px; word-break: break-all; margin-top: 4px; }
     </style>
     </head><body>
-      <h1>🅿️ ${nombreEstacionamiento || 'Estacionamiento'}</h1>
+      <h1>${nombreEstacionamiento || 'Estacionamiento'}</h1>
       ${direccion ? `<p class="center">${direccion}</p>` : ''}
       <div class="linea"></div>
       ${filas}

@@ -40,7 +40,7 @@ export default function AuditLogTab() {
     <div>
       <div className="card">
         <h2>Auditoría</h2>
-        <p style={{ color: 'var(--text-muted)' }}>Quién hizo qué acción administrativa y cuándo — usuarios, parámetros, estacionamientos y solicitudes.</p>
+        <p className="lead">Quién hizo qué acción administrativa y cuándo: usuarios, parámetros, estacionamientos y solicitudes.</p>
         <div className="row-form">
           <select value={entidad} onChange={e => setEntidad(e.target.value)} aria-label="Filtrar por tipo">
             <option value="">Todo</option>
@@ -49,7 +49,7 @@ export default function AuditLogTab() {
         </div>
       </div>
 
-      {loading && <p><span className="spinner" />Cargando...</p>}
+      {loading && <p className="loading-line"><span className="spinner" />Cargando...</p>}
 
       {!loading && (
         <div className="table-wrap">
@@ -58,10 +58,10 @@ export default function AuditLogTab() {
             <tbody>
               {entradas.map(e => (
                 <tr key={e.id}>
-                  <td>{new Date(e.created_at).toLocaleString('es-CL')}</td>
+                  <td className="mono" style={{ whiteSpace: 'nowrap' }}>{new Date(e.created_at).toLocaleString('es-CL')}</td>
                   <td>{e.usuario_nombre || 'Usuario eliminado'}{e.usuario_email ? ` (${e.usuario_email})` : ''}</td>
                   <td>{ACCION_LABEL[e.accion] || e.accion}</td>
-                  <td>{detalleTexto(e)}</td>
+                  <td className="muted small">{detalleTexto(e)}</td>
                 </tr>
               ))}
             </tbody>

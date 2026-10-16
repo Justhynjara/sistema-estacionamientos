@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { searchAddresses } from './utils/geo.js';
+import Icon from './Icon.jsx';
 
 export default function AddressAutocomplete({ value, onChange, onSelect, placeholder, ariaLabel }) {
   const [sugerencias, setSugerencias] = useState([]);
@@ -59,7 +60,7 @@ export default function AddressAutocomplete({ value, onChange, onSelect, placeho
             // Botón real: se llega con Tab y se activa con Enter/Espacio, a diferencia de un
             // <div onClick> (que solo funciona con el mouse o el dedo).
             <button type="button" className="item" role="option" key={i} onClick={() => elegir(s)}>
-              <span aria-hidden="true">📍</span><span>{s.label}</span>
+              <Icon name="pin" size={16} /><span>{s.label}</span>
             </button>
           ))}
         </div>

@@ -4,17 +4,14 @@ import Pagination, { usePagination } from './Pagination.jsx';
 import LocationPicker from './LocationPicker.jsx';
 import SolicitudesTab from './SolicitudesTab.jsx';
 import AuditLogTab from './AuditLogTab.jsx';
-import { formatTarifa } from './utils/tarifa.js';
+import Tarifa from './Tarifa.jsx';
+import Icon from './Icon.jsx';
+import TabsBase from './Tabs.jsx';
+import Capacidad from './Capacidad.jsx';
 
+const TABS = [['usuarios', 'Usuarios', 'users'], ['parking', 'Estacionamientos', 'building'], ['solicitudes', 'Solicitudes', 'clipboard'], ['parametros', 'Parámetros', 'sliders'], ['auditoria', 'Auditoría', 'history']];
 function Tabs({ tab, setTab }) {
-  const tabs = [['usuarios', '👤 Usuarios'], ['parking', '🅿️ Estacionamientos'], ['solicitudes', '📋 Solicitudes'], ['parametros', '⚙️ Parámetros'], ['auditoria', '🕵️ Auditoría']];
-  return (
-    <div className="tabs">
-      {tabs.map(([k, label]) => (
-        <button key={k} className={'tab' + (tab === k ? ' active' : '')} onClick={() => setTab(k)}>{label}</button>
-      ))}
-    </div>
-  );
+  return <TabsBase tabs={TABS} tab={tab} setTab={setTab} label="Secciones de administración" />;
 }
 
 function ParkingTab({ parking, reloadParking, users }) {
@@ -27,7 +24,7 @@ function ParkingTab({ parking, reloadParking, users }) {
 
   function dueñoDe(clienteId) {
     const u = users.find(u => u.id === clienteId);
-    return u ? `${u.nombre} (${u.email})` : '⚠️ usuario no encontrado';
+    return u ? `${u.nombre} (${u.email})` : 'usuario no encontrado';
   }
 
   async function confirmarReasignacion() {
@@ -87,33 +84,33 @@ function ParkingTab({ parking, reloadParking, users }) {
       <div className="card">
         <h3>Registrar estacionamiento</h3>
         <form onSubmit={crear}>
-          <select value={form.cliente_id} onChange={e => setForm({ ...form, cliente_id: e.target.value })} required>
+          <select value={form.cliente_id} onChange={e => setForm({ ...form, cliente_id: e.target.value })} required aria-label="Cliente dueño">
             <option value="">Cliente dueño...</option>
             {clientes.map(c => <option key={c.id} value={c.id}>{c.nombre} ({c.email})</option>)}
           </select>
-          <input placeholder="Nombre" value={form.nombre} onChange={e => setForm({ ...form, nombre: e.target.value })} required />
-          <input placeholder="Dirección" value={form.direccion} onChange={e => setForm({ ...form, direccion: e.target.value })} required />
+          <input placeholder="Nombre" aria-label="Nombre del estacionamiento" value={form.nombre} onChange={e => setForm({ ...form, nombre: e.target.value })} required />
+          <input placeholder="Dirección" aria-label="Dirección" value={form.direccion} onChange={e => setForm({ ...form, direccion: e.target.value })} required />
           <LocationPicker value={ubicacion} onChange={setUbicacion} />
           <input type="number" min="0" step="any" placeholder="Precio por minuto (CLP)" aria-label="Precio por minuto" max="100000" value={form.precio_minuto} onChange={e => setForm({ ...form, precio_minuto: e.target.value })} required />
           <input type="number" min="0" step="any" placeholder="Valor base mínimo (CLP)" aria-label="Valor base mínimo" max="10000000" value={form.tarifa_minima} onChange={e => setForm({ ...form, tarifa_minima: e.target.value })} />
-          <input placeholder="Cupo máximo" value={form.cupo_maximo} onChange={e => setForm({ ...form, cupo_maximo: e.target.value })} required />
-          <button>Crear estacionamiento</button>
+          <input type="number" inputMode="numeric" min="1" placeholder="Cupo máximo" aria-label="Cupo máximo" value={form.cupo_maximo} onChange={e => setForm({ ...form, cupo_maximo: e.target.value })} required />
+          <button><Icon name="plus" />Crear estacionamiento</button>
         </form>
       </div>
       <div className="grid">
         {pageItems.map(p => (
           <div className="card" key={p.id}>
             <h3>{p.nombre}</h3>
-            <p>{p.direccion}</p>
-            <p>💰 {formatTarifa(p)}</p>
-            <p className={'badge ' + (p.cupos_disponibles > 0 ? 'ok' : 'off')}>🅿️ {p.cupos_disponibles} / {p.cupo_maximo} disponibles</p>
-            <p style={{ color: 'var(--text-muted)', fontSize: '.85rem' }}>👤 Dueño: {dueñoDe(p.cliente_id)}</p>
-            <p style={{ color: 'var(--text-muted)', fontSize: '.85rem' }}>
-              🎫 {p.total_tickets ?? 0} tickets en total{p.tickets_activos ? ` (${p.tickets_activos} activo${p.tickets_activos === 1 ? '' : 's'} ahora)` : ''}
+            <p className="muted small" style={{ margin: 0 }}>{p.direccion}</p>
+            <Capacidad libres={p.cupos_disponibles} total={p.cupo_maximo} />
+            <p className="small" style={{ margin: 0 }}><Tarifa {...p} /></p>
+            <p className="muted small" style={{ margin: 0 }}><Icon name="user" size={15} /> Dueño: {dueñoDe(p.cliente_id)}</p>
+            <p className="muted small" style={{ margin: 0 }}>
+              <Icon name="ticket" size={15} /> <span className="mono">{p.total_tickets ?? 0}</span> tickets en total{p.tickets_activos ? ` (${p.tickets_activos} activo${p.tickets_activos === 1 ? '' : 's'} ahora)` : ''}
             </p>
             <div className="row-form">
-              <button onClick={() => cambiarCupo(p.id, p.cupo_maximo)}>Cambiar cupo máximo</button>
-              <button type="button" className="secondary" onClick={() => cambiarTarifa(p)}>Cambiar tarifa</button>
+              <button type="button" className="secondary small" onClick={() => cambiarCupo(p.id, p.cupo_maximo)}>Cambiar cupo máximo</button>
+              <button type="button" className="secondary small" onClick={() => cambiarTarifa(p)}>Cambiar tarifa</button>
             </div>
             {reasignando?.p.id === p.id ? (
               <div className="row-form">
@@ -128,7 +125,7 @@ function ParkingTab({ parking, reloadParking, users }) {
               </div>
             ) : (
               <div className="row-form">
-                <button type="button" className="secondary" onClick={() => setReasignando({ p, clienteId: '', loading: false })}>Cambiar dueño</button>
+                <button type="button" className="link-button" onClick={() => setReasignando({ p, clienteId: '', loading: false })}>Cambiar dueño</button>
               </div>
             )}
           </div>
@@ -160,18 +157,18 @@ function CrearUsuarioForm({ reloadUsers }) {
   return (
     <div className="card">
       <h3>Crear usuario</h3>
-      {error && <p className="badge off">⚠️ {error}</p>}
+      {error && <p className="badge off">{error}</p>}
       <form onSubmit={crear} className="row-form">
-        <input placeholder="Nombre" value={form.nombre} onChange={e => setForm({ ...form, nombre: e.target.value })} required />
-        <input type="email" placeholder="Email" value={form.email} onChange={e => setForm({ ...form, email: e.target.value })} required />
-        <input type="password" placeholder="Contraseña (mín. 8 caracteres)" value={form.password} onChange={e => setForm({ ...form, password: e.target.value })} required minLength={8} />
+        <input placeholder="Nombre" aria-label="Nombre" value={form.nombre} onChange={e => setForm({ ...form, nombre: e.target.value })} required />
+        <input type="email" placeholder="Email" aria-label="Email" value={form.email} onChange={e => setForm({ ...form, email: e.target.value })} required />
+        <input type="password" placeholder="Contraseña (mín. 8 caracteres)" aria-label="Contraseña" value={form.password} onChange={e => setForm({ ...form, password: e.target.value })} required minLength={8} />
         <select value={form.rol} onChange={e => setForm({ ...form, rol: e.target.value })} aria-label="Rol del nuevo usuario">
           <option value="USUARIO">USUARIO</option>
           <option value="CLIENTE">CLIENTE</option>
           <option value="SOPORTE">SOPORTE</option>
           <option value="ADMIN">ADMIN</option>
         </select>
-        <button disabled={loading}>{loading && <span className="spinner" />}Crear usuario</button>
+        <button disabled={loading}>{loading ? <span className="spinner" /> : <Icon name="plus" />}Crear usuario</button>
       </form>
     </div>
   );
@@ -207,14 +204,14 @@ function UsersTab({ users, reloadUsers, currentUserId }) {
       <h3>Usuarios</h3>
       <div className="table-wrap">
       <table className="table">
-        <thead><tr><th>Nombre</th><th>Email</th><th>Rol</th><th>Estado</th><th></th></tr></thead>
+        <thead><tr><th>Nombre</th><th>Email</th><th>Rol</th><th>Estado</th><th><span className="sr-only">Acciones</span></th></tr></thead>
         <tbody>
           {pageItems.map(u => (
             <tr key={u.id}>
               <td>{u.nombre}</td>
               <td>{u.email}</td>
               <td>
-                <select value={u.rol} disabled={u.id === currentUserId} onChange={e => cambiarRol(u, e.target.value)}>
+                <select value={u.rol} disabled={u.id === currentUserId} onChange={e => cambiarRol(u, e.target.value)} aria-label={`Rol de ${u.nombre}`}>
                   <option value="USUARIO">USUARIO</option>
                   <option value="CLIENTE">CLIENTE</option>
                   <option value="SOPORTE">SOPORTE</option>
@@ -222,10 +219,10 @@ function UsersTab({ users, reloadUsers, currentUserId }) {
                 </select>
               </td>
               <td><span className={'badge ' + (u.activo ? 'ok' : 'off')}>{u.activo ? 'Activo' : 'Inactivo'}</span></td>
-              <td>
-                <div className="row-form" style={{ margin: 0 }}>
-                  <button disabled={u.id === currentUserId} onClick={() => toggleActivo(u)}>{u.activo ? 'Desactivar' : 'Activar'}</button>
-                  <button className="secondary" disabled={u.id === currentUserId} onClick={() => eliminar(u)} aria-label={`Eliminar a ${u.nombre}`}>🗑️ Eliminar</button>
+              <td className="acciones">
+                <div className="row-form">
+                  <button type="button" className="secondary small" disabled={u.id === currentUserId} onClick={() => toggleActivo(u)}>{u.activo ? 'Desactivar' : 'Activar'}</button>
+                  <button type="button" className="danger small" disabled={u.id === currentUserId} onClick={() => eliminar(u)} aria-label={`Eliminar a ${u.nombre}`} style={{ marginLeft: 12 }}><Icon name="trash" size={16} />Eliminar</button>
                 </div>
               </td>
             </tr>
@@ -243,9 +240,9 @@ function ParamRow({ p, onSave }) {
   const [valor, setValor] = useState(p.valor);
   return (
     <div className="param-row">
-      <div><strong>{p.clave}</strong><br /><small>{p.descripcion}</small></div>
-      <input value={valor} onChange={e => setValor(e.target.value)} />
-      <button onClick={() => onSave(p.clave, valor)}>Guardar</button>
+      <div><code>{p.clave}</code><br /><small className="muted">{p.descripcion}</small></div>
+      <input className="mono" value={valor} onChange={e => setValor(e.target.value)} aria-label={`Valor de ${p.clave}`} />
+      <button type="button" className="small" onClick={() => onSave(p.clave, valor)}>Guardar</button>
     </div>
   );
 }

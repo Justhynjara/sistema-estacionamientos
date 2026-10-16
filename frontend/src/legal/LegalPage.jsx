@@ -1,6 +1,7 @@
 import PrivacyPolicy from './PrivacyPolicy.jsx';
 import TermsOfService from './TermsOfService.jsx';
 import CookiePolicy from './CookiePolicy.jsx';
+import Icon from '../Icon.jsx';
 
 const PAGINAS = { privacidad: PrivacyPolicy, terminos: TermsOfService, cookies: CookiePolicy };
 
@@ -9,11 +10,11 @@ const PAGINAS = { privacidad: PrivacyPolicy, terminos: TermsOfService, cookies: 
 export default function LegalPage({ pagina, onVolver }) {
   const Contenido = PAGINAS[pagina] || PrivacyPolicy;
   return (
-    <main className="container" style={{ maxWidth: 760 }}>
-      <button type="button" className="secondary" onClick={onVolver} style={{ marginBottom: 8 }}>← Volver</button>
-      <div className="card" style={{ lineHeight: 1.6 }}>
+    <>
+      <button type="button" className="link-button" onClick={onVolver}><Icon name="arrowLeft" size={16} />Volver</button>
+      <div className="card">
         <Contenido />
       </div>
-    </main>
+    </>
   );
 }

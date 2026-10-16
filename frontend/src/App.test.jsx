@@ -30,19 +30,20 @@ describe('App', () => {
   });
   afterEach(() => { vi.clearAllMocks(); window.history.replaceState({}, '', '/'); });
 
-  test('sin sesión, muestra la landing con los dos accesos separados (usuario / dueño-admin)', async () => {
+  test('sin sesión, muestra la búsqueda y, aparte, el acceso para dueños y administradores', async () => {
     render(<App />);
-    expect(await screen.findByText('Busco estacionamiento')).toBeInTheDocument();
-    expect(screen.getByText('Soy dueño o administrador')).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: 'Encuentra estacionamiento cerca de tu destino' })).toBeInTheDocument();
     expect(screen.getByText('MockBuscarCercanos')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /acceso dueños/i })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: '¿Administras un estacionamiento?' })).toBeInTheDocument();
   });
 
   test('el acceso de dueño/admin lleva al formulario de login', async () => {
     const user = userEvent.setup();
     render(<App />);
-    await screen.findByText('Busco estacionamiento');
+    await screen.findByText('MockBuscarCercanos');
 
-    await user.click(screen.getByRole('button', { name: /iniciar sesión/i }));
+    await user.click(screen.getByRole('button', { name: /acceso dueños/i }));
 
     expect(screen.getByRole('heading', { name: /acceso cliente \/ administrador/i })).toBeInTheDocument();
   });
@@ -53,15 +54,15 @@ describe('App', () => {
     });
     const user = userEvent.setup();
     render(<App />);
-    await screen.findByText('Busco estacionamiento');
-    await user.click(screen.getByRole('button', { name: /iniciar sesión/i }));
+    await screen.findByText('MockBuscarCercanos');
+    await user.click(screen.getByRole('button', { name: /acceso dueños/i }));
 
     await user.type(screen.getByLabelText('Email'), 'cliente@demo.cl');
     await user.type(screen.getByLabelText('Contraseña'), 'password');
     await user.click(screen.getByRole('button', { name: /iniciar sesión/i }));
 
     expect(await screen.findByText('MockClientePanel')).toBeInTheDocument();
-    expect(screen.getByText('CLIENTE')).toBeInTheDocument();
+    expect(screen.getByText('Dueño')).toBeInTheDocument();
     expect(localStorage.getItem('token')).toBeNull(); // ya no se guarda nada ahí
   });
 
@@ -70,8 +71,8 @@ describe('App', () => {
     const alertSpy = vi.spyOn(window, 'alert').mockImplementation(() => {});
     const user = userEvent.setup();
     render(<App />);
-    await screen.findByText('Busco estacionamiento');
-    await user.click(screen.getByRole('button', { name: /iniciar sesión/i }));
+    await screen.findByText('MockBuscarCercanos');
+    await user.click(screen.getByRole('button', { name: /acceso dueños/i }));
 
     await user.type(screen.getByLabelText('Email'), 'cliente@demo.cl');
     await user.type(screen.getByLabelText('Contraseña'), 'incorrecta');
@@ -88,8 +89,8 @@ describe('App', () => {
       : Promise.resolve({ data: { ok: true } })));
     const user = userEvent.setup();
     render(<App />);
-    await screen.findByText('Busco estacionamiento');
-    await user.click(screen.getByRole('button', { name: /iniciar sesión/i }));
+    await screen.findByText('MockBuscarCercanos');
+    await user.click(screen.getByRole('button', { name: /acceso dueños/i }));
     await user.type(screen.getByLabelText('Email'), 'cliente@demo.cl');
     await user.type(screen.getByLabelText('Contraseña'), 'password');
     await user.click(screen.getByRole('button', { name: /iniciar sesión/i }));
@@ -98,7 +99,7 @@ describe('App', () => {
     await user.click(screen.getByRole('button', { name: 'Salir' }));
 
     expect(api.post).toHaveBeenCalledWith('/auth/logout');
-    expect(await screen.findByText('Busco estacionamiento')).toBeInTheDocument();
+    expect(await screen.findByText('MockBuscarCercanos')).toBeInTheDocument();
   });
 
   describe('enlace del QR del ticket (?ticket=...)', () => {
@@ -110,7 +111,7 @@ describe('App', () => {
       render(<App />);
 
       expect(await screen.findByLabelText('Monto a pagar')).toBeInTheDocument();
-      expect(screen.queryByText('Busco estacionamiento')).not.toBeInTheDocument();
+      expect(screen.queryByText('MockBuscarCercanos')).not.toBeInTheDocument();
       expect(api.get).toHaveBeenCalledWith('/tickets/publico/abc123');
     });
 
@@ -150,7 +151,7 @@ describe('App', () => {
   describe('páginas legales (?legal=...)', () => {
     test('la landing enlaza a las tres páginas legales desde el pie de página', async () => {
       render(<App />);
-      await screen.findByText('Busco estacionamiento');
+      await screen.findByText('MockBuscarCercanos');
 
       expect(screen.getByRole('link', { name: 'Política de Privacidad' })).toHaveAttribute('href', '/?legal=privacidad');
       expect(screen.getByRole('link', { name: 'Términos y Condiciones' })).toHaveAttribute('href', '/?legal=terminos');
@@ -164,10 +165,10 @@ describe('App', () => {
 
       expect(await screen.findByRole('heading', { name: 'Política de Privacidad' })).toBeInTheDocument();
       // Mientras se muestra la página legal, no se ve la landing por debajo.
-      expect(screen.queryByText('Busco estacionamiento')).not.toBeInTheDocument();
+      expect(screen.queryByText('MockBuscarCercanos')).not.toBeInTheDocument();
 
       await user.click(screen.getByRole('button', { name: /volver/i }));
-      expect(await screen.findByText('Busco estacionamiento')).toBeInTheDocument();
+      expect(await screen.findByText('MockBuscarCercanos')).toBeInTheDocument();
     });
 
     test('?legal=terminos y ?legal=cookies muestran su propio contenido', async () => {
@@ -185,7 +186,7 @@ describe('App', () => {
   test('el aviso de cookies se puede cerrar y no vuelve a aparecer en este navegador', async () => {
     const user = userEvent.setup();
     render(<App />);
-    await screen.findByText('Busco estacionamiento');
+    await screen.findByText('MockBuscarCercanos');
 
     expect(screen.getByText(/usamos una sola cookie/i)).toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: 'Entendido' }));
@@ -193,7 +194,7 @@ describe('App', () => {
 
     // Simula recargar la página: como ya se cerró antes, no debe volver a mostrarse.
     const { unmount } = render(<App />);
-    await screen.findAllByText('Busco estacionamiento');
+    await screen.findAllByText('MockBuscarCercanos');
     expect(screen.queryByText(/usamos una sola cookie/i)).not.toBeInTheDocument();
     unmount();
   });

@@ -1,182 +1,339 @@
 ---
 name: Sistema de Estacionamientos
-description: Marketplace chileno de estacionamientos con la identidad visual de la boleta térmica que el sistema realmente imprime.
+description: Buscador de estacionamientos y caja para dueños, dibujado como señalética vial y plano de transporte ("línea de ruta").
 colors:
-  paper: "#f4efe1"
-  paper-alt: "#ece4cf"
-  surface: "#faf7ec"
-  ink: "#241d15"
-  ink-muted: "#6a5e4c"
-  primary-yellow: "#f2c40f"
-  primary-yellow-light: "#f6d647"
-  stamp-blue: "#2563eb"
-  stamp-green: "#0f6b39"
-  stamp-green-bg: "#e4ecd7"
-  stamp-red: "#b3231f"
-  stamp-red-bg: "#f6ddd3"
-  border: "#c2b083"
+  bg-gris-calzada: "#eef1f4"
+  panel: "#ffffff"
+  panel-alt: "#f6f8fa"
+  ink: "#0e1726"
+  muted: "#4a5568"
+  rule: "#d3d9e1"
+  rule-soft: "#e6eaef"
+  route: "#0b5cad"
+  route-dark: "#08447f"
+  route-tint: "#e8f0fa"
+  sign: "#0a3f7a"
+  sign-text: "#cfdcf0"
+  free: "#0a7a3d"
+  free-bg: "#e3f3e9"
+  full: "#b42318"
+  full-bg: "#fdecea"
+  focus: "#0b5cad"
 typography:
   display:
-    fontFamily: "Syne, Inter, system-ui, sans-serif"
-    fontWeight: 700
+    fontFamily: "Overpass, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif"
+    fontSize: "2.3rem"
+    fontWeight: 900
+    lineHeight: 1.04
+    letterSpacing: "-0.02em"
+  headline:
+    fontFamily: "Overpass, system-ui, sans-serif"
+    fontSize: "1.2rem"
+    fontWeight: 800
+    lineHeight: 1.2
     letterSpacing: "-0.01em"
+  title:
+    fontFamily: "Overpass, system-ui, sans-serif"
+    fontSize: "1.05rem"
+    fontWeight: 800
+    lineHeight: 1.25
   body:
-    fontFamily: "Inter, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif"
+    fontFamily: "Overpass, system-ui, sans-serif"
+    fontSize: "15.5px"
     fontWeight: 400
-  data:
-    fontFamily: "JetBrains Mono, ui-monospace, monospace"
+    lineHeight: 1.5
+  label:
+    fontFamily: "Overpass, system-ui, sans-serif"
+    fontSize: "0.76rem"
+    fontWeight: 800
+    letterSpacing: "0.08em"
+  numeral-board:
+    fontFamily: "Overpass Mono, ui-monospace, SFMono-Regular, Menlo, monospace"
+    fontSize: "2.6rem"
     fontWeight: 700
+    lineHeight: 1
+    fontFeature: "tnum"
+  numeral-stop:
+    fontFamily: "Overpass Mono, ui-monospace, monospace"
+    fontSize: "1.6rem"
+    fontWeight: 700
+    lineHeight: 1
+    fontFeature: "tnum"
+  numeral-inline:
+    fontFamily: "Overpass Mono, ui-monospace, monospace"
+    fontSize: "1em"
+    fontWeight: 500
+    fontFeature: "tnum"
 rounded:
-  sm: "4px"
+  chip: "4px"
+  sm: "6px"
   md: "8px"
   pill: "999px"
 spacing:
+  xs: "4px"
   sm: "8px"
-  md: "14px"
-  lg: "24px"
+  md: "12px"
+  lg: "16px"
+  xl: "24px"
+  gutter: "28px"
+  gutter-mobile: "16px"
 components:
   button-primary:
-    backgroundColor: "{colors.primary-yellow}"
-    textColor: "{colors.ink}"
+    backgroundColor: "{colors.route}"
+    textColor: "{colors.panel}"
     rounded: "{rounded.sm}"
-    padding: "12px 20px"
+    padding: "11px 18px"
   button-primary-hover:
-    backgroundColor: "{colors.primary-yellow-light}"
+    backgroundColor: "{colors.route-dark}"
   button-secondary:
-    backgroundColor: "{colors.surface}"
+    backgroundColor: "{colors.panel}"
     textColor: "{colors.ink}"
     rounded: "{rounded.sm}"
-  badge-ok:
-    backgroundColor: "{colors.stamp-green-bg}"
-    textColor: "{colors.stamp-green}"
-    rounded: "6px"
-  badge-off:
-    backgroundColor: "{colors.stamp-red-bg}"
-    textColor: "{colors.stamp-red}"
-    rounded: "6px"
+    padding: "9.5px 16px"
+  button-dark:
+    backgroundColor: "{colors.ink}"
+    textColor: "{colors.panel}"
+    rounded: "{rounded.sm}"
+    padding: "7px 12px"
+  button-danger:
+    backgroundColor: "{colors.panel}"
+    textColor: "{colors.full}"
+    rounded: "{rounded.sm}"
+    padding: "9.5px 14px"
+  input:
+    backgroundColor: "{colors.panel}"
+    textColor: "{colors.ink}"
+    rounded: "{rounded.sm}"
+    padding: "11px 12px"
+  card:
+    backgroundColor: "{colors.panel}"
+    textColor: "{colors.ink}"
+    rounded: "{rounded.md}"
+    padding: "22px"
+  sign-band:
+    backgroundColor: "{colors.sign}"
+    textColor: "{colors.panel}"
+    padding: "26px 28px 24px"
+  chip-free:
+    backgroundColor: "{colors.free-bg}"
+    textColor: "{colors.free}"
+    rounded: "{rounded.chip}"
+    padding: "4px 9px 3px"
+  chip-full:
+    backgroundColor: "{colors.full-bg}"
+    textColor: "{colors.full}"
+    rounded: "{rounded.chip}"
+    padding: "4px 9px 3px"
+  board-cell:
+    backgroundColor: "{colors.sign}"
+    textColor: "{colors.panel}"
+    typography: "{typography.numeral-board}"
+    padding: "20px 22px 22px"
+  stop-number:
+    backgroundColor: "{colors.panel}"
+    textColor: "{colors.ink}"
+    size: "26px"
 ---
 
 # Design System: Sistema de Estacionamientos
 
 ## Overview
 
-**Creative North Star: "La boleta de estacionamiento"**
+**Creative North Star: "Línea de ruta"**
 
-El objeto real que este producto emite —el ticket térmico que se imprime o se muestra al cobrar— es la fuente de toda la identidad visual, en vez de una plantilla SaaS genérica. Papel hueso, tinta casi negra, un solo acento amarillo vial y dos tintas de timbre (verde y rojo) para los estados. Es cálido y de trazo firme, no frío ni corporativo: el dueño de un estacionamiento informal debe reconocerlo como "su" boleta, no como el dashboard de una startup.
+El sitio habla el idioma de la señalética vial chilena y de los planos de transporte: certeza de un vistazo. La marca es el letrero "E" de estacionamiento (E blanca sobre azul señal, con filete blanco interior). La búsqueda se dibuja como una línea de metro: un riel azul de 6px va de "Desde" a "Hacia" y cada estacionamiento encontrado es una parada numerada; la línea termina en el nodo de la última parada, no se prolonga al vacío. El dueño ve su local como un tablero de terminal: celdas azul letrero con cifras grandes en mono.
 
-La interfaz es mayoritariamente de tipo Operate (paneles de dueño y administración: tareas, no persuasión), así que la expresión vive en el color, la tipografía y un único motivo recurrente —la perforación/código de barras—, nunca a costa de la legibilidad o la velocidad de escaneo. El único lugar donde el mundo se permite el compromiso total es el propio componente de ticket (`TicketPublico`), que se construye literalmente como una boleta con borde perforado.
+Densidad media, superficies planas: paneles blancos sobre un gris frío, tinta azul-negra, el azul de ruta como única voz de acción, y verde/rojo reservados para el estado de los cupos. Lo cancelado o lleno se tacha, no desaparece (herencia de la billetera de pasajes). Las cifras verificables contra la realidad (montos, minutos, patentes, códigos, horas) van en Overpass Mono; todo lo demás, incluidas las palabras que rodean a esas cifras, en Overpass.
 
-Rechazos confirmados: el morado/índigo "SaaS de plantilla" que tenía el proyecto antes de este rediseño; gradientes de texto; sombras planas sin difuminado (look neobrutalista) fuera del propio componente de ticket; monoespaciado usado como decoración en vez de para datos reales.
+Rechazos confirmados: la tarjeta-con-emoji de plantilla y el "dashboard SaaS" genérico. Cero emojis en la interfaz.
 
 **Key Characteristics:**
-- Papel hueso + tinta casi negra como base, no blanco/gris de plantilla.
-- Un solo acento saturado (amarillo vial) que carga la marca: nav, botones primarios, chips de rol.
-- Insignias de estado con look de timbre de goma (borde propio, leve rotación), no píldoras planas.
-- Números, montos, horas y códigos de ticket en mono; el resto del texto en una sans de trabajo.
-- El código de barras como única franja decorativa, usado con moderación.
+- Letrero "E" como marca; bandas azul letrero con texto blanco como titular de cada pantalla.
+- Riel de 6px con nodos circulares y paradas numeradas, igual en la lista y en el mapa.
+- Overpass para texto, Overpass Mono solo para cifras (con `tabular-nums`).
+- Minutos a pie como cifra principal de distancia; metros/km como dato secundario.
+- Barra de cupos proporcional; lleno = tachado en rojo, en lista y en mapa.
+- Horas en formato 24 h; contraste WCAG AA; foco visible; respeto a `prefers-reduced-motion`.
 
 ## Colors
 
-Paleta restringida (Restrained + un acento Committed en la marca): neutros cálidos de papel/tinta que cargan casi toda la superficie, con el amarillo llevando el peso de marca en nav, botones y chips.
+Una paleta de señalética: neutros fríos de calzada, un azul de ruta para la acción, un azul más profundo de letrero para la marca y los tableros, y un par semafórico solo para estado.
 
 ### Primary
-- **Amarillo boleta** (`#f2c40f`): color de marca. Fondo de botones primarios, borde inferior del nav, chip de rol, acento del hero. Carga del orden de 20-30% de cualquier pantalla — suficiente para ser inconfundible, sin empapar el contenido.
-- **Amarillo claro** (`#f6d647`): hover de botones y superficies primarias.
+- **Azul Ruta** (route): el trazo de la línea, botones primarios, enlaces, pestaña activa, parada seleccionada, ruta en el mapa (polilínea azul de 6px sobre halo blanco de 11px). 6.4:1 sobre blanco y con texto blanco encima.
+- **Azul Ruta Profundo** (route-dark): hover de botones y enlaces, nodo de destino, barra pico del gráfico de flujo.
+- **Tinte de Ruta** (route-tint): fondo de la parada seleccionada (degradado hacia la derecha), hover de sugerencias y del botón GPS, fondo de la píldora de rol.
 
 ### Secondary
-- **Azul de aprobación** (`#2563eb`): tinta de sello "aprobado" tomada del mundo de los timbres oficiales chilenos. Se usa solo como color de foco de teclado y estados de validación — nunca como color decorativo — precisamente para no competir con el amarillo de marca.
+- **Azul Letrero** (sign): el fondo del letrero "E", de las bandas de título, de la cabecera del ticket y del chatbot, y de las celdas del tablero. También es el `theme-color` del documento.
+- **Texto de Letrero** (sign-text): texto secundario sobre azul letrero (bajadas, etiquetas de celda, detalles).
 
-### Tertiary
-- **Verde timbre** (`#0f6b39` sobre `#e4ecd7`) y **Rojo timbre** (`#b3231f` sobre `#f6ddd3`): estados semánticos (disponible/pagado vs. vencido/no disponible), con el carácter de una tinta de sello, no de un semáforo de UI kit.
+### Tertiary (estado de cupos)
+- **Verde Libre** (free) sobre **Fondo Libre** (free-bg): cupos disponibles, barra de capacidad, chips y avisos de éxito. 5.4:1 sobre blanco.
+- **Rojo Lleno** (full) sobre **Fondo Lleno** (full-bg): lleno, errores, acciones destructivas, tachado de paradas llenas. 6.3:1 sobre blanco.
+- Los avisos informativos reutilizan Azul Ruta sobre Tinte de Ruta.
 
 ### Neutral
-- **Papel** (`#f4efe1`): fondo de página.
-- **Papel alterno** (`#ece4cf`): encabezados de tabla, fondos de inputs, paneles del chatbot.
-- **Superficie** (`#faf7ec`): fondo de tarjetas, ligeramente más clara que el papel de fondo para que las tarjetas se noten sin necesitar una sombra fuerte.
-- **Tinta** (`#241d15`): texto principal, fondo de nav/footer. Contraste 14.5:1 sobre papel.
-- **Tinta muted** (`#6a5e4c`): texto secundario. 5.5:1 sobre papel — con margen sobre el mínimo AA de 4.5:1.
-- **Borde** (`#c2b083`): bordes sutiles de tarjetas, inputs y divisores.
+- **Gris Calzada** (bg-gris-calzada): fondo de la página.
+- **Panel** (panel): tarjetas, encabezado, inputs, ticket.
+- **Panel Alterno** (panel-alt): encabezados de tabla, estados vacíos, fondo de mensajes del chat, hover de navegación.
+- **Tinta** (ink): texto principal, borde del botón secundario, contorno de las paradas, fondo del botón oscuro y del pie de página.
+- **Gris Texto** (muted): texto secundario y etiquetas. 7.4:1 sobre blanco, 6.6:1 sobre el fondo.
+- **Filete** (rule) y **Filete Suave** (rule-soft): bordes de panel e input; divisores internos entre filas y paradas; fondo vacío de la barra de cupos.
 
 ### Named Rules
-**La Regla del Acento Único.** El amarillo es el único color saturado que puede cargar una región completa (fondo de botón, franja de nav). Verde y rojo timbre solo aparecen como insignias pequeñas de estado, nunca como fondo de sección.
+**The Semáforo Rule.** El verde y el rojo significan cupos (o éxito/error). Nunca se usan como decoración ni como color de marca.
+
+**The Dos Azules Rule.** Azul Ruta es lo que se toca y lo que se recorre; Azul Letrero es lo que se lee como letrero (marca, bandas, tableros). No se intercambian.
 
 ## Typography
 
-**Display Font:** Syne (con Inter, system-ui como respaldo)
-**Body Font:** Inter (con system-ui, Segoe UI, Roboto, Arial como respaldo)
-**Label/Mono Font:** JetBrains Mono
+**Display / Body Font:** Overpass (con system-ui, Segoe UI, Roboto, Arial)
+**Numeral Font:** Overpass Mono (con ui-monospace, SFMono-Regular, Menlo)
 
-**Character:** Syne aporta el carácter geométrico y un poco excéntrico que separa los títulos de cualquier plantilla; Inter se mantiene en el cuerpo de texto porque esta es mayoritariamente una interfaz de tipo Operate, donde la legibilidad de una sans de trabajo importa más que la personalidad. JetBrains Mono aparece únicamente donde hay un dato real que medir: montos, cronómetros, horas, patentes y el número de ticket — nunca como disfraz "técnico".
+**Character:** Overpass es la tipografía de carretera (derivada de Highway Gothic): legible a distancia, firme en pesos 800–900. Overpass Mono, en sus pesos 500 y 700, da a las cifras columnas alineadas, como un panel de horarios.
+
+Un `@font-face` local ("Punto medio") toma solo el carácter `·` (U+00B7) de la sans del sistema, porque en Overpass queda pegado al texto siguiente.
 
 ### Hierarchy
-- **Display** (700, 1.7rem en el hero): títulos de sección y encabezados de página.
-- **Title** (700, 1.15–1.2rem): encabezados de tarjeta (`h2`, `h3`).
-- **Body** (400–600, .88–.98rem): texto de interfaz y contenido.
-- **Label** (700, .72–.85rem, mayúsculas con tracking): chips de rol, encabezados de tabla, insignias de estado.
-- **Data (mono)** (700, .78rem–2.4rem según el dato): montos en CLP, cronómetro de tiempo estacionado, horas, número de ticket.
+- **Display** (900, 2.3rem, 1.04, -0.02em; 1.7rem en móvil): titular blanco de la banda de letrero, máx. 20ch. La variante delgada usa 1.55rem.
+- **Headline** (800, 1.2rem, 1.2): títulos de sección (h2); dentro de tarjeta, 1.15rem.
+- **Title** (800, 1.05rem, 1.25): nombre de cada parada, títulos de tarjeta (h3).
+- **Body** (400, 15.5px, 1.5): texto corriente; lectura legal a 1.65 y 70ch.
+- **Label** (800, 0.76rem, 0.08em, mayúsculas): rótulos de campo ("Desde", "Hacia"), encabezados de tabla (0.74rem), rótulos de métrica del ticket. Solo como etiqueta de un dato o control, nunca como antetítulo de sección.
+- **Numeral Board** (Mono 700, 2.6rem, 1; 1.7rem en móvil): cifras del tablero del dueño; variante mediana 1.9rem. Valor del ticket público a 2.5rem.
+- **Numeral Stop** (Mono 700, 1.6rem): los minutos a pie de cada parada.
+- **Numeral Inline** (Mono, tamaño heredado, `tabular-nums`): montos, patentes, códigos, horas y cantidades dentro de una frase o celda.
 
 ### Named Rules
-**La Regla del Dato Real.** JetBrains Mono se reserva para números que el usuario podría verificar contra la realidad (un monto, un tiempo, un código). Un rótulo o una etiqueta de estado nunca va en mono solo por parecer "técnico".
+**The Cifra Mono Rule.** Overpass Mono es solo para la cifra; la palabra que la acompaña queda en Overpass. En "$20/min · mínimo $500" solo "$20" y "$500" van en mono; en "3 libres de 24", solo "3" y "24". Nunca la frase entera en mono.
+
+**The Reloj de 24 Horas Rule.** Toda hora se muestra en formato 24 h (`hourCycle: 'h23'`), en mono.
 
 ## Layout
 
-Contenedor centrado de 1100px máximo con padding de 24px (14px en móvil ≤640px). Grillas de tarjetas con `auto-fit, minmax(260px,1fr)`. El nav es sticky con una franja inferior de 3px en amarillo que funciona como línea de marca en cualquier scroll. Sin cambios de densidad respecto al sistema anterior: la reformulación es de lenguaje visual, no de arquitectura de información.
+- **Contenedor:** 1240px de ancho máximo, centrado, con 24px vertical y 28px de gutter lateral (16px bajo 640px). El encabezado se alinea al mismo contenedor en paneles y legales.
+- **Portada (buscador):** a ancho completo. Dos columnas: formulario y paradas a la izquierda (hasta 460px), mapa sticky a la derecha a la altura de la ventana menos el encabezado (58px). Bajo 900px se vuelve una columna y el mapa (300px de alto) se intercala justo después del formulario, antes de la lista.
+- **Grillas:** `auto-fit` con mínimo 280px para tarjetas, 210px para celdas del tablero; separación de 16px.
+- **Ritmo:** pasos de 4 / 8 / 12 / 16 / 24px, con 22px como padding interno de panel y 28px como gutter.
+- **Breakpoints:** 900px (buscador a una columna, franja de dueños apilada) y 640px (gutters de 16px, banda más compacta, pestañas deslizables sin barra de scroll; con solo dos pestañas se reparten el ancho).
+- **Capas fijas:** encabezado sticky (z 1000), avisos de cookies (1400), asistente flotante (1500); el pie reserva 72px a la derecha para no quedar tapado por el botón del asistente.
 
 ## Elevation & Depth
 
-Sistema de sombras suaves con difuminado real (nunca sombras duras sin blur, que pertenecen a un mundo neobrutalista que este sistema no adoptó), todas teñidas de tinta cálida en vez de negro puro o del violeta anterior.
+Sistema plano con sombra ambiental mínima. La profundidad la dan los filetes de 1px y el contraste entre gris calzada y panel blanco; las sombras solo separan lo que flota.
 
 ### Shadow Vocabulary
-- **sm** (`0 1px 2px rgba(36,29,21,.14)`): reposo de tarjetas.
-- **md** (`0 6px 16px rgba(36,29,21,.16)`): hover de tarjetas, paneles flotantes.
-- **lg** (`0 14px 32px rgba(36,29,21,.22)`): chatbot, modales de cookie, elementos flotantes.
-- **botón** (`0 4px 10px rgba(36,29,21,.28)`, sube a `0 6px 14px` en hover): sombra propia de los botones primarios.
+- **Reposo** (`0 1px 2px rgba(14,23,38,.08)`): tarjetas.
+- **Media** (`0 6px 18px rgba(14,23,38,.10)`): tablero, ticket, lista de sugerencias.
+- **Flotante** (`0 16px 40px rgba(14,23,38,.18)`): asistente, aviso de cookies.
+- **Botón primario** (`0 3px 10px rgba(11,92,173,.22)`, hover `0 5px 14px rgba(11,92,173,.28)`): solo el botón azul lleno lleva sombra teñida de azul; los demás botones son planos.
 
 ### Named Rules
-**La Regla del Difuminado.** Toda sombra lleva offset y blur reales. Una sombra plana (`0 3px 0`) solo existiría en un mundo neobrutalista, y este no lo es.
+**The Filete Primero Rule.** Para separar, primero un filete; la sombra es para lo que realmente flota sobre otra superficie.
 
 ## Shapes
 
-Esquinas notablemente menos redondeadas que el sistema anterior (`--radius: 8px` en tarjetas, `4px` en botones/inputs, frente a los 16px/10px previos): una boleta no tiene esquinas de plantilla SaaS. Las excepciones son deliberadamente circulares porque son objetos redondos en el mundo real: el timbre de goma (insignias `.badge`, con borde propio y leve rotación de -1.5deg), el círculo de paso (`.step`) y el botón flotante del chatbot.
+Esquinas suavemente redondeadas, nunca blandas: 8px en paneles, tablero y ticket; 6px en botones e inputs; 4px en chips y píldora de rol; 999px solo en las sugerencias del asistente. El círculo está reservado al sistema de ruta: nodos del riel, números de parada, marcadores del mapa, punto de "en vivo". Los trazos del riel son barras de 6px con extremos redondeados (3px).
+
+Íconos SVG propios de 24×24, trazo 1.8, extremos y uniones redondeados, en `currentColor` (18px por defecto, 16–17px en contexto compacto). El letrero "E" escala con su tamaño: radio 17%, letra al 60%, filete blanco interior de 2px.
 
 ## Components
 
-### Buttons
-- **Shape:** 4px de radio, sin bordes de plantilla redondeada.
-- **Primary:** fondo amarillo (`#f2c40f`), texto tinta (`#241d15`), peso 700, sombra suave teñida de tinta.
-- **Hover/Focus:** el primario aclara a `#f6d647` y sube 1px; el foco de teclado usa el azul de aprobación (`#2563eb`) en outline, nunca el amarillo (se perdería el contraste con el propio botón amarillo).
-- **Secondary:** fondo superficie, borde tinta de 1.5px, sin sombra.
+### Letrero E (marca)
+- Cuadrado azul letrero, E blanca en Overpass 900, filete blanco interior y borde exterior azul. 30px en el encabezado. Es la marca, no un ícono decorativo; no se recolorea.
 
-### Badges (insignia de timbre)
-- **Style:** borde de 2px del propio color semántico, fondo tintado, mayúsculas con tracking, rotación de -1.5deg para el efecto de sello estampado a mano.
-- **State:** verde timbre = disponible/pagado/aprobado; rojo timbre = vencido/no disponible/rechazado.
+### Banda de letrero
+- Franja azul letrero a ancho completo bajo el encabezado, con titular Display blanco y bajada en texto de letrero. Variante delgada para paneles. Dentro de ella el foco pasa a blanco. Puede llevar indicador "en vivo" (punto verde con pulso).
+
+### Riel de búsqueda (Desde → Hacia)
+- Columna de 28px con barra azul de 6px; el nodo de partida es un círculo blanco con borde azul de 5px; el de destino, un punto azul profundo con doble anillo (blanco + azul). La barra empieza en el primer nodo y termina en el último.
+- Junto a "Desde", un único botón GPS de 48px: contorno gris con ícono azul apagado, relleno azul cuando la partida es el GPS (`aria-pressed`).
+
+### Paradas (resultados)
+- Lista ordenada; cada parada dibuja su tramo de riel. La primera empieza en su nodo, la última termina en él; una sola parada no dibuja línea.
+- Número en círculo blanco de 26px con borde tinta de 3px y cifra mono. Seleccionada: círculo azul lleno y fondo con tinte de ruta. Llena: borde y número rojos, nombre tachado en rojo (2px).
+- A la derecha, minutos a pie en mono 1.6rem (a 80 m/min, redondeado hacia arriba, mínimo 1) y debajo "a pie · 450 m".
+- Datos: tarifa e "x min en auto" con íconos de 16px. Acciones: "Reservar · $100" (botón oscuro pequeño), "Ver ruta" (secundario pequeño, `aria-pressed`), "Navegar con Waze" (texto azul).
+
+### Barra de capacidad
+- Pista de 8px en filete suave; relleno verde con ancho exacto libres/total. Al lado, "3 libres de 24" en verde; lleno, "Lleno · 24 cupos" en rojo.
+
+### Mapa
+- Leaflet con teselas de OpenStreetMap (el proveedor declarado en las páginas legales), desaturadas con CSS (`grayscale(1) contrast(.78) brightness(1.1)`) para que la ruta y las paradas se lean primero.
+- Marcadores con el mismo lenguaje que la lista: parada de 34px con número mono; llena en rojo con un trazo diagonal que la tacha; seleccionada en azul lleno con anillo blanco. Tu ubicación = nodo de partida; destino = nodo final. Leyenda fija abajo a la izquierda ("Tu ruta", "Con cupos", "Lleno").
+
+### Buttons
+- **Shape:** esquinas de 6px; Overpass 800 a 0.93rem; ícono + texto con 8px de separación.
+- **Primary:** azul ruta con texto blanco (11px 18px) y sombra azul; hover azul profundo; al presionar baja 1px.
+- **Secondary:** blanco con borde tinta de 1.5px.
+- **Dark:** tinta con texto blanco; para la acción por fila en listas (reservar).
+- **Danger:** blanco con contorno y texto rojo, nunca relleno; hover con fondo lleno-claro; va separado del resto de las acciones.
+- **Link button:** texto azul subrayado, sin fondo.
+- **Disabled:** filete suave con texto gris, sin sombra.
+- **Small:** 7px 12px a 0.86rem.
+
+### Chips y avisos
+- **Chip** (en línea): 4px de radio, punto de 7px en `currentColor`, variantes libre / lleno / info / neutral.
+- **Aviso** (bloque, `p.badge`): ocupa la línea, frase normal a 0.92rem/600, borde de 1px del tono, ícono dibujado por máscara (info, alerta, check).
+- **Píldora de rol:** mayúsculas 0.74rem sobre tinte de ruta, en el encabezado.
 
 ### Cards / Containers
 - **Corner Style:** 8px.
-- **Background:** superficie (`#faf7ec`), ligeramente más clara que el papel de fondo.
-- **Shadow Strategy:** sm en reposo, md en hover (ver Elevation).
-- **Border:** 1px sólido en `#c2b083`.
+- **Background:** panel blanco con filete de 1px y sombra de reposo.
+- **Internal Padding:** 22px (16px en móvil).
+- **Panel de acción** del buscador: igual pero sin sombra, 18px de padding.
+- **Estado vacío:** borde punteado de 1.5px sobre panel alterno, texto gris centrado.
 
 ### Inputs / Fields
-- **Style:** fondo papel-alterno, borde 1.5px, radio 4px.
-- **Focus:** borde y halo en azul de aprobación (`rgba(37,99,235,.18)`), nunca amarillo.
+- **Style:** borde de 1.5px en filete, 6px de radio, 11px 12px de padding, fondo blanco; placeholder gris.
+- **Focus:** borde azul ruta + halo `0 0 0 3px rgba(11,92,173,.16)`; además el contorno de foco global.
+- **Numéricos y patentes:** en mono con `tabular-nums`; la patente se fuerza a mayúsculas.
+- **Pista de campo:** 0.84rem en gris; en error, rojo 700.
 
 ### Navigation
-- **Style:** fondo tinta (`#241d15`) de borde a borde, texto papel, franja inferior amarilla de 3px como firma de marca. Chip de rol en amarillo sólido con texto tinta. Botones del nav son ghost (fondo papel translúcido) sobre el fondo oscuro.
+- **Encabezado:** blanco sticky de 58px con filete inferior; marca (letrero + nombre en 800) a la izquierda; enlaces de navegación grises 600 que pasan a tinta sobre panel alterno.
+- **Pestañas:** texto gris 700 con ícono de 17px; la activa en tinta con barra azul de 4px abajo. Roles ARIA `tablist`/`tab`.
+- **Pie:** fondo tinta, texto gris claro, enlaces blancos subrayados, letrero E junto al nombre.
 
-### Ticket / Boleta (componente de firma)
-El único componente que se permite el motivo de perforación completo: una franja `.ticket-perf` (línea punteada horizontal color tinta-muted) corona la tarjeta, que pierde su borde y radio superior para fundirse con ella. Dentro, el número de ticket y una franja de código de barras decorativa anteceden al contenido; el cronómetro y el monto van en JetBrains Mono a gran tamaño. Es la aplicación más literal del mundo "boleta" porque es, literalmente, la boleta que el conductor escanea.
+### Tablero del dueño
+- Grilla de celdas azul letrero separadas por 1px de blanco translúcido, 8px de radio exterior, sombra media. Rótulo de celda en texto de letrero 0.9rem/700; cifra en mono 700 a 2.6rem blanca; desglose en lista con filetes translúcidos y montos mono blancos. Hora pico como rango 24 h ("14:00–15:00").
+- **Gráfico de flujo:** barras azul ruta de 150px de alto máximo, hora pico en azul profundo, horas en cero en filete suave; eje de horas en mono 0.68rem.
+
+### Ticket público
+- Pase de 540px: cabecera azul letrero con el letrero E, cuerpo blanco; código en mono pequeño; métricas con rótulo en mayúsculas y valor mono a 2.5rem; acciones separadas por filete.
+
+### Tablas
+- Contenedor con borde y radio de 8px y scroll horizontal; encabezados en mayúsculas 0.74rem sobre panel alterno; filas con filete suave; columnas numéricas en mono; acciones alineadas a la derecha.
+
+### Asistente
+- Botón circular azul de 56px fijo abajo a la derecha; panel de 360px con cabecera azul letrero; mensajes del bot en blanco con filete, del usuario en azul ruta; sugerencias como píldoras con borde. Entrada con animación de 0.22s.
+
+### Movimiento y accesibilidad
+- Transiciones de 0.12–0.15s en color, sombra y transform; pulso de 2.4s en el punto "en vivo"; giro del spinner de 0.7s. Con `prefers-reduced-motion: reduce` se anulan todas las animaciones y transiciones.
+- Foco: contorno de 3px en `--focus` con 2px de separación en todo elemento interactivo; sobre superficies azules o tinta, `--focus` pasa a blanco.
 
 ## Do's and Don'ts
 
 ### Do:
-- **Do** usar el amarillo (`#f2c40f`) como único color que puede cargar una región completa (fondo de botón, franja de nav, chip de rol).
-- **Do** reservar JetBrains Mono para datos verificables: montos, tiempos, horas, códigos.
-- **Do** mantener sombras con offset y blur reales, teñidas de tinta cálida (`rgba(36,29,21,…)`), nunca negro puro.
-- **Do** preservar los contrastes WCAG AA ya verificados (texto normal ≥4.5:1, bordes/foco ≥3:1) en cualquier color nuevo que se agregue.
+- **Do** usar Overpass Mono solo para la cifra y dejar en Overpass la palabra que la acompaña ("$20/min", "3 libres de 24", "12 min").
+- **Do** mostrar la distancia como minutos a pie en grande, con metros o km como dato secundario.
+- **Do** tachar en rojo lo lleno, en la lista y en el mapa, y mantenerlo visible en su lugar.
+- **Do** hacer que la barra de cupos mida exactamente libres/total.
+- **Do** dibujar la línea de ruta de nodo a nodo: empieza en la primera parada y termina en la última.
+- **Do** mostrar toda hora en 24 h.
+- **Do** usar íconos SVG de trazo 1.8 en `currentColor` y el letrero E como única marca.
+- **Do** verificar contraste WCAG AA de cualquier color nuevo y anotarlo junto al token en `index.css`.
+- **Do** mantener el foco visible (contorno de 3px) y pasar `--focus` a blanco dentro de superficies azules u oscuras.
+- **Do** usar teselas de OpenStreetMap desaturadas; si cambia el proveedor del mapa, cambiar primero las páginas legales.
 
 ### Don't:
-- **Don't** reintroducir el índigo/violeta del sistema anterior en ningún componente nuevo.
-- **Don't** usar sombras planas sin blur (`0 Npx 0`) fuera del mundo neobrutalista — este sistema no lo es.
-- **Don't** usar el amarillo de marca como color de foco de teclado (se pierde contra los propios botones amarillos); el foco es siempre azul de aprobación.
-- **Don't** aplicar el motivo de perforación/código de barras fuera del componente de ticket y, como mucho, un divisor puntual del hero — es la firma de un solo componente, no una textura de fondo.
+- **Don't** usar emojis en ninguna parte de la interfaz, ni como ícono ni en textos.
+- **Don't** escribir frases completas en mono ni usar mono para etiquetas o títulos.
+- **Don't** usar verde o rojo como decoración o acento de marca.
+- **Don't** rellenar de rojo un botón destructivo ni ponerlo junto a la acción principal.
+- **Don't** ocultar los estacionamientos llenos de la lista o del mapa.
+- **Don't** usar formato de 12 h (a. m. / p. m.).
+- **Don't** prolongar el riel más allá del último nodo.
+- **Don't** sumar sombras a superficies que no flotan; separar con filetes.
+- **Don't** convertir los rótulos en mayúsculas en antetítulos sobre los titulares; son etiquetas de un dato o campo.
