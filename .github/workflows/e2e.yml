@@ -43,8 +43,8 @@ jobs:
       DATABASE_URL: postgres://postgres:postgres_e2e@localhost:5432/estacionamientos
       JWT_SECRET: e2e_secret_solo_para_ci
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
         with:
           node-version: 22
 
@@ -79,7 +79,7 @@ jobs:
 
       - name: Guardar reporte y logs si algo falló
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: e2e-diagnostico
           path: |

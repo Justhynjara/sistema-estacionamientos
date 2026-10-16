@@ -21,9 +21,9 @@ jobs:
     name: Auditoría de dependencias (npm audit)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with: { node-version: 20 }
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with: { node-version: 22 }
       # --omit=dev: nos interesa lo que realmente se despliega (web en Render, API en Render).
       # @capacitor/cli (devDependency, solo para compilar el APK Android a mano) queda fuera:
       # su cadena de dependencias (xcode->uuid) no forma parte del sistema en producción.
@@ -54,9 +54,9 @@ jobs:
       DATABASE_URL: postgresql://postgres:postgres@localhost:5432/estacionamientos
       JWT_SECRET: ci_test_secret_no_usar_en_produccion
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with: { node-version: 20 }
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with: { node-version: 22 }
       - name: Instalar dependencias
         working-directory: backend
         run: npm ci
@@ -71,9 +71,9 @@ jobs:
     name: Suite de tests del frontend
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with: { node-version: 20 }
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with: { node-version: 22 }
       - name: Instalar dependencias
         working-directory: frontend
         run: npm ci
@@ -85,9 +85,9 @@ jobs:
     name: Pruebas de seguridad contra producción
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with: { node-version: 20 }
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with: { node-version: 22 }
       - name: Ejecutar pruebas de caja negra contra la API en vivo
         working-directory: backend
         env:
@@ -99,22 +99,61 @@ jobs:
           QA_ADMIN_PASSWORD: ${{ secrets.QA_ADMIN_PASSWORD }}
         run: node scripts/security-qa.mjs
 
+  # Un solo issue abierto por racha de fallas: si ya hay uno, se comenta en él en vez de abrir
+  # otro cada 6 h; y cuando una corrida vuelve a pasar, se cierra solo.
   reportar-falla:
-    name: Crear issue si algo falló
+    name: Crear o actualizar el issue si algo falló
     needs: [dependency-audit, backend-tests, frontend-tests, production-security-smoke-test]
     if: failure()
     runs-on: ubuntu-latest
     permissions:
       issues: write
     steps:
-      - uses: actions/github-script@v7
+      - uses: actions/github-script@v8
         with:
           script: |
             const runUrl = `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
-            await github.rest.issues.create({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              title: `🚨 QA de seguridad falló — ${new Date().toISOString().slice(0,16).replace('T',' ')} UTC`,
-              body: `Una o más verificaciones automáticas de seguridad fallaron.\n\nRevisa el log del workflow: ${runUrl}`,
-              labels: ['security', 'automated']
+            const ahora = new Date().toISOString().slice(0,16).replace('T',' ');
+            const abiertos = await github.paginate(github.rest.issues.listForRepo, {
+              owner: context.repo.owner, repo: context.repo.repo, state: 'open', labels: 'security,automated'
             });
+            const previo = abiertos.find(i => !i.pull_request && i.title.startsWith('🚨 QA de seguridad falló'));
+            if (previo) {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner, repo: context.repo.repo, issue_number: previo.number,
+                body: `Volvió a fallar (${ahora} UTC). Log: ${runUrl}`
+              });
+            } else {
+              await github.rest.issues.create({
+                owner: context.repo.owner, repo: context.repo.repo,
+                title: `🚨 QA de seguridad falló — ${ahora} UTC`,
+                body: `Una o más verificaciones automáticas de seguridad fallaron.\n\nRevisa el log del workflow: ${runUrl}`,
+                labels: ['security', 'automated']
+              });
+            }
+
+  cerrar-issues-resueltos:
+    name: Cerrar issues de fallas anteriores
+    needs: [dependency-audit, backend-tests, frontend-tests, production-security-smoke-test]
+    if: success()
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+    steps:
+      - uses: actions/github-script@v8
+        with:
+          script: |
+            const runUrl = `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
+            const abiertos = await github.paginate(github.rest.issues.listForRepo, {
+              owner: context.repo.owner, repo: context.repo.repo, state: 'open', labels: 'security,automated'
+            });
+            for (const i of abiertos.filter(i => !i.pull_request && i.title.startsWith('🚨 QA de seguridad falló'))) {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner, repo: context.repo.repo, issue_number: i.number,
+                body: `Resuelto: todas las verificaciones volvieron a pasar en ${runUrl}`
+              });
+              await github.rest.issues.update({
+                owner: context.repo.owner, repo: context.repo.repo, issue_number: i.number,
+                state: 'closed', state_reason: 'completed'
+              });
+            }
