@@ -20,6 +20,7 @@ export default function PrivacyPolicy() {
         <li><strong>Tickets de estacionamiento:</strong> patente (opcional), hora de entrada y salida, monto cobrado y método de pago. El pago en sí (efectivo o tarjeta) lo recibe directamente el dueño del estacionamiento en su propio POS; nosotros no lo procesamos ni vemos el número de tu tarjeta.</li>
         <li><strong>Si postulas tu estacionamiento:</strong> tu nombre, email, teléfono (opcional), la dirección y coordenadas del lugar, y las fotos que adjuntes.</li>
         <li><strong>Ubicación:</strong> si aceptas el permiso de geolocalización de tu navegador para buscar estacionamientos cercanos, esas coordenadas se usan solo para esa búsqueda puntual y no quedan guardadas en nuestros servidores.</li>
+        <li><strong>Cámara:</strong> si usas el botón "Escanear" para leer el código QR de un ticket, la imagen de la cámara se procesa solo dentro de tu teléfono para leer el código: no se graba, no se guarda ni se envía a nuestros servidores ni a terceros. Solo el código leído se usa para mostrar ese ticket. El navegador te pedirá permiso antes, y puedes retirarlo cuando quieras.</li>
         <li><strong>Registro de auditoría:</strong> qué acción administrativa realizó cada administrador y cuándo (por ejemplo, cambiar una tarifa o crear un usuario). Es para trazabilidad interna, no para vigilar a quienes buscan o reservan estacionamiento.</li>
       </ul>
       <p>Solo pedimos los datos necesarios para cada función descrita; no solicitamos ni almacenamos datos que no ocupemos.</p>

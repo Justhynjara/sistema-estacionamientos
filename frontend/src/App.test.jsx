@@ -10,6 +10,9 @@ vi.mock('./BuscarCercanos.jsx', () => ({ default: () => <div>MockBuscarCercanos<
 vi.mock('./ClientePanel.jsx', () => ({ default: ({ ticketInicial }) => <div>MockClientePanel{ticketInicial ? `:${ticketInicial}` : ''}</div> }));
 vi.mock('./AdminPanel.jsx', () => ({ default: () => <div>MockAdminPanel</div> }));
 vi.mock('./SoportePanel.jsx', () => ({ default: () => <div>MockSoportePanel</div> }));
+// La cámara no existe en jsdom: el lector se reemplaza por un botón que "lee" el texto que el test
+// deja en globalThis.__qrLeido.
+vi.mock('./QRScanner.jsx', () => ({ default: ({ onResult }) => <button type="button" onClick={() => onResult(globalThis.__qrLeido)}>SimularLectura</button> }));
 
 vi.mock('./services/api.js', () => ({
   api: { get: vi.fn(), post: vi.fn() }
@@ -211,5 +214,63 @@ describe('App', () => {
     const aviso = await screen.findByRole('button', { name: /todavía no logramos anular el cobro/i });
     expect(aviso).toHaveTextContent('orden de compra RABC123');
     expect(aviso).toHaveTextContent('@');
+  });
+
+  describe('botón de cámara para escanear el QR del ticket', () => {
+    const CODIGO = '3f2b8c1e-9a4d-4c6b-8e2f-1a2b3c4d5e6f';
+
+    test('sin sesión: leer el QR muestra la vista pública del ticket (tiempo y monto)', async () => {
+      const ticket = {
+        estado: 'ACTIVO', estacionamiento_nombre: 'Parking Centro', estacionamiento_direccion: 'Centro', patente: 'AB1234',
+        fecha_entrada: new Date(Date.now() - 30 * 60000).toISOString(), precio_minuto: 20, tarifa_minima: 0, ahora: new Date().toISOString()
+      };
+      api.get.mockImplementation(url => (url === '/auth/me' ? Promise.reject(SIN_SESION)
+        : url === `/tickets/publico/${CODIGO}` ? Promise.resolve({ data: ticket }) : Promise.resolve({ data: [] })));
+      const user = userEvent.setup();
+      render(<App />);
+      await user.click(await screen.findByRole('button', { name: /escanear mi ticket/i }));
+      globalThis.__qrLeido = `https://estacionamientos-web.onrender.com/?ticket=${CODIGO}`;
+      await user.click(screen.getByRole('button', { name: 'SimularLectura' }));
+
+      expect(await screen.findByRole('article', { name: 'Tu ticket de estacionamiento' })).toBeInTheDocument();
+      expect(await screen.findByLabelText('Tiempo estacionado')).toBeInTheDocument();
+      expect(api.get).toHaveBeenCalledWith(`/tickets/publico/${CODIGO}`);
+      expect(new URL(window.location.href).searchParams.get('ticket')).toBe(CODIGO);
+    });
+
+    test('un QR que no es de un ticket se rechaza y la cámara sigue abierta', async () => {
+      const user = userEvent.setup();
+      render(<App />);
+      await user.click(await screen.findByRole('button', { name: /escanear mi ticket/i }));
+      globalThis.__qrLeido = 'https://restaurante.example/menu';
+      await user.click(screen.getByRole('button', { name: 'SimularLectura' }));
+
+      expect(await screen.findByRole('alert')).toHaveTextContent(/no es un ticket de este sistema/i);
+      expect(screen.getByRole('dialog')).toBeInTheDocument();
+      expect(screen.queryByRole('article', { name: 'Tu ticket de estacionamiento' })).not.toBeInTheDocument();
+    });
+
+    test('un dueño con sesión que escanea va directo al cobro de ese ticket', async () => {
+      api.get.mockImplementation(url => (url === '/auth/me'
+        ? Promise.resolve({ data: { id: 'd1', nombre: 'Dueño', email: 'd@x.cl', rol: 'CLIENTE' } })
+        : Promise.resolve({ data: [] })));
+      const user = userEvent.setup();
+      render(<App />);
+      await user.click(await screen.findByRole('button', { name: /escanear para cobrar/i }));
+      globalThis.__qrLeido = CODIGO;
+      await user.click(screen.getByRole('button', { name: 'SimularLectura' }));
+
+      expect(await screen.findByText(`MockClientePanel:${CODIGO}`)).toBeInTheDocument();
+      expect(screen.queryByRole('article', { name: 'Tu ticket de estacionamiento' })).not.toBeInTheDocument();
+    });
+
+    test('administración y soporte no tienen el botón de cámara', async () => {
+      api.get.mockImplementation(url => (url === '/auth/me'
+        ? Promise.resolve({ data: { id: 'a1', nombre: 'Admin', email: 'a@x.cl', rol: 'ADMIN' } })
+        : Promise.resolve({ data: [] })));
+      render(<App />);
+      await screen.findByText('MockAdminPanel');
+      expect(screen.queryByRole('button', { name: /escanear/i })).not.toBeInTheDocument();
+    });
   });
 });

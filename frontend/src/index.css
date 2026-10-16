@@ -487,7 +487,8 @@ button.badge:hover{filter:brightness(.98);box-shadow:none}
 .site-footer p{margin:0}
 
 .cookie-notice{
-  position:fixed;left:16px;right:16px;bottom:16px;z-index:1400;
+  /* Por encima de los botones flotantes (cámara y asistente) hasta que se cierra. */
+  position:fixed;left:16px;right:16px;bottom:16px;z-index:1600;
   background:var(--panel);border:1px solid var(--rule);border-radius:var(--radius);
   box-shadow:var(--shadow-lg);padding:14px 18px;
   display:flex;align-items:center;gap:16px;flex-wrap:wrap;
@@ -597,3 +598,29 @@ body:has(.buscador) .site-footer .inner,body:has(.buscador) .owner-strip .inner{
 .map-stop span{position:relative;z-index:1}
 .map-stop.lleno span{text-shadow:0 0 2px var(--full-bg),0 0 2px var(--full-bg),0 0 3px var(--full-bg)}
 .map-stop.lleno::after{opacity:.75}
+
+/* ---------- Escanear QR (solo teléfonos) ---------- */
+/* El botón existe en el DOM siempre, pero solo se muestra en pantallas táctiles angostas: en un
+   computador no hay cámara trasera con la que apuntar a un ticket. */
+.escanear-fab{display:none}
+@media (max-width:900px) and (pointer:coarse){
+  .escanear-fab{
+    display:inline-flex;align-items:center;gap:8px;
+    position:fixed;left:16px;bottom:calc(16px + env(safe-area-inset-bottom, 0px));z-index:1500;
+    min-height:52px;padding:0 20px;border-radius:26px;
+    background:var(--ink);color:#fff;box-shadow:var(--shadow-lg);font-weight:800;
+  }
+  .escanear-fab:hover{background:#1f2c44;color:#fff}
+  body:has(.escanear-fab) .site-footer .inner{padding-bottom:84px}
+}
+.escaner-overlay{
+  position:fixed;inset:0;z-index:2000;background:rgba(14,23,38,.72);
+  display:grid;place-items:start center;overflow-y:auto;
+  padding:calc(16px + env(safe-area-inset-top, 0px)) 16px 16px;
+}
+.escaner-caja{width:100%;max-width:420px;display:grid;gap:10px}
+.escaner-caja .card{margin:0}
+.escaner-caja video{max-width:100% !important;aspect-ratio:3/4;object-fit:cover}
+.escaner-aviso{margin:0;background:var(--panel)}
+/* Al bajar solo hasta el cobro tras escanear, que el encabezado fijo no tape la tarjeta. */
+.card.cobro,.card .badge{scroll-margin-top:calc(var(--header-h) + 16px)}

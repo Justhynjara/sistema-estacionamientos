@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { api } from './services/api.js';
 import QRCodeCanvas from './QRCode.jsx';
 import Pagination, { usePagination } from './Pagination.jsx';
@@ -63,6 +63,19 @@ function GestionTicketPanel({ reloadParking, ticketInicial, onTicketConsumido, e
   const [cobro, setCobro] = useState(null);
   const [activos, setActivos] = useState([]);
   const [escaneando, setEscaneando] = useState(false);
+  // Tras leer un QR, la pantalla baja sola hasta el cobro (o el aviso): en el teléfono quedarían
+  // debajo de la lista de vehículos, fuera de la vista.
+  const irAlResultado = useRef(false);
+  const cobroRef = useRef(null);
+  const mensajeRef = useRef(null);
+  useEffect(() => {
+    if (!irAlResultado.current) return;
+    const destino = cobroRef.current || mensajeRef.current;
+    if (!destino) return;
+    irAlResultado.current = false;
+    const reducido = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+    destino.scrollIntoView?.({ behavior: reducido ? 'auto' : 'smooth', block: 'start' });
+  }, [cobro, mensaje]);
 
   function cargarActivos() {
     api.get('/tickets/active', { params: { estacionamiento_id: estacionamientoId || undefined } }).then(r => setActivos(r.data)).catch(() => {});
@@ -79,6 +92,7 @@ function GestionTicketPanel({ reloadParking, ticketInicial, onTicketConsumido, e
   async function abrirCodigo(crudo) {
     const c = extraerCodigoQR(crudo);
     if (!c) return;
+    irAlResultado.current = true;
     setCodigo(c); setMensaje(null); setCobro(null);
     try {
       const r = await api.get(`/tickets/publico/${encodeURIComponent(c)}`);
@@ -218,7 +232,7 @@ function GestionTicketPanel({ reloadParking, ticketInicial, onTicketConsumido, e
       </div>
 
       {cobro && (
-        <div className="card cobro">
+        <div ref={cobroRef} className="card cobro">
           <div className="card-head">
             <h3>Cobro <span className="mono">{cobro.patente || 'sin patente'}</span></h3>
             <span className="badge info">{cobro.estacionamiento_nombre}</span>
@@ -299,7 +313,7 @@ function GestionTicketPanel({ reloadParking, ticketInicial, onTicketConsumido, e
         <h3>Validar reserva o cobrar con código</h3>
         <p className="muted small">Escanea el QR del conductor: si ya está dentro te lleva directo a cobrar. También puedes ingresar el código a mano.</p>
         {mensaje && (
-          <div className={'badge ' + mensaje.tipo}>
+          <div ref={mensajeRef} className={'badge ' + mensaje.tipo}>
             <span style={{ flex: 1 }}>{mensaje.texto}</span>
             {mensaje.imprimir && <button type="button" className="secondary small" onClick={mensaje.imprimir}><Icon name="printer" size={16} />Imprimir comprobante</button>}
           </div>

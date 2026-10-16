@@ -7,6 +7,7 @@ import ChatBot from './ChatBot.jsx';
 import SolicitudClienteForm from './SolicitudClienteForm.jsx';
 import SoportePanel from './SoportePanel.jsx';
 import TicketPublico from './TicketPublico.jsx';
+import EscanearTicket from './EscanearTicket.jsx';
 import LegalPage from './legal/LegalPage.jsx';
 import Footer from './legal/Footer.jsx';
 import CookieNotice from './legal/CookieNotice.jsx';
@@ -168,6 +169,8 @@ function App(){
  const [reservaCodigo,setReservaCodigo]=useState(null);
  const [mostrarSolicitud,setMostrarSolicitud]=useState(false);
  const [ticketCodigo,setTicketCodigo]=useState(null);
+ // Cada lectura con el botón de cámara remonta el panel del dueño para que tome el ticket nuevo.
+ const [lecturaQR,setLecturaQR]=useState(0);
  const [legalPage,setLegalPage]=useState(null);
 
  function cerrarLegal(){
@@ -179,6 +182,16 @@ function App(){
 
  // El QR del ticket abre la web con ?ticket=CODIGO. Se deja en la URL mientras se muestra la
  // vista pública, para que recargar la página (o guardarla) no la pierda.
+ // Lo que lee el botón de cámara sigue el mismo camino que el enlace del QR: queda en la URL y
+ // App decide qué mostrar (vista pública con tiempo y monto, o el cobro si es el dueño).
+ function abrirTicketEscaneado(codigo){
+   const url=new URL(window.location.href);
+   url.searchParams.set('ticket',codigo);
+   window.history.replaceState({},'',url);
+   setTicketCodigo(codigo);
+   setLecturaQR(n=>n+1);
+ }
+
  function cerrarTicket(){
    setTicketCodigo(null);
    const url=new URL(window.location.href);
@@ -301,6 +314,7 @@ function App(){
        </section>
      </main>
      <ChatBot onAbrirSolicitud={()=>setMostrarSolicitud(true)}/>
+     <EscanearTicket onCodigo={abrirTicketEscaneado} rotulo="Escanear mi ticket" ayuda="Apunta al código QR de tu ticket para ver cuánto tiempo llevas y cuánto vas a pagar."/>
      <Footer/>
      <CookieNotice/>
    </>;
@@ -316,11 +330,13 @@ function App(){
   {user.rol==='ADMIN'
     ? <AdminPanel user={user}/>
     : user.rol==='CLIENTE'
-    ? <ClientePanel ticketInicial={ticketCodigo} onTicketConsumido={cerrarTicket}/>
+    ? <ClientePanel key={lecturaQR} ticketInicial={ticketCodigo} onTicketConsumido={cerrarTicket}/>
     : user.rol==='SOPORTE'
     ? <SoportePanel/>
     : <BuscarCercanos reservaCodigoInicial={reservaCodigo}/>}
  </main>
+ {user.rol==='CLIENTE' && <EscanearTicket onCodigo={abrirTicketEscaneado} rotulo="Escanear para cobrar" ayuda="Apunta al código QR del ticket del conductor: si es de uno de tus estacionamientos, pasas directo al cobro."/>}
+ {user.rol==='USUARIO' && <EscanearTicket onCodigo={abrirTicketEscaneado} rotulo="Escanear mi ticket" ayuda="Apunta al código QR de tu ticket para ver cuánto tiempo llevas y cuánto vas a pagar."/>}
  <Footer/>
  <CookieNotice/>
  </>
