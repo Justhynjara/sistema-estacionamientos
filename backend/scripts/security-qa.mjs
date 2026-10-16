@@ -118,8 +118,9 @@ async function main() {
     await check(`Inyección en ${base}/:id`, async () => {
       const r = await req(`${base}/${encodeURIComponent(valor)}`);
       const texto = await r.text();
-      record(`Identificador con inyección SQL en ${base}/:id se rechaza (400/404) sin error interno`,
-        (r.status === 400 || r.status === 404) && !filtraInternos(texto), `status ${r.status}`);
+      // 403 = lo bloqueó antes el firewall del CDN (Cloudflare, delante de Render): también vale.
+      record(`Identificador con inyección SQL en ${base}/:id se rechaza (400/403/404) sin error interno`,
+        [400, 403, 404].includes(r.status) && !filtraInternos(texto), `status ${r.status}`);
     });
   }
 
@@ -181,6 +182,21 @@ async function main() {
       const [a, b] = [await safeJson(malaClave), await safeJson(noExiste)];
       record('El login responde igual con clave errónea que con email inexistente (no revela qué cuentas existen)',
         malaClave.status === 401 && noExiste.status === 401 && a?.error === b?.error, `status ${malaClave.status}/${noExiste.status}`);
+    });
+  }
+
+  // Si producción no tuviera JWT_SECRET configurado, la API firmaría con el valor de desarrollo
+  // "dev_secret" (público en el repositorio) y cualquiera podría fabricar sesiones válidas. Se firma
+  // un token para la cuenta de prueba con ese valor y se exige que la API lo rechace.
+  if (createdUserId) {
+    await check('JWT_SECRET no es el de desarrollo', async () => {
+      const { createHmac } = await import('node:crypto');
+      const b64 = o => Buffer.from(JSON.stringify(o)).toString('base64url');
+      const ahora = Math.floor(Date.now() / 1000);
+      const cuerpo = `${b64({ alg: 'HS256', typ: 'JWT' })}.${b64({ id: createdUserId, email: testEmail, rol: 'USUARIO', iat: ahora, exp: ahora + 300 })}`;
+      const firma = createHmac('sha256', 'dev_secret').update(cuerpo).digest('base64url');
+      const r = await req('/api/auth/me', bearer(`${cuerpo}.${firma}`));
+      record('Un token firmado con la clave de desarrollo ("dev_secret") es rechazado', r.status === 401, `status ${r.status}`);
     });
   }
 

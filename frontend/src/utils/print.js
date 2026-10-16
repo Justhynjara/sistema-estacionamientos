@@ -1,6 +1,11 @@
 import QRCode from 'qrcode';
 import { qrPayload } from './qr.js';
 
+// El comprobante se arma como HTML en una ventana del mismo origen que la app: cualquier texto que
+// venga de datos (nombre y dirección del estacionamiento, que pueden llegar desde el formulario
+// público de postulación; la patente; el código) se escapa para que no pueda inyectar scripts.
+const escapar = v => String(v ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
 // Imprime un comprobante formateado para impresoras térmicas de recibos (ej. Epson TM-T20/TM-88)
 // conectadas como impresora del sistema operativo (USB o red), usando el diálogo de impresión
 // del navegador. El usuario debe elegir esa impresora una vez; el navegador recuerda la elección.
@@ -24,7 +29,7 @@ export async function imprimirTicket({
   try { qrDataUrl = await QRCode.toDataURL(qrPayload(codigo), { width: 300, margin: 1, errorCorrectionLevel: 'L' }); } catch { /* sin QR si falla */ }
 
   const filas = detalle
-    .map(([k, v]) => `<div class="fila"><span>${k}</span><span>${v}</span></div>`)
+    .map(([k, v]) => `<div class="fila"><span>${escapar(k)}</span><span>${escapar(v)}</span></div>`)
     .join('');
 
   win.document.open();
@@ -42,15 +47,15 @@ export async function imprimirTicket({
       .codigo { text-align: center; font-size: 10px; word-break: break-all; margin-top: 4px; }
     </style>
     </head><body>
-      <h1>${nombreEstacionamiento || 'Estacionamiento'}</h1>
-      ${direccion ? `<p class="center">${direccion}</p>` : ''}
+      <h1>${escapar(nombreEstacionamiento || 'Estacionamiento')}</h1>
+      ${direccion ? `<p class="center">${escapar(direccion)}</p>` : ''}
       <div class="linea"></div>
       ${filas}
       <div class="linea"></div>
-      ${qrDataUrl ? `<img src="${qrDataUrl}" width="150" height="150" alt="Código QR del ticket ${codigo}"/>` : ''}
-      <p class="codigo">${codigo}</p>
+      ${qrDataUrl ? `<img src="${qrDataUrl}" width="150" height="150" alt="Código QR del ticket ${escapar(codigo)}"/>` : ''}
+      <p class="codigo">${escapar(codigo)}</p>
       <div class="linea"></div>
-      <p class="center">${pie}</p>
+      <p class="center">${escapar(pie)}</p>
       <p class="center">${new Date().toLocaleString('es-CL')}</p>
     </body></html>`);
   win.document.close();

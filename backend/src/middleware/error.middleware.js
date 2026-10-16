@@ -30,6 +30,10 @@ export function errorHandler(err, req, res, next) {
     return res.status(403).json({ error: 'Origen no permitido' });
   }
 
+  // Cuerpo que no es JSON válido: es un error del cliente, no del servidor (no se registra ni alerta).
+  if (err.type === 'entity.parse.failed') return res.status(400).json({ error: 'El cuerpo de la petición no es JSON válido' });
+  if (err.type === 'entity.too.large') return res.status(413).json({ error: 'La petición es demasiado grande' });
+
   if (err.code === '23505') return res.status(409).json({ error: 'El registro ya existe' });
   if (err.code === '23503') return res.status(409).json({ error: 'Referencia inválida: el recurso relacionado no existe' });
   if (err.code === '22P02') return res.status(400).json({ error: 'Formato de dato inválido' });
