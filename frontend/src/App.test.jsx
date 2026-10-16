@@ -15,7 +15,8 @@ vi.mock('./SoportePanel.jsx', () => ({ default: () => <div>MockSoportePanel</div
 vi.mock('./QRScanner.jsx', () => ({ default: ({ onResult }) => <button type="button" onClick={() => onResult(globalThis.__qrLeido)}>SimularLectura</button> }));
 
 vi.mock('./services/api.js', () => ({
-  api: { get: vi.fn(), post: vi.fn() }
+  api: { get: vi.fn(), post: vi.fn() },
+  guardarSesionNativa: vi.fn()
 }));
 
 import App from './App.jsx';

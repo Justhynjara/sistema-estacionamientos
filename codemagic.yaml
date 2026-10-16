@@ -1,0 +1,43 @@
+workflows:
+  ios-unsigned-ipa:
+    name: iOS - IPA sin firma (para sideload con AltStore/Sideloadly)
+    max_build_duration: 30
+    environment:
+      node: 22
+      xcode: latest
+    scripts:
+      - name: Instalar dependencias del frontend
+        script: |
+          cd frontend
+          npm ci
+      - name: Compilar build web (modo móvil)
+        # Modo "mobile": toma VITE_API_URL/VITE_WEB_URL de .env.mobile, es decir, la API y la web
+        # de producción. Con "npm run build" la app apuntaría a http://localhost:3000.
+        script: |
+          cd frontend
+          cp .env.mobile.example .env.mobile
+          npm run build:mobile
+      - name: Sincronizar la plataforma iOS de Capacitor
+        script: |
+          cd frontend
+          npx cap sync ios
+      - name: Archivar el proyecto sin firma de código
+        script: |
+          cd frontend/ios/App
+          xcodebuild archive \
+            -project App.xcodeproj \
+            -scheme App \
+            -archivePath "$CM_BUILD_DIR/App.xcarchive" \
+            -destination "generic/platform=iOS" \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY="" \
+            DEVELOPMENT_TEAM=""
+      - name: Empaquetar el .ipa sin firmar
+        script: |
+          cd "$CM_BUILD_DIR"
+          mkdir -p Payload
+          cp -r App.xcarchive/Products/Applications/App.app Payload/
+          zip -r Estacionamientos-unsigned.ipa Payload
+    artifacts:
+      - $CM_BUILD_DIR/Estacionamientos-unsigned.ipa

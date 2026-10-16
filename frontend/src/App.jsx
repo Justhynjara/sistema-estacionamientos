@@ -1,5 +1,5 @@
 import {useEffect,useState} from 'react';
-import {api} from './services/api.js';
+import {api,guardarSesionNativa} from './services/api.js';
 import AdminPanel from './AdminPanel.jsx';
 import ClientePanel from './ClientePanel.jsx';
 import BuscarCercanos from './BuscarCercanos.jsx';
@@ -48,7 +48,7 @@ function Login({onLogin,onCancel,onForgot}){
   async function submit(e){
     e.preventDefault();
     setLoading(true);
-    try{const r=await api.post('/auth/login',{email,password});onLogin(r.data.user)}
+    try{const r=await api.post('/auth/login',{email,password});guardarSesionNativa(r.data.token);onLogin(r.data.user)}
     catch{alert('Credenciales inválidas')}
     finally{setLoading(false)}
   }
@@ -232,6 +232,7 @@ function App(){
 
  async function salir(){
    try{ await api.post('/auth/logout'); } catch{ /* si ya no hay sesión, no importa */ }
+   guardarSesionNativa(null);
    setUser(null);
  }
 

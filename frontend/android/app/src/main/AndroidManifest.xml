@@ -40,4 +40,7 @@
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+    <uses-permission android:name="android.permission.CAMERA" />
+    <!-- La cámara es opcional: sin ella la app se instala igual y se cobra por patente o código. -->
+    <uses-feature android:name="android.hardware.camera" android:required="false" />
 </manifest>
