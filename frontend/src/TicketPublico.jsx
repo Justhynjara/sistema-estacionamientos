@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { api } from './services/api.js';
+import { AVISO_RESERVA_MIN, estadoReserva, formatRestante } from './utils/reserva.js';
 import { calcularTarifa, formatCLP, formatCronometro, formatDuracion, formatTarifa } from './utils/tarifa.js';
 import Icon, { SignE } from './Icon.jsx';
 
@@ -98,13 +99,20 @@ export default function TicketPublico({ codigo, onEntrarDueno, onCerrar }) {
     }
 
     if (t.estado === 'RESERVADO') {
-      const quedan = Math.max(0, Math.ceil((new Date(t.reserva_expira).getTime() - ahoraServidor) / 60000));
+      const { restanteMs, vencida, porVencer } = estadoReserva(t.reserva_expira, ahoraServidor);
       return (
         <>
           {codigoTicket}
-          {quedan > 0
-            ? <p className="badge ok">Reserva vigente: te quedan {formatDuracion(quedan)} para llegar (hasta las {hora(t.reserva_expira)}).</p>
-            : <p className="badge off">Tu reserva venció y el cupo puede haberse liberado.</p>}
+          {vencida
+            ? <p className="badge off">Tu reserva venció y el cupo puede haberse liberado.</p>
+            : (
+              <div className="ticket-metrica" style={{ marginTop: 12 }}>
+                <p className="etq">Te quedan para llegar</p>
+                <p aria-label="Tiempo para llegar" className={'valor' + (porVencer ? ' por-vencer' : '')}>{formatRestante(restanteMs)}</p>
+                <p className="muted small" style={{ margin: 0 }}>Tu cupo está apartado hasta las <span className="mono">{hora(t.reserva_expira)}</span>.</p>
+                {porVencer && <p className="badge warn" role="alert">Quedan menos de {AVISO_RESERVA_MIN} minutos. Si no alcanzas a llegar, el cupo se libera.</p>}
+              </div>
+            )}
           <p className="muted">Muestra este QR al dueño al llegar para validar tu cupo. Tarifa: {formatTarifa(t)}.</p>
         </>
       );

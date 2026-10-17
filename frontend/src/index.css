@@ -28,6 +28,9 @@
   --full-bg:#fdecea;
   --info:#0b5cad;
   --info-bg:#e8f0fa;
+  /* Ámbar solo para "por vencer": 6.1:1 sobre --warn-bg. */
+  --warn:#8a4500;
+  --warn-bg:#fff3dc;
 
   --focus:#0b5cad;
 
@@ -224,6 +227,7 @@ button.secondary.small,button.danger.small{padding:5.5px 10px}
 .badge.off{background:var(--full-bg);color:var(--full)}
 .badge.info{background:var(--info-bg);color:var(--info)}
 .badge.neutral{background:var(--panel-alt);color:var(--muted)}
+.badge.warn{background:var(--warn-bg);color:var(--warn)}
 
 /* Un párrafo con .badge es un aviso: ocupa su línea, va en frase normal y lleva un ícono dibujado. */
 p.badge,div.badge,button.badge{
@@ -237,12 +241,13 @@ p.badge,div.badge,button.badge{
 p.badge.ok,div.badge.ok,button.badge.ok{border-color:#9fd3b4}
 p.badge.off,div.badge.off,button.badge.off{border-color:#f0b3ac}
 p.badge.info,div.badge.info,button.badge.info{border-color:#a9c6ea}
+p.badge.warn,div.badge.warn,button.badge.warn{border-color:#f0c987}
 p.badge::before,div.badge::before,button.badge::before{
   width:18px;height:18px;border-radius:0;margin-top:1px;
   -webkit-mask:var(--aviso-icon) center/contain no-repeat;mask:var(--aviso-icon) center/contain no-repeat;
   --aviso-icon:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round'%3E%3Ccircle cx='12' cy='12' r='9'/%3E%3Cpath d='M12 11v5.5M12 7.5v.1'/%3E%3C/svg%3E");
 }
-p.badge.off::before,div.badge.off::before,button.badge.off::before{
+p.badge.off::before,div.badge.off::before,button.badge.off::before,p.badge.warn::before{
   --aviso-icon:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round'%3E%3Ccircle cx='12' cy='12' r='9'/%3E%3Cpath d='M12 7.5v5.5M12 16.5v.1'/%3E%3C/svg%3E");
 }
 p.badge.ok::before,div.badge.ok::before,button.badge.ok::before{
@@ -666,3 +671,6 @@ body:has(.buscador) .site-footer .inner,body:has(.buscador) .owner-strip .inner{
 .opciones-cabecera .orden{width:auto;margin:0;padding:6px 8px;font-size:.84rem;font-weight:700}
 .parada .datos .costo{color:var(--ink)}
 .parada .datos .costo b{font-weight:800}
+
+/* Reserva en sus últimos minutos: el contador pasa a ámbar. */
+.ticket-metrica .valor.por-vencer{color:var(--warn)}

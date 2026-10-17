@@ -52,7 +52,17 @@ describe('TicketPublico — lo que ve el conductor al escanear su QR', () => {
     api.get.mockResolvedValue({ data: { ...base, estado: 'RESERVADO', reserva_expira: new Date(AHORA + 7 * 60000).toISOString() } });
     render(<TicketPublico codigo="abc123" onCerrar={() => {}} />);
 
-    expect(await screen.findByText(/reserva vigente: te quedan 7 min/i)).toBeInTheDocument();
+    expect(await screen.findByLabelText('Tiempo para llegar')).toHaveTextContent('7:00');
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+  });
+
+  test('en los últimos 3 minutos de la reserva avisa que el cupo se liberará', async () => {
+    vi.spyOn(Date, 'now').mockReturnValue(AHORA);
+    api.get.mockResolvedValue({ data: { ...base, estado: 'RESERVADO', reserva_expira: new Date(AHORA + 2.5 * 60000).toISOString() } });
+    render(<TicketPublico codigo="abc123" onCerrar={() => {}} />);
+
+    expect(await screen.findByLabelText('Tiempo para llegar')).toHaveTextContent('2:30');
+    expect(screen.getByRole('alert')).toHaveTextContent(/menos de 3 minutos/i);
   });
 
   test('un ticket cerrado muestra lo que se pagó', async () => {

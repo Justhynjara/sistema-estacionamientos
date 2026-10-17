@@ -10,6 +10,7 @@ import Tarifa from './Tarifa.jsx';
 import EstadoHorario from './EstadoHorario.jsx';
 import HorarioEditor from './HorarioEditor.jsx';
 import { resumenHorario } from './utils/horario.js';
+import { estadoReserva, formatRestante } from './utils/reserva.js';
 import Icon from './Icon.jsx';
 import TabsBase from './Tabs.jsx';
 import Capacidad from './Capacidad.jsx';
@@ -59,12 +60,29 @@ function tiempoTranscurrido(iso) {
   return `${Math.floor(min / 60)}h ${min % 60}min`;
 }
 
+// Una reserva en sus últimos minutos se destaca: el dueño sabe que ese cupo puede liberarse pronto.
+function EstadoActivo({ t, ahora }) {
+  if (t.estado === 'ACTIVO') return <span className="badge ok">Dentro</span>;
+  const { vencida, porVencer } = t.reserva_expira ? estadoReserva(t.reserva_expira, ahora) : {};
+  if (vencida) return <span className="badge neutral">Reserva vencida</span>;
+  if (porVencer) return <span className="badge warn">Por vencer</span>;
+  return <span className="badge info">Reservado</span>;
+}
+
 function GestionTicketPanel({ reloadParking, ticketInicial, onTicketConsumido, estacionamientoId, estacionamientoNombre }) {
   const [codigo, setCodigo] = useState('');
   const [loading, setLoading] = useState('');
   const [mensaje, setMensaje] = useState(null);
   const [cobro, setCobro] = useState(null);
   const [activos, setActivos] = useState([]);
+  const [ahora, setAhora] = useState(Date.now());
+  const hayReservas = activos.some(t => t.estado === 'RESERVADO');
+  // El reloj solo corre mientras hay reservas que mostrar con cuenta regresiva.
+  useEffect(() => {
+    if (!hayReservas) return;
+    const id = setInterval(() => setAhora(Date.now()), 1000);
+    return () => clearInterval(id);
+  }, [hayReservas]);
   const [escaneando, setEscaneando] = useState(false);
   // Tras leer un QR, la pantalla baja sola hasta el cobro (o el aviso): en el teléfono quedarían
   // debajo de la lista de vehículos, fuera de la vista.
@@ -218,9 +236,11 @@ function GestionTicketPanel({ reloadParking, ticketInicial, onTicketConsumido, e
                   <tr key={t.id}>
                     <td className="mono"><strong>{t.patente || '—'}</strong></td>
                     {!estacionamientoId && <td>{t.estacionamiento_nombre}</td>}
-                    <td><span className={'badge ' + (t.estado === 'ACTIVO' ? 'ok' : 'info')}>{t.estado === 'ACTIVO' ? 'Dentro' : 'Reservado'}</span></td>
+                    <td><EstadoActivo t={t} ahora={ahora} /></td>
                     <td className="mono">{fmtHora(t.fecha_entrada)}</td>
-                    <td className="mono">{tiempoTranscurrido(t.fecha_entrada)}</td>
+                    <td className="mono">{t.estado === 'RESERVADO' && t.reserva_expira
+                      ? `vence en ${formatRestante(estadoReserva(t.reserva_expira, ahora).restanteMs)}`
+                      : tiempoTranscurrido(t.fecha_entrada)}</td>
                     <td className="acciones">
                       {t.estado === 'RESERVADO'
                         ? <button type="button" className="small secondary" disabled={!!loading} onClick={() => validarReserva(t.codigo_qr)}><Icon name="check" size={16} />Validar</button>

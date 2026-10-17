@@ -16,6 +16,7 @@ import Tarifa from './Tarifa.jsx';
 import EstadoHorario from './EstadoHorario.jsx';
 import { textoEstado } from './utils/horario.js';
 import { formatCLP } from './utils/tarifa.js';
+import { AVISO_RESERVA_MIN, estadoReserva, formatRestante } from './utils/reserva.js';
 import { FILTROS_INICIALES, HORAS_ESTADIA, aplicarFiltros } from './utils/filtros.js';
 
 const SOCKET_URL = API_ORIGIN;
@@ -114,16 +115,29 @@ function ClickToSetLocation({ onSelect }) {
   return null;
 }
 
+// Cuenta regresiva de la reserva. Al entrar en los últimos minutos cambia a aviso: el texto se
+// anuncia una sola vez a los lectores de pantalla (role="alert") y el teléfono vibra si puede.
 function Countdown({ expira }) {
-  const [restanteMs, setRestanteMs] = useState(new Date(expira) - new Date());
+  const [ahora, setAhora] = useState(Date.now());
   useEffect(() => {
-    const id = setInterval(() => setRestanteMs(new Date(expira) - new Date()), 1000);
+    const id = setInterval(() => setAhora(Date.now()), 1000);
     return () => clearInterval(id);
   }, [expira]);
-  if (restanteMs <= 0) return <span className="badge off">La reserva expiró</span>;
-  const min = Math.floor(restanteMs / 60000);
-  const seg = Math.floor((restanteMs % 60000) / 1000);
-  return <span className="badge ok">Válida por <span className="mono">{min}:{String(seg).padStart(2, '0')}</span> min</span>;
+  const { restanteMs, vencida, porVencer } = estadoReserva(expira, ahora);
+  useEffect(() => {
+    if (porVencer) navigator.vibrate?.([200, 100, 200]);
+  }, [porVencer]);
+  if (vencida) return <p className="badge off" role="alert">La reserva expiró y el cupo puede haberse liberado.</p>;
+  return (
+    <>
+      <span className={'badge ' + (porVencer ? 'warn' : 'ok')}>Válida por <span className="mono">{formatRestante(restanteMs)}</span> min</span>
+      {porVencer && (
+        <p className="badge warn" role="alert">
+          Quedan menos de {AVISO_RESERVA_MIN} minutos. Si no alcanzas a llegar, el cupo se libera y los $100 no se reembolsan.
+        </p>
+      )}
+    </>
+  );
 }
 
 export default function BuscarCercanos({ reservaCodigoInicial } = {}) {
