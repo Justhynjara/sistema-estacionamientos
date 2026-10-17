@@ -64,15 +64,20 @@ function dispositivoActual() {
   return 'computador';
 }
 
-const yaInstalada = () =>
-  window.matchMedia?.('(display-mode: standalone)').matches || window.navigator.standalone === true;
+// Abierta desde el ícono de la pantalla de inicio (PWA instalada) o como app nativa (Capacitor).
+const abiertaComoApp = () =>
+  Capacitor.isNativePlatform()
+  || window.matchMedia?.('(display-mode: standalone)').matches
+  || window.matchMedia?.('(display-mode: fullscreen)').matches
+  || window.navigator.standalone === true;
 
 // Sección al pie de la portada: el video de la app en uso, los pasos y cómo instalarla.
+// Quien ya abre la app instalada no la ve: ya sabe cómo funciona y ya la tiene.
 export default function ComoFunciona() {
   const [dispositivo, setDispositivo] = useState(dispositivoActual);
   const [aviso, setAviso] = useState(null); // evento beforeinstallprompt (Chrome/Edge)
-  const [instalada, setInstalada] = useState(yaInstalada);
-  const esAppNativa = Capacitor.isNativePlatform();
+  const [instalada, setInstalada] = useState(false);
+  const [comoApp] = useState(abiertaComoApp);
 
   useEffect(() => {
     const guardar = e => { e.preventDefault(); setAviso(e); };
@@ -89,6 +94,7 @@ export default function ComoFunciona() {
     setAviso(null);
   }
 
+  if (comoApp) return null;
   const inst = INSTRUCCIONES[dispositivo];
 
   return (
@@ -136,33 +142,31 @@ export default function ComoFunciona() {
             la ocupación y las horas de más movimiento.
           </p>
 
-          {!esAppNativa && (
-            <div className="cf-instalar" aria-labelledby="cf-instalar-titulo">
-              <h3 id="cf-instalar-titulo">Instálala en tu dispositivo</h3>
-              {instalada ? (
-                <p className="badge ok">Ya la tienes instalada: ábrela desde el ícono Estacionamientos.</p>
-              ) : (
-                <>
-                  <p className="muted small" style={{ margin: 0 }}>
-                    No necesitas tienda de aplicaciones: se instala desde el navegador, ocupa casi nada y se actualiza sola.
-                  </p>
-                  {aviso && (
-                    <button type="button" onClick={instalar}><Icon name="download" size={17} />Instalar app ahora</button>
-                  )}
-                  <div className="segmentos" role="radiogroup" aria-label="Tu dispositivo">
-                    {DISPOSITIVOS.map(([k, texto, icono]) => (
-                      <button key={k} type="button" role="radio" className="filtro" aria-checked={dispositivo === k} onClick={() => setDispositivo(k)}>
-                        <Icon name={icono} size={15} />{texto}
-                      </button>
-                    ))}
-                  </div>
-                  <ol className="cf-instrucciones" aria-label={`Instalar en ${DISPOSITIVOS.find(d => d[0] === dispositivo)[1]} con ${inst.navegador}`}>
-                    {inst.pasos.map((p, i) => <li key={i}>{p}</li>)}
-                  </ol>
-                </>
-              )}
-            </div>
-          )}
+          <div className="cf-instalar" aria-labelledby="cf-instalar-titulo">
+            <h3 id="cf-instalar-titulo">Instálala en tu dispositivo</h3>
+            {instalada ? (
+              <p className="badge ok">Ya la tienes instalada: ábrela desde el ícono Estacionamientos.</p>
+            ) : (
+              <>
+                <p className="muted small" style={{ margin: 0 }}>
+                  No necesitas tienda de aplicaciones: se instala desde el navegador, ocupa casi nada y se actualiza sola.
+                </p>
+                {aviso && (
+                  <button type="button" onClick={instalar}><Icon name="download" size={17} />Instalar app ahora</button>
+                )}
+                <div className="segmentos" role="radiogroup" aria-label="Tu dispositivo">
+                  {DISPOSITIVOS.map(([k, texto, icono]) => (
+                    <button key={k} type="button" role="radio" className="filtro" aria-checked={dispositivo === k} onClick={() => setDispositivo(k)}>
+                      <Icon name={icono} size={15} />{texto}
+                    </button>
+                  ))}
+                </div>
+                <ol className="cf-instrucciones" aria-label={`Instalar en ${DISPOSITIVOS.find(d => d[0] === dispositivo)[1]} con ${inst.navegador}`}>
+                  {inst.pasos.map((p, i) => <li key={i}>{p}</li>)}
+                </ol>
+              </>
+            )}
+          </div>
         </div>
       </div>
     </section>

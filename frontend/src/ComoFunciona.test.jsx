@@ -41,4 +41,16 @@ describe('Cómo funciona', () => {
     expect(evento.prompt).toHaveBeenCalled();
     expect(await screen.findByText(/ya la tienes instalada/i)).toBeInTheDocument();
   });
+
+  test('abierta desde el ícono de inicio (app instalada) no muestra la sección', () => {
+    const original = window.matchMedia;
+    window.matchMedia = q => ({ matches: q === '(display-mode: standalone)', addEventListener() {}, removeEventListener() {} });
+    try {
+      const { container } = render(<ComoFunciona />);
+      expect(container).toBeEmptyDOMElement();
+      expect(screen.queryByLabelText(/video: cómo se usa la app/i)).not.toBeInTheDocument();
+    } finally {
+      window.matchMedia = original;
+    }
+  });
 });
