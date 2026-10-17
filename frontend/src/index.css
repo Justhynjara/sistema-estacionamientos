@@ -652,3 +652,17 @@ body:has(.buscador) .site-footer .inner,body:has(.buscador) .owner-strip .inner{
   .horario-dia legend{float:none;width:100%}
   .horario-dia .link-button{margin-left:0}
 }
+
+/* ---------- Filtros de la búsqueda ---------- */
+/* Interruptores con aria-pressed/aria-checked: el estado activo se marca con relleno y con un
+   ícono de visto, no solo con color. */
+.filtros{display:grid;gap:8px;margin:0 0 6px;padding-bottom:12px;border-bottom:1px solid var(--rule-soft)}
+.filtros-fila{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.filtros-etiqueta{font-size:.82rem;font-weight:700;color:var(--muted)}
+.filtros .filtro{display:inline-flex;align-items:center;gap:5px;padding:6px 12px;min-height:34px;font-size:.84rem;font-weight:700;border-radius:999px;background:var(--panel);color:var(--ink);border:1.5px solid var(--rule);box-shadow:none}
+.filtros .filtro:hover{background:var(--panel-alt);border-color:var(--ink);color:var(--ink)}
+.filtros .filtro[aria-pressed="true"],.filtros .filtro[aria-checked="true"]{background:var(--ink);border-color:var(--ink);color:#fff}
+.opciones-cabecera{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:6px 12px}
+.opciones-cabecera .orden{width:auto;margin:0;padding:6px 8px;font-size:.84rem;font-weight:700}
+.parada .datos .costo{color:var(--ink)}
+.parada .datos .costo b{font-weight:800}

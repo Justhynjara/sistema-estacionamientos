@@ -2,8 +2,19 @@
 // consultar al servidor cada vez. El servidor sigue siendo quien calcula el cobro real.
 export function calcularTarifa(fechaEntrada, precioMinuto, tarifaMinima, ahora = Date.now()) {
   const minutos = Math.max(1, Math.ceil((ahora - new Date(fechaEntrada).getTime()) / 60000));
+  return { minutos, bruto: montoPorMinutos(minutos, precioMinuto, tarifaMinima) };
+}
+
+// El cobro de una cantidad de minutos: el mayor entre el valor base y minutos × precio.
+export function montoPorMinutos(minutos, precioMinuto, tarifaMinima) {
   const porTiempo = Math.ceil(Math.round(minutos * Number(precioMinuto) * 10) / 10);
-  return { minutos, bruto: Math.max(Number(tarifaMinima), porTiempo) };
+  return Math.max(Number(tarifaMinima), porTiempo);
+}
+
+// Lo que costaría quedarse una cantidad de horas en un estacionamiento (estimación para comparar
+// antes de ir; el cobro real lo calcula el servidor al salir).
+export function costoEstimado(p, horas) {
+  return montoPorMinutos(horas * 60, p.precio_minuto, p.tarifa_minima);
 }
 
 export function formatCLP(n) {

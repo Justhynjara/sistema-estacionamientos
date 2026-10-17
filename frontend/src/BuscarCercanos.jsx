@@ -15,6 +15,8 @@ import Capacidad from './Capacidad.jsx';
 import Tarifa from './Tarifa.jsx';
 import EstadoHorario from './EstadoHorario.jsx';
 import { textoEstado } from './utils/horario.js';
+import { formatCLP } from './utils/tarifa.js';
+import { FILTROS_INICIALES, HORAS_ESTADIA, aplicarFiltros } from './utils/filtros.js';
 
 const SOCKET_URL = API_ORIGIN;
 // Con destino se buscan estacionamientos para dejar el auto y caminar: radio corto. Sin destino
@@ -145,6 +147,7 @@ export default function BuscarCercanos({ reservaCodigoInicial } = {}) {
   const [reservandoId, setReservandoId] = useState(null);
   const [reservaPendiente, setReservaPendiente] = useState(null);
   const [patenteReserva, setPatenteReserva] = useState('');
+  const [filtros, setFiltros] = useState(FILTROS_INICIALES);
   const lastRoutedFrom = useRef(null);
   const socketRef = useRef(null);
   const joinedRoomsRef = useRef(new Set());
@@ -335,7 +338,9 @@ export default function BuscarCercanos({ reservaCodigoInicial } = {}) {
 
   const center = destinoCoords || userPos || { lat: -33.4489, lng: -70.6693 };
 
-  const lista = parkings.map((p, i) => ({ ...p, n: i + 1 }));
+  const lista = aplicarFiltros(parkings, filtros);
+  const ocultos = parkings.length - lista.length;
+  const cambiarFiltro = cambios => setFiltros(f => ({ ...f, ...cambios }));
   const gpsActivo = Boolean(userPos) && !manualMode;
   const origenHint = origenLoading ? 'Ubicando la dirección…'
     : geoError ? geoError
@@ -448,6 +453,7 @@ export default function BuscarCercanos({ reservaCodigoInicial } = {}) {
         {reservaError && !reservaPendiente && <p className="badge off">{reservaError}</p>}
 
         <section className="opciones" aria-labelledby="opciones-titulo">
+          <div className="opciones-cabecera">
           <h2 id="opciones-titulo">
             {modo === 'cerca'
               ? (lista.length > 0
@@ -457,10 +463,40 @@ export default function BuscarCercanos({ reservaCodigoInicial } = {}) {
                   ? `${lista.length} ${lista.length === 1 ? 'opción' : 'opciones'} junto a tu destino`
                   : 'Opciones junto a tu destino')}
           </h2>
-          {lista.length > 0 && (
+          {parkings.length > 1 && (
+            <select className="orden" value={filtros.orden} onChange={e => cambiarFiltro({ orden: e.target.value })} aria-label="Ordenar resultados">
+              <option value="distancia">Más cerca primero</option>
+              <option value="precio">Más barato primero</option>
+            </select>
+          )}
+          </div>
+          {parkings.length > 0 && (
             <p className="meta">
-              {modo === 'cerca' ? 'Ordenadas por distancia desde tu ubicación.' : 'Ordenadas por distancia al destino.'} Los cupos se actualizan en tiempo real.
+              {filtros.orden === 'precio'
+                ? `Ordenadas por lo que cuesta quedarse ${filtros.horas} h.`
+                : modo === 'cerca' ? 'Ordenadas por distancia desde tu ubicación.' : 'Ordenadas por distancia al destino.'} Los cupos se actualizan en tiempo real.
+              {ocultos > 0 && ` ${ocultos} ${ocultos === 1 ? 'oculta' : 'ocultas'} por los filtros.`}
             </p>
+          )}
+          {parkings.length > 0 && (
+            <div className="filtros" role="group" aria-label="Filtrar resultados">
+              <div className="filtros-fila">
+                <button type="button" className="filtro" aria-pressed={filtros.soloAbiertos} onClick={() => cambiarFiltro({ soloAbiertos: !filtros.soloAbiertos })}>
+                  {filtros.soloAbiertos && <Icon name="checkCircle" size={14} />}Solo abiertos
+                </button>
+                <button type="button" className="filtro" aria-pressed={filtros.soloConCupos} onClick={() => cambiarFiltro({ soloConCupos: !filtros.soloConCupos })}>
+                  {filtros.soloConCupos && <Icon name="checkCircle" size={14} />}Solo con cupos
+                </button>
+              </div>
+              <div className="filtros-fila estadia" role="radiogroup" aria-label="Cuánto tiempo te quedarías">
+                <span className="filtros-etiqueta">Me quedo</span>
+                {HORAS_ESTADIA.map(h => (
+                  <button key={h} type="button" role="radio" className="filtro" aria-checked={filtros.horas === h} onClick={() => cambiarFiltro({ horas: h })}>
+                    <span className="num">{h}</span> h
+                  </button>
+                ))}
+              </div>
+            </div>
           )}
           {lista.length > 0 ? (
             <ol className="paradas">
@@ -497,6 +533,10 @@ export default function BuscarCercanos({ reservaCodigoInicial } = {}) {
                     <Capacidad libres={p.cupos_disponibles} total={p.cupo_maximo} />
                     <div className="datos">
                       <span><Icon name="coin" size={16} /><Tarifa {...p} /></span>
+                      <span className="costo" title="Estimado. El cobro final depende del tiempo real.">
+                        <Icon name="clock" size={16} />
+                        <span><span className="num">{filtros.horas}</span> h ≈ <b className="num">{formatCLP(p.costo)}</b></span>
+                      </span>
                       {p.ruta && p.ruta.duracionMin >= 1 && <span><Icon name="car" size={16} /><span><span className="num">{Math.round(p.ruta.duracionMin)}</span> min en auto desde tu partida</span></span>}
                     </div>
                     <div className="acciones">
@@ -514,6 +554,11 @@ export default function BuscarCercanos({ reservaCodigoInicial } = {}) {
                 );
               })}
             </ol>
+          ) : parkings.length > 0 ? (
+            <div className="empty-state">
+              <p style={{ margin: '0 0 10px' }}>Ninguna de las {parkings.length} opciones cumple {filtros.soloAbiertos && filtros.soloConCupos ? 'los filtros "solo abiertos" y "solo con cupos"' : filtros.soloAbiertos ? 'el filtro "solo abiertos"' : 'el filtro "solo con cupos"'}.</p>
+              <button type="button" className="secondary small" onClick={() => cambiarFiltro({ soloAbiertos: false, soloConCupos: false })}>Quitar filtros</button>
+            </div>
           ) : (
             !loading && !error && (
               <div className="empty-state">
