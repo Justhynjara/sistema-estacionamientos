@@ -317,6 +317,9 @@ button.badge:hover{filter:brightness(.98);box-shadow:none}
 .parada .datos{display:flex;flex-wrap:wrap;gap:4px 14px;font-size:.86rem;color:var(--muted)}
 .parada .datos > span{display:inline-flex;gap:6px;align-items:center}
 .tarifa{white-space:nowrap}
+/* Con tramos por horario la línea puede partirse, pero nunca dentro de un tramo. */
+.tarifa:has(.tramo){white-space:normal}
+.tarifa .tramo{white-space:nowrap}
 .parada .acciones{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
 .parada .acciones .waze{background:none;box-shadow:none;color:var(--route);padding:7px 6px;font-size:.86rem}
 .parada .acciones .waze:hover{background:none;color:var(--route-dark);box-shadow:none}

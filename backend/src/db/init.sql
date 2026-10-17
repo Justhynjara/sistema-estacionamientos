@@ -26,6 +26,8 @@ CREATE TABLE IF NOT EXISTS estacionamientos (
   estado BOOLEAN NOT NULL DEFAULT TRUE,
   -- Horario de atención (ver src/utils/horario.js); NULL = abierto las 24 horas.
   horario JSONB,
+  -- Tramos del día con otro precio por minuto (ver src/utils/tarifa.js); NULL = precio base todo el día.
+  tarifas_horario JSONB,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   CHECK (cupos_disponibles <= cupo_maximo)
 );

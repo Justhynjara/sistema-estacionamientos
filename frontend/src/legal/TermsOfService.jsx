@@ -63,6 +63,21 @@ export default function TermsOfService() {
         pasa por esta plataforma ni por Webpay. La tarifa (precio por minuto y valor base mínimo) la
         define cada estacionamiento y se muestra antes de emitir el ticket.
       </p>
+      <ul>
+        <li>
+          Algunos estacionamientos tienen <strong>tarifa por horario</strong>: un precio por minuto distinto
+          en ciertas horas del día (por ejemplo, una tarifa nocturna). Cada minuto se cobra al precio del
+          tramo en que empieza, en hora de Chile, y los tramos se muestran junto a la tarifa.
+        </li>
+        <li>
+          El <strong>costo estimado</strong> que muestra la búsqueda (por ejemplo, "2 h ≈ $2.400") es solo
+          referencial: el monto final depende del tiempo real que estés estacionado.
+        </li>
+        <li>
+          Fuera de su <strong>horario de atención</strong>, un estacionamiento aparece como cerrado y no se
+          puede reservar en él.
+        </li>
+      </ul>
 
       <h3>5. Postulación de nuevos estacionamientos</h3>
       <p>

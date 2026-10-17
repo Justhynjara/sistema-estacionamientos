@@ -10,6 +10,7 @@ import TabsBase from './Tabs.jsx';
 import Capacidad from './Capacidad.jsx';
 import EstadoHorario from './EstadoHorario.jsx';
 import HorarioEditor from './HorarioEditor.jsx';
+import TarifasHorarioEditor from './TarifasHorarioEditor.jsx';
 import { resumenHorario } from './utils/horario.js';
 
 const TABS = [['usuarios', 'Usuarios', 'users'], ['parking', 'Estacionamientos', 'building'], ['solicitudes', 'Solicitudes', 'clipboard'], ['parametros', 'Parámetros', 'sliders'], ['auditoria', 'Auditoría', 'history']];
@@ -19,6 +20,7 @@ function Tabs({ tab, setTab }) {
 
 function ParkingTab({ parking, reloadParking, users }) {
   const [editandoHorario, setEditandoHorario] = useState(null); // id del estacionamiento
+  const [editandoTarifas, setEditandoTarifas] = useState(null); // id del estacionamiento
   const initialForm = { cliente_id: '', nombre: '', direccion: '', precio_minuto: '', tarifa_minima: '', cupo_maximo: '' };
   const [form, setForm] = useState(initialForm);
   const [ubicacion, setUbicacion] = useState(null);
@@ -117,8 +119,18 @@ function ParkingTab({ parking, reloadParking, users }) {
             <div className="row-form">
               <button type="button" className="secondary small" onClick={() => cambiarCupo(p.id, p.cupo_maximo)}>Cambiar cupo máximo</button>
               <button type="button" className="secondary small" onClick={() => cambiarTarifa(p)}>Cambiar tarifa</button>
-              <button type="button" className="secondary small" onClick={() => setEditandoHorario(p.id)} aria-label={`Horario de ${p.nombre}`}>Horario</button>
+              <button type="button" className="secondary small" onClick={() => { setEditandoTarifas(null); setEditandoHorario(p.id); }} aria-label={`Horario de ${p.nombre}`}>Horario</button>
+              <button type="button" className="secondary small" onClick={() => { setEditandoHorario(null); setEditandoTarifas(p.id); }} aria-label={`Tarifa por horario de ${p.nombre}`}>Tarifa por horario</button>
             </div>
+            {editandoTarifas === p.id && (
+              <TarifasHorarioEditor
+                nombre={p.nombre}
+                precioBase={p.precio_minuto}
+                tarifas={p.tarifas_horario}
+                onCancelar={() => setEditandoTarifas(null)}
+                onGuardar={async tarifas_horario => { await api.put(`/admin/parking/${p.id}/tarifas-horario`, { tarifas_horario }); setEditandoTarifas(null); reloadParking(); }}
+              />
+            )}
             {editandoHorario === p.id && (
               <HorarioEditor
                 nombre={p.nombre}

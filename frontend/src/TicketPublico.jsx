@@ -68,7 +68,7 @@ export default function TicketPublico({ codigo, onEntrarDueno, onCerrar }) {
     const codigoTicket = <p className="ticket-codigo">Ticket N.º <span className="mono">{codigo}</span></p>;
 
     if (t.estado === 'ACTIVO') {
-      const { minutos, bruto } = calcularTarifa(t.fecha_entrada, t.precio_minuto, t.tarifa_minima, ahoraServidor);
+      const { minutos, bruto } = calcularTarifa(t.fecha_entrada, t.precio_minuto, t.tarifa_minima, ahoraServidor, t.tarifas_horario);
       const descuento = Number(t.descuentoReserva || 0);
       const monto = Math.max(0, bruto - descuento);
       const enMinimo = bruto === Number(t.tarifa_minima) && t.tarifa_minima > 0;

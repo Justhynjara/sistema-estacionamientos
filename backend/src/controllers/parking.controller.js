@@ -6,7 +6,7 @@ import { estadoHorario } from '../utils/horario.js';
 // cerrado, y cuándo cambia), para que la web no tenga que repetir el cálculo en hora de Chile.
 const conHorario = fila => ({ ...fila, horario_estado: estadoHorario(fila.horario) });
 export async function listParking(req,res){
-  const r=await pool.query(`SELECT id,nombre,direccion,latitud,longitud,precio_minuto,tarifa_minima,cupo_maximo,cupos_disponibles,horario
+  const r=await pool.query(`SELECT id,nombre,direccion,latitud,longitud,precio_minuto,tarifa_minima,cupo_maximo,cupos_disponibles,horario,tarifas_horario
     FROM estacionamientos WHERE estado=true ORDER BY nombre`);
   res.json(r.rows.map(conHorario));
 }
@@ -18,7 +18,7 @@ export async function nearbyParking(req,res){
     return res.status(400).json({error:'Parámetros lat y lng requeridos'});
   const r=await pool.query(
     `SELECT * FROM (
-       SELECT id,nombre,direccion,latitud,longitud,precio_minuto,tarifa_minima,cupo_maximo,cupos_disponibles,horario,
+       SELECT id,nombre,direccion,latitud,longitud,precio_minuto,tarifa_minima,cupo_maximo,cupos_disponibles,horario,tarifas_horario,
          (6371 * acos(
            LEAST(1, cos(radians($1)) * cos(radians(latitud)) * cos(radians(longitud) - radians($2))
              + sin(radians($1)) * sin(radians(latitud)))
@@ -33,14 +33,14 @@ export async function nearbyParking(req,res){
   res.json(r.rows.map(conHorario));
 }
 export async function myParking(req,res){
-  const r=await pool.query(`SELECT id,nombre,direccion,latitud,longitud,precio_minuto,tarifa_minima,cupo_maximo,cupos_disponibles,estado,horario
+  const r=await pool.query(`SELECT id,nombre,direccion,latitud,longitud,precio_minuto,tarifa_minima,cupo_maximo,cupos_disponibles,estado,horario,tarifas_horario
     FROM estacionamientos WHERE cliente_id=$1 ORDER BY nombre`,[req.user.id]);
   res.json(r.rows.map(conHorario));
 }
 export async function getParking(req,res){
   // Endpoint público: nunca cliente_id (identifica al dueño) ni created_at, que no aportan nada
   // a quien busca estacionamiento y no deberían quedar expuestos a cualquiera.
-  const r=await pool.query(`SELECT id,nombre,direccion,latitud,longitud,precio_minuto,tarifa_minima,cupo_maximo,cupos_disponibles,estado,horario
+  const r=await pool.query(`SELECT id,nombre,direccion,latitud,longitud,precio_minuto,tarifa_minima,cupo_maximo,cupos_disponibles,estado,horario,tarifas_horario
     FROM estacionamientos WHERE id=$1`,[req.params.id]);
   if(!r.rowCount) return res.status(404).json({error:'No encontrado'});
   res.json(conHorario(r.rows[0]));
@@ -77,7 +77,7 @@ export async function updatePricing(req,res){
 // suma cuántos tickets tiene cada uno: sirve para detectar duplicados (dos estacionamientos con
 // nombre parecido, uno vacío y otro con las ventas reales, cada uno con un dueño distinto).
 export async function listParkingAdmin(req,res){
-  const r=await pool.query(`SELECT e.id,e.nombre,e.direccion,e.latitud,e.longitud,e.precio_minuto,e.tarifa_minima,e.cupo_maximo,e.cupos_disponibles,e.estado,e.cliente_id,e.horario,
+  const r=await pool.query(`SELECT e.id,e.nombre,e.direccion,e.latitud,e.longitud,e.precio_minuto,e.tarifa_minima,e.cupo_maximo,e.cupos_disponibles,e.estado,e.cliente_id,e.horario,e.tarifas_horario,
       COUNT(t.id)::int AS total_tickets,
       COUNT(t.id) FILTER (WHERE t.estado IN ('ACTIVO','RESERVADO'))::int AS tickets_activos
     FROM estacionamientos e
@@ -113,3 +113,14 @@ async function guardarHorario(req,res,{soloDelDueno}){
 // El administrador puede fijar el horario de cualquier estacionamiento; el dueño, solo de los suyos.
 export const updateHorario=(req,res)=>guardarHorario(req,res,{soloDelDueno:false});
 export const updateMiHorario=(req,res)=>guardarHorario(req,res,{soloDelDueno:true});
+
+// Tramos con otro precio por minuto según la hora. Como el precio base, solo lo cambia el
+// administrador; queda en la auditoría.
+export async function updateTarifasHorario(req,res){
+  const {tarifas_horario}=req.body;
+  const r=await pool.query(`UPDATE estacionamientos SET tarifas_horario=$1 WHERE id=$2 RETURNING *`,
+    [tarifas_horario===null ? null : JSON.stringify(tarifas_horario), req.params.id]);
+  if(!r.rowCount) return res.status(404).json({error:'No encontrado'});
+  await registrarAuditoria(req.user.id, 'estacionamiento.actualizar_tarifas_horario', 'estacionamiento', r.rows[0].id, { tarifas_horario });
+  res.json(conHorario(r.rows[0]));
+}

@@ -2,8 +2,9 @@ import {Router} from 'express';
 import {auth} from '../middleware/auth.middleware.js';
 import {roles} from '../middleware/role.middleware.js';
 import {validateBody,validateParams,validateQuery} from '../middleware/validate.middleware.js';
-import {createParking,updateCapacity,updatePricing,listParkingAdmin,updateOwner,updateHorario} from '../controllers/parking.controller.js';
+import {createParking,updateCapacity,updatePricing,listParkingAdmin,updateOwner,updateHorario,updateTarifasHorario} from '../controllers/parking.controller.js';
 import {horarioSchema} from '../validation/horario.schema.js';
+import {tarifasHorarioSchema} from '../validation/tarifas.schema.js';
 import {listUsers,createUser,updateUserStatus,updateUserRole,deleteUser,listParams,updateParam,auditLog} from '../controllers/admin.controller.js';
 import {createParkingSchema,updateCapacitySchema,updatePricingSchema,updateOwnerSchema} from '../validation/parking.schema.js';
 import {createUserSchema,updateUserStatusSchema,updateUserRoleSchema,updateParamSchema,paramClaveSchema,auditLogQuerySchema} from '../validation/admin.schema.js';
@@ -15,6 +16,7 @@ r.put('/parking/:id/capacity',validateParams(idParamSchema),validateBody(updateC
 r.put('/parking/:id/pricing',validateParams(idParamSchema),validateBody(updatePricingSchema),updatePricing);
 r.put('/parking/:id/owner',validateParams(idParamSchema),validateBody(updateOwnerSchema),updateOwner);
 r.put('/parking/:id/horario',validateParams(idParamSchema),validateBody(horarioSchema),updateHorario);
+r.put('/parking/:id/tarifas-horario',validateParams(idParamSchema),validateBody(tarifasHorarioSchema),updateTarifasHorario);
 r.get('/users',listUsers);
 r.post('/users',validateBody(createUserSchema),createUser);
 r.patch('/users/:id/status',validateParams(idParamSchema),validateBody(updateUserStatusSchema),updateUserStatus);

@@ -13,8 +13,8 @@ export async function getReservationTtlMin(){
   return Number.isFinite(min) && min>0 ? min : RESERVATION_TTL_MIN_DEFAULT;
 }
 
-export async function calcularMonto(ticketId, fechaEntrada, precioMinuto, tarifaMinima, ahora=Date.now()){
-  const {minutos,bruto}=calcularTarifa(fechaEntrada,precioMinuto,tarifaMinima,ahora);
+export async function calcularMonto(ticketId, fechaEntrada, precioMinuto, tarifaMinima, ahora=Date.now(), tarifasHorario=null){
+  const {minutos,bruto}=calcularTarifa(fechaEntrada,precioMinuto,tarifaMinima,ahora,tarifasHorario);
   const dep=await pool.query(
     `SELECT monto FROM payments WHERE ticket_id=$1 AND tipo='RESERVA' AND estado='APROBADO' LIMIT 1`,
     [ticketId]
@@ -67,14 +67,14 @@ export async function closeTicket(qr, clienteId, metodoPago, cotizacion=null){
   try {
     await client.query('BEGIN');
     const t=await client.query(
-      `SELECT t.*, e.precio_minuto, e.tarifa_minima, e.cupo_maximo, e.cliente_id, e.nombre AS estacionamiento_nombre, e.direccion AS estacionamiento_direccion
+      `SELECT t.*, e.precio_minuto, e.tarifa_minima, e.tarifas_horario, e.cupo_maximo, e.cliente_id, e.nombre AS estacionamiento_nombre, e.direccion AS estacionamiento_direccion
        FROM tickets t JOIN estacionamientos e ON e.id=t.estacionamiento_id
        WHERE t.codigo_qr=$1 AND t.estado='ACTIVO' FOR UPDATE`, [qr]
     );
     if(!t.rowCount) throw new Error('Ticket activo no encontrado');
     const row=t.rows[0];
     if(row.cliente_id !== clienteId) throw new Error('Este ticket no pertenece a uno de tus estacionamientos');
-    const actual=await calcularMonto(row.id,row.fecha_entrada,row.precio_minuto,row.tarifa_minima);
+    const actual=await calcularMonto(row.id,row.fecha_entrada,row.precio_minuto,row.tarifa_minima,undefined,row.tarifas_horario);
     // Si el dueño cotizó hace poco, se cobra lo que le dijo al cliente; nunca más que el cálculo
     // actual (p. ej. si el admin bajó la tarifa entremedio).
     const honrada=verificarCotizacion(cotizacion,qr);
@@ -98,14 +98,14 @@ export async function closeTicket(qr, clienteId, metodoPago, cotizacion=null){
 
 export async function quoteTicket(qr, clienteId){
   const t=await pool.query(
-    `SELECT t.*, e.precio_minuto, e.tarifa_minima, e.cliente_id, e.nombre AS estacionamiento_nombre, e.direccion AS estacionamiento_direccion
+    `SELECT t.*, e.precio_minuto, e.tarifa_minima, e.tarifas_horario, e.cliente_id, e.nombre AS estacionamiento_nombre, e.direccion AS estacionamiento_direccion
      FROM tickets t JOIN estacionamientos e ON e.id=t.estacionamiento_id
      WHERE t.codigo_qr=$1 AND t.estado='ACTIVO'`, [qr]
   );
   if(!t.rowCount) throw new Error('Ticket activo no encontrado');
   const row=t.rows[0];
   if(row.cliente_id !== clienteId) throw new Error('Este ticket no pertenece a uno de tus estacionamientos');
-  const {monto,descuento,minutos}=await calcularMonto(row.id,row.fecha_entrada,row.precio_minuto,row.tarifa_minima);
+  const {monto,descuento,minutos}=await calcularMonto(row.id,row.fecha_entrada,row.precio_minuto,row.tarifa_minima,undefined,row.tarifas_horario);
   const {token,expira}=firmarCotizacion({codigo_qr:row.codigo_qr,monto,descuento,minutos});
   return {...row, monto, minutos, descuentoReserva:descuento, cotizacion:token, cotizacion_expira:expira};
 }
@@ -113,7 +113,7 @@ export async function quoteTicket(qr, clienteId){
 export async function activeTickets(clienteId, estacionamientoId){
   const r=await pool.query(
     `SELECT t.id,t.codigo_qr,t.patente,t.fecha_entrada,t.estado,t.reserva_expira,
-            e.id AS estacionamiento_id,e.nombre AS estacionamiento_nombre,e.precio_minuto,e.tarifa_minima
+            e.id AS estacionamiento_id,e.nombre AS estacionamiento_nombre,e.precio_minuto,e.tarifa_minima,e.tarifas_horario
      FROM tickets t JOIN estacionamientos e ON e.id=t.estacionamiento_id
      WHERE e.cliente_id=$1 AND t.estado IN ('ACTIVO','RESERVADO')
        AND ($2::uuid IS NULL OR t.estacionamiento_id=$2)
@@ -173,7 +173,7 @@ export async function getTicketPublico(qr){
   const r=await pool.query(
     `SELECT t.id,t.codigo_qr,t.patente,t.estado,t.fecha_entrada,t.fecha_salida,t.reserva_expira,t.monto,
             e.nombre AS estacionamiento_nombre,e.direccion AS estacionamiento_direccion,
-            e.precio_minuto,e.tarifa_minima
+            e.precio_minuto,e.tarifa_minima,e.tarifas_horario
      FROM tickets t JOIN estacionamientos e ON e.id=t.estacionamiento_id
      WHERE t.codigo_qr=$1`, [qr]
   );
@@ -188,13 +188,14 @@ export async function getTicketPublico(qr){
     estacionamiento_direccion:row.estacionamiento_direccion,
     precio_minuto:Number(row.precio_minuto),
     tarifa_minima:Number(row.tarifa_minima),
+    tarifas_horario:row.tarifas_horario,
     fecha_entrada:row.fecha_entrada,
     fecha_salida:row.fecha_salida,
     reserva_expira:row.reserva_expira,
     ahora:new Date(ahora).toISOString()
   };
   if(row.estado==='ACTIVO'){
-    const {minutos,bruto,descuento,monto}=await calcularMonto(row.id,row.fecha_entrada,row.precio_minuto,row.tarifa_minima,ahora);
+    const {minutos,bruto,descuento,monto}=await calcularMonto(row.id,row.fecha_entrada,row.precio_minuto,row.tarifa_minima,ahora,row.tarifas_horario);
     return {...res,minutos,bruto,descuentoReserva:descuento,monto};
   }
   if(row.estado==='CERRADO'){
