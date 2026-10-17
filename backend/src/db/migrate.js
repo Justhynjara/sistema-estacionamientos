@@ -12,6 +12,10 @@ export async function runMigrations() {
     dir: path.join(__dirname, '../../migrations'),
     direction: 'up',
     migrationsTable: 'pgmigrations',
+    // En Render pueden arrancar dos instancias a la vez (el despliegue nuevo y la anterior que
+    // despierta de la hibernación): la segunda espera a que la primera termine las migraciones en
+    // vez de fallar y abortar el despliegue.
+    advisoryLockMode: 'wait',
     log: msg => logger.info(msg)
   });
 }
