@@ -24,6 +24,8 @@ CREATE TABLE IF NOT EXISTS estacionamientos (
   cupo_maximo INTEGER NOT NULL CHECK (cupo_maximo > 0),
   cupos_disponibles INTEGER NOT NULL CHECK (cupos_disponibles >= 0),
   estado BOOLEAN NOT NULL DEFAULT TRUE,
+  -- Horario de atención (ver src/utils/horario.js); NULL = abierto las 24 horas.
+  horario JSONB,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   CHECK (cupos_disponibles <= cupo_maximo)
 );

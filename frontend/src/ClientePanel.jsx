@@ -7,6 +7,9 @@ import QRScanner from './QRScanner.jsx';
 import { qrPayload, extraerCodigoQR } from './utils/qr.js';
 import { formatDuracion, formatTarifa } from './utils/tarifa.js';
 import Tarifa from './Tarifa.jsx';
+import EstadoHorario from './EstadoHorario.jsx';
+import HorarioEditor from './HorarioEditor.jsx';
+import { resumenHorario } from './utils/horario.js';
 import Icon from './Icon.jsx';
 import TabsBase from './Tabs.jsx';
 import Capacidad from './Capacidad.jsx';
@@ -335,6 +338,7 @@ function EstacionamientosTab({ parking, reloadParking, ticketInicial, onTicketCo
   const [ticketEmitido, setTicketEmitido] = useState(null);
   const [emitiendo, setEmitiendo] = useState(null); // { p, patente, loading }
   const [seleccionadoId, setSeleccionadoId] = useState(null);
+  const [editandoHorario, setEditandoHorario] = useState(null); // id del estacionamiento
   // Se fija solo en el montaje: el propio GestionTicketPanel limpia ticketInicial (para sacar el
   // código de la URL) apenas lo consume, y no queremos que ese cambio nos saque de este modo a
   // mitad del cobro (desmontando el panel justo cuando la cotización está por llegar).
@@ -376,9 +380,21 @@ function EstacionamientosTab({ parking, reloadParking, ticketInicial, onTicketCo
               <p className="muted small" style={{ margin: 0 }}>{p.direccion}</p>
               <Capacidad libres={p.cupos_disponibles} total={p.cupo_maximo} />
               <p className="small" style={{ margin: 0 }}><Tarifa {...p} /></p>
-              <div className="row-form">
-                <button type="button" onClick={() => setSeleccionadoId(p.id)} aria-label={`Abrir ${p.nombre}`}>Abrir<Icon name="arrowRight" size={16} /></button>
-              </div>
+              <p className="small" style={{ margin: 0 }}><EstadoHorario estado={p.horario_estado} /></p>
+              <p className="muted small" style={{ margin: 0 }}><Icon name="clock" size={15} /> {resumenHorario(p.horario)}</p>
+              {editandoHorario === p.id ? (
+                <HorarioEditor
+                  nombre={p.nombre}
+                  horario={p.horario}
+                  onCancelar={() => setEditandoHorario(null)}
+                  onGuardar={async horario => { await api.put(`/parking/${p.id}/horario`, { horario }); setEditandoHorario(null); reloadParking(); }}
+                />
+              ) : (
+                <div className="row-form">
+                  <button type="button" onClick={() => setSeleccionadoId(p.id)} aria-label={`Abrir ${p.nombre}`}>Abrir<Icon name="arrowRight" size={16} /></button>
+                  <button type="button" className="secondary" onClick={() => setEditandoHorario(p.id)} aria-label={`Horario de ${p.nombre}`}><Icon name="clock" size={16} />Horario</button>
+                </div>
+              )}
             </div>
           ))}
           {parking.length === 0 && <div className="empty-state">Aún no tienes estacionamientos asignados. Pide al administrador que registre uno a tu nombre.</div>}

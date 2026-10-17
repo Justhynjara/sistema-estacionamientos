@@ -13,6 +13,8 @@ import { redirectToWebpay } from './utils/webpay.js';
 import Icon from './Icon.jsx';
 import Capacidad from './Capacidad.jsx';
 import Tarifa from './Tarifa.jsx';
+import EstadoHorario from './EstadoHorario.jsx';
+import { textoEstado } from './utils/horario.js';
 
 const SOCKET_URL = API_ORIGIN;
 // Con destino se buscan estacionamientos para dejar el auto y caminar: radio corto. Sin destino
@@ -28,9 +30,12 @@ function divIcon(html, size) {
 }
 const userIcon = divIcon('<div class="map-yo"></div>', 18);
 const destinoIcon = divIcon('<div class="map-destino"></div>', 16);
-function paradaIcon(n, lleno, sel) {
-  return divIcon(`<div class="map-stop${lleno ? ' lleno' : ''}${sel ? ' sel' : ''}"><span>${n}</span></div>`, 34);
+function paradaIcon(n, lleno, sel, cerrado) {
+  return divIcon(`<div class="map-stop${cerrado ? ' cerrado' : lleno ? ' lleno' : ''}${sel ? ' sel' : ''}"><span>${n}</span></div>`, 34);
 }
+
+// Fuera de su horario un estacionamiento se muestra, pero no se puede reservar ni ir hacia él.
+const estaCerrado = p => p.horario_estado ? !p.horario_estado.abierto : false;
 
 function formatDistancia(km) {
   return km < 1 ? `${Math.round(km * 1000)} m` : `${km.toFixed(1).replace('.', ',')} km`;
@@ -280,6 +285,7 @@ export default function BuscarCercanos({ reservaCodigoInicial } = {}) {
   }
 
   async function verRuta(p) {
+    if (estaCerrado(p)) return;
     if (!userPos) { setError('Aún no se ha obtenido tu ubicación actual'); return; }
     setSelectedId(p.id);
     try {
@@ -297,6 +303,7 @@ export default function BuscarCercanos({ reservaCodigoInicial } = {}) {
   }
 
   function iniciarReserva(p) {
+    if (estaCerrado(p)) return;
     setReservaPendiente(p);
     setPatenteReserva('');
     setReservaError('');
@@ -459,14 +466,16 @@ export default function BuscarCercanos({ reservaCodigoInicial } = {}) {
             <ol className="paradas">
               {lista.map(p => {
                 const lleno = p.cupos_disponibles <= 0;
+                const cerrado = estaCerrado(p);
                 const sel = selectedId === p.id;
                 return (
-                  <li className={'parada' + (lleno ? ' lleno' : '') + (sel ? ' sel' : '')} key={p.id}>
+                  <li className={'parada' + (cerrado ? ' cerrado' : lleno ? ' lleno' : '') + (sel ? ' sel' : '')} key={p.id}>
                     <span className="k" aria-hidden="true">{p.n}</span>
                     <div className="top">
                       <div>
                         <h3>{p.nombre}</h3>
                         <p className="addr">{p.direccion}</p>
+                        <p className="horario-linea"><EstadoHorario estado={p.horario_estado} /></p>
                       </div>
                       {modo === 'cerca' && p.distancia_km < 0.05 ? (
                         <div className="dist">
@@ -491,13 +500,13 @@ export default function BuscarCercanos({ reservaCodigoInicial } = {}) {
                       {p.ruta && p.ruta.duracionMin >= 1 && <span><Icon name="car" size={16} /><span><span className="num">{Math.round(p.ruta.duracionMin)}</span> min en auto desde tu partida</span></span>}
                     </div>
                     <div className="acciones">
-                      <button type="button" className="dark small" onClick={() => iniciarReserva(p)} disabled={lleno}>
-                        {lleno ? 'Sin cupos' : 'Reservar · $100'}
+                      <button type="button" className="dark small" onClick={() => iniciarReserva(p)} disabled={lleno || cerrado}>
+                        {cerrado ? 'Cerrado ahora' : lleno ? 'Sin cupos' : 'Reservar · $100'}
                       </button>
-                      <button type="button" className="secondary small" onClick={() => verRuta(p)} disabled={lleno} aria-pressed={sel}>
+                      <button type="button" className="secondary small" onClick={() => verRuta(p)} disabled={lleno || cerrado} aria-pressed={sel}>
                         <Icon name="route" size={16} />{sel ? 'Ruta trazada' : 'Ver ruta'}
                       </button>
-                      <button type="button" className="waze" onClick={() => abrirWaze(p)}>
+                      <button type="button" className="waze" onClick={() => abrirWaze(p)} disabled={cerrado}>
                         <Icon name="nav" size={16} />Navegar con Waze
                       </button>
                     </div>
@@ -524,6 +533,7 @@ export default function BuscarCercanos({ reservaCodigoInicial } = {}) {
           <li><i className="ley-ruta" aria-hidden="true" />Tu ruta</li>
           <li><i className="ley-stop" aria-hidden="true" />Con cupos</li>
           <li><i className="ley-stop lleno" aria-hidden="true" />Lleno</li>
+          <li><i className="ley-stop cerrado" aria-hidden="true" />Cerrado</li>
         </ul>
         <MapContainer center={[center.lat, center.lng]} zoom={14}>
           <RecenterMap lat={center.lat} lng={center.lng} />
@@ -553,11 +563,13 @@ export default function BuscarCercanos({ reservaCodigoInicial } = {}) {
             </Marker>
           )}
           {lista.map(p => (
-            <Marker key={p.id} position={[Number(p.latitud), Number(p.longitud)]} icon={paradaIcon(p.n, p.cupos_disponibles <= 0, selectedId === p.id)}>
+            <Marker key={p.id} position={[Number(p.latitud), Number(p.longitud)]} icon={paradaIcon(p.n, p.cupos_disponibles <= 0, selectedId === p.id, estaCerrado(p))}>
               <Popup>
                 <strong>{p.n}. {p.nombre}</strong><br />
-                {p.cupos_disponibles > 0 ? `${p.cupos_disponibles} libres de ${p.cupo_maximo}` : 'Lleno'}<br />
-                <button type="button" onClick={() => verRuta(p)} disabled={p.cupos_disponibles <= 0}>Ver ruta</button>
+                {estaCerrado(p)
+                  ? `Cerrado · ${textoEstado(p.horario_estado).detalle}`
+                  : p.cupos_disponibles > 0 ? `${p.cupos_disponibles} libres de ${p.cupo_maximo}` : 'Lleno'}<br />
+                <button type="button" onClick={() => verRuta(p)} disabled={p.cupos_disponibles <= 0 || estaCerrado(p)}>Ver ruta</button>
               </Popup>
             </Marker>
           ))}

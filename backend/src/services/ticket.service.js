@@ -3,10 +3,11 @@ import { generateQR } from '../utils/generateQR.js';
 import { getIO } from '../sockets/io.js';
 import { calcularTarifa } from '../utils/tarifa.js';
 import { firmarCotizacion, verificarCotizacion } from '../utils/cotizacion.js';
+import { motivoNoReservable } from '../utils/horario.js';
 
 const RESERVATION_TTL_MIN_DEFAULT = 10;
 
-async function getReservationTtlMin(){
+export async function getReservationTtlMin(){
   const r=await pool.query(`SELECT valor FROM parametros_sistema WHERE clave='reserva_ttl_min'`);
   const min=Number(r.rows[0]?.valor);
   return Number.isFinite(min) && min>0 ? min : RESERVATION_TTL_MIN_DEFAULT;
@@ -132,6 +133,8 @@ export async function reserveTicket(estacionamientoId, patente){
       [estacionamientoId]
     );
     if(!p.rowCount) throw new Error('Estacionamiento no encontrado');
+    const cerrado=motivoNoReservable(p.rows[0].horario, ttlMin);
+    if(cerrado) throw new Error(cerrado);
     if(p.rows[0].cupos_disponibles <= 0) throw new Error('Sin cupos disponibles');
 
     const qr=generateQR();

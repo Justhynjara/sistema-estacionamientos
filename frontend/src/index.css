@@ -624,3 +624,31 @@ body:has(.buscador) .site-footer .inner,body:has(.buscador) .owner-strip .inner{
 .escaner-aviso{margin:0;background:var(--panel)}
 /* Al bajar solo hasta el cobro tras escanear, que el encabezado fijo no tape la tarjeta. */
 .card.cobro,.card .badge{scroll-margin-top:calc(var(--header-h) + 16px)}
+
+/* ---------- Horario de atención ---------- */
+/* Abierto en el verde de "con cupos"; cerrado en tinta atenuada, sin rojo: no es un error, solo
+   está fuera de horario. La palabra siempre va escrita, el color solo la acompaña. */
+.estado-horario{font-size:.86rem;color:var(--muted)}
+.estado-horario b{font-weight:800}
+.estado-horario.abierto b{color:var(--free)}
+.estado-horario.cerrado b{color:var(--ink)}
+.parada .horario-linea{margin:3px 0 0}
+.parada.cerrado .k{border-color:var(--muted);color:var(--muted);border-style:dashed}
+.parada.cerrado h3{color:var(--muted)}
+.parada.cerrado .capacidad{opacity:.55}
+.parada .acciones .waze:disabled{color:var(--muted);opacity:.6}
+.map-stop.cerrado,.ley-stop.cerrado{background:var(--panel-alt);border-color:var(--muted);border-style:dashed;color:var(--muted)}
+.map-stop.cerrado{box-shadow:0 1px 3px rgba(14,23,38,.2)}
+
+.horario-editor{display:grid;gap:12px;margin-top:6px;padding-top:12px;border-top:1px solid var(--rule-soft)}
+.horario-dias{display:grid;gap:8px}
+.horario-dia{display:flex;flex-wrap:wrap;align-items:center;gap:6px 10px;margin:0;padding:8px 10px;border:1px solid var(--rule-soft);border-radius:var(--radius-sm)}
+.horario-dia legend{float:left;width:6.5em;padding:0;font-weight:700;font-size:.9rem}
+.horario-dia select{width:auto;margin:0}
+.horario-horas{display:inline-flex;align-items:center;gap:6px}
+.horario-horas input{width:auto;margin:0;padding:8px}
+.horario-dia .link-button{margin-left:auto;font-size:.82rem}
+@media (max-width:640px){
+  .horario-dia legend{float:none;width:100%}
+  .horario-dia .link-button{margin-left:0}
+}

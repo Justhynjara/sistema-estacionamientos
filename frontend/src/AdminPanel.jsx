@@ -8,6 +8,9 @@ import Tarifa from './Tarifa.jsx';
 import Icon from './Icon.jsx';
 import TabsBase from './Tabs.jsx';
 import Capacidad from './Capacidad.jsx';
+import EstadoHorario from './EstadoHorario.jsx';
+import HorarioEditor from './HorarioEditor.jsx';
+import { resumenHorario } from './utils/horario.js';
 
 const TABS = [['usuarios', 'Usuarios', 'users'], ['parking', 'Estacionamientos', 'building'], ['solicitudes', 'Solicitudes', 'clipboard'], ['parametros', 'Parámetros', 'sliders'], ['auditoria', 'Auditoría', 'history']];
 function Tabs({ tab, setTab }) {
@@ -15,6 +18,7 @@ function Tabs({ tab, setTab }) {
 }
 
 function ParkingTab({ parking, reloadParking, users }) {
+  const [editandoHorario, setEditandoHorario] = useState(null); // id del estacionamiento
   const initialForm = { cliente_id: '', nombre: '', direccion: '', precio_minuto: '', tarifa_minima: '', cupo_maximo: '' };
   const [form, setForm] = useState(initialForm);
   const [ubicacion, setUbicacion] = useState(null);
@@ -104,6 +108,8 @@ function ParkingTab({ parking, reloadParking, users }) {
             <p className="muted small" style={{ margin: 0 }}>{p.direccion}</p>
             <Capacidad libres={p.cupos_disponibles} total={p.cupo_maximo} />
             <p className="small" style={{ margin: 0 }}><Tarifa {...p} /></p>
+            <p className="small" style={{ margin: 0 }}><EstadoHorario estado={p.horario_estado} /></p>
+            <p className="muted small" style={{ margin: 0 }}><Icon name="clock" size={15} /> {resumenHorario(p.horario)}</p>
             <p className="muted small" style={{ margin: 0 }}><Icon name="user" size={15} /> Dueño: {dueñoDe(p.cliente_id)}</p>
             <p className="muted small" style={{ margin: 0 }}>
               <Icon name="ticket" size={15} /> <span className="mono">{p.total_tickets ?? 0}</span> tickets en total{p.tickets_activos ? ` (${p.tickets_activos} activo${p.tickets_activos === 1 ? '' : 's'} ahora)` : ''}
@@ -111,7 +117,16 @@ function ParkingTab({ parking, reloadParking, users }) {
             <div className="row-form">
               <button type="button" className="secondary small" onClick={() => cambiarCupo(p.id, p.cupo_maximo)}>Cambiar cupo máximo</button>
               <button type="button" className="secondary small" onClick={() => cambiarTarifa(p)}>Cambiar tarifa</button>
+              <button type="button" className="secondary small" onClick={() => setEditandoHorario(p.id)} aria-label={`Horario de ${p.nombre}`}>Horario</button>
             </div>
+            {editandoHorario === p.id && (
+              <HorarioEditor
+                nombre={p.nombre}
+                horario={p.horario}
+                onCancelar={() => setEditandoHorario(null)}
+                onGuardar={async horario => { await api.put(`/admin/parking/${p.id}/horario`, { horario }); setEditandoHorario(null); reloadParking(); }}
+              />
+            )}
             {reasignando?.p.id === p.id ? (
               <div className="row-form">
                 <select value={reasignando.clienteId} onChange={e => setReasignando({ ...reasignando, clienteId: e.target.value })} aria-label={`Nuevo dueño de ${p.nombre}`}>

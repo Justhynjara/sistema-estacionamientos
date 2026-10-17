@@ -3,7 +3,8 @@ import { pool } from '../config/database.js';
 import { env } from '../config/env.js';
 import { logger } from '../config/logger.js';
 import { webpayTransaction } from './webpay.service.js';
-import { reserveTicket } from './ticket.service.js';
+import { reserveTicket, getReservationTtlMin } from './ticket.service.js';
+import { motivoNoReservable } from '../utils/horario.js';
 
 const STALE_PAYMENT_MIN = 30; // Transbank invalida el token bastante antes de esto.
 
@@ -35,8 +36,13 @@ async function getReservaMontoClp() {
 }
 
 export async function startReservationPayment(estacionamientoId, patente) {
-  const p = await pool.query('SELECT id,cupos_disponibles,estado FROM estacionamientos WHERE id=$1', [estacionamientoId]);
+  const p = await pool.query('SELECT id,cupos_disponibles,estado,horario FROM estacionamientos WHERE id=$1', [estacionamientoId]);
   if (!p.rowCount || !p.rows[0].estado) throw new Error('Estacionamiento no encontrado');
+  // Antes de cobrar: no se paga una reserva en un estacionamiento cerrado (o que cierra antes de
+  // que venza la reserva). Si cerrara justo entre el pago y la confirmación, reserveTicket lo
+  // rechaza y el cobro se anula como en el caso sin cupo.
+  const cerrado = motivoNoReservable(p.rows[0].horario, await getReservationTtlMin());
+  if (cerrado) throw new Error(cerrado);
   if (p.rows[0].cupos_disponibles <= 0) throw new Error('Sin cupos disponibles');
 
   const monto = await getReservaMontoClp();
