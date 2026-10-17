@@ -230,16 +230,16 @@ function GestionTicketPanel({ reloadParking, ticketInicial, onTicketConsumido, e
         {activos.length === 0 && <div className="empty-state">No hay vehículos ni reservas pendientes en este momento.</div>}
         {activos.length > 0 && (
           <div className="table-wrap">
-            <table className="table">
+            <table className="table activos">
               <thead><tr><th>Patente</th>{!estacionamientoId && <th>Estacionamiento</th>}<th>Estado</th><th>Entrada</th><th>Tiempo</th><th><span className="sr-only">Acción</span></th></tr></thead>
               <tbody>
                 {activos.map(t => (
                   <tr key={t.id}>
-                    <td className="mono"><strong>{t.patente || '—'}</strong></td>
-                    {!estacionamientoId && <td>{t.estacionamiento_nombre}</td>}
-                    <td><EstadoActivo t={t} ahora={ahora} /></td>
-                    <td className="mono">{fmtHora(t.fecha_entrada)}</td>
-                    <td className="mono">{t.estado === 'RESERVADO' && t.reserva_expira
+                    <td className="mono c-patente"><strong>{t.patente || '—'}</strong></td>
+                    {!estacionamientoId && <td className="c-lugar">{t.estacionamiento_nombre}</td>}
+                    <td className="c-estado"><EstadoActivo t={t} ahora={ahora} /></td>
+                    <td className="mono c-entrada" data-label="Entrada">{fmtHora(t.fecha_entrada)}</td>
+                    <td className="mono c-tiempo" data-label="Tiempo">{t.estado === 'RESERVADO' && t.reserva_expira
                       ? `vence en ${formatRestante(estadoReserva(t.reserva_expira, ahora).restanteMs)}`
                       : tiempoTranscurrido(t.fecha_entrada)}</td>
                     <td className="acciones">

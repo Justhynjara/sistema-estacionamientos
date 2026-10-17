@@ -686,4 +686,56 @@ body:has(.buscador) .site-footer .inner,body:has(.buscador) .owner-strip .inner{
 .tablero .variacion.baja{color:#ffc2bb}
 .flujo .flujo-valor{display:block;text-align:center;font:700 .72rem/1.2 var(--num);color:var(--ink);margin-bottom:3px;white-space:nowrap;font-variant-numeric:tabular-nums}
 /* Con el monto sobre cada barra: el espacio de arriba es para el rótulo de la barra más alta. */
-.flujo.con-valores{padding-top:20px;height:170px}
+.flujo.con-valores{padding-top:34px;height:184px}
+
+/* Vehículos y reservas en el teléfono: cada fila pasa a ser una tarjeta (patente y estado arriba,
+   entrada y tiempo abajo, la acción a todo el ancho), así no hay que desplazar la tabla de lado. */
+@media (max-width:640px){
+  .table.activos thead{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+  .table.activos,.table.activos tbody{display:block;min-width:0}
+  .table.activos tr{display:grid;grid-template-columns:1fr auto;grid-template-areas:"pat est" "lug lug" "ent tie" "acc acc";gap:6px 12px;padding:12px 14px;border-bottom:1px solid var(--rule-soft)}
+  .table.activos td{display:block;padding:0;border:0;text-align:left}
+  .table.activos .c-patente{grid-area:pat;font-size:1.05rem}
+  .table.activos .c-estado{grid-area:est;justify-self:end}
+  .table.activos .c-lugar{grid-area:lug;color:var(--muted);font-size:.86rem}
+  .table.activos .c-entrada{grid-area:ent;font-size:.88rem}
+  .table.activos .c-tiempo{grid-area:tie;font-size:.88rem;justify-self:end}
+  .table.activos [data-label]::before{content:attr(data-label) " ";font-family:var(--face);font-weight:700;font-size:.74rem;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+  .table.activos td.acciones{grid-area:acc;text-align:left}
+  .table.activos td.acciones button{width:100%;padding:10px 14px}
+}
+.flujo .flujo-valor small{display:block;font:600 .66rem/1.1 var(--face);color:var(--muted)}
+
+/* ---------- Cómo funciona (pie de la portada) ---------- */
+.como-funciona{background:var(--bg);border-top:1px solid var(--rule)}
+.como-funciona .inner{max-width:1240px;margin:0 auto;padding:44px 28px 52px;display:grid;grid-template-columns:minmax(0,300px) minmax(0,1fr);gap:24px 48px;align-items:start}
+.cf-video{display:grid;gap:12px;justify-items:center}
+/* El video es una pantalla de teléfono grabada: se presenta dentro de un marco de teléfono. */
+.cf-telefono{width:100%;max-width:290px;border:10px solid var(--ink);border-radius:36px;overflow:hidden;background:var(--ink);box-shadow:var(--shadow-md)}
+.cf-telefono video{display:block;width:100%;height:auto;aspect-ratio:390/844;background:var(--panel)}
+.cf-transcripcion{width:100%;max-width:290px;font-size:.88rem}
+.cf-transcripcion summary{cursor:pointer;font-weight:700;color:var(--route)}
+.cf-transcripcion ol{margin:8px 0 0;padding-left:20px;color:var(--muted);display:grid;gap:4px}
+.cf-texto{min-width:0;display:grid;gap:18px}
+.cf-eyebrow{margin:0;font-size:.78rem;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--route)}
+.cf-cabecera{grid-column:1/-1;display:grid;gap:6px}
+.cf-cabecera h2{margin:0;font-size:clamp(1.4rem,2.6vw,1.9rem);line-height:1.15;text-wrap:balance}
+/* Los pasos como paradas de una ruta: nodo numerado y una línea azul que los une. */
+.cf-pasos{list-style:none;margin:0;padding:0;display:grid;gap:0}
+.cf-pasos li{position:relative;display:grid;grid-template-columns:34px minmax(0,1fr);gap:14px;padding-bottom:16px}
+.cf-pasos li:not(:last-child)::before{content:"";position:absolute;left:14px;top:30px;bottom:0;width:6px;background:var(--route)}
+.cf-num{position:relative;z-index:1;width:34px;height:34px;border-radius:50%;background:var(--panel);border:4px solid var(--ink);display:grid;place-items:center;font:700 .9rem/1 var(--num)}
+.cf-pasos h3{margin:5px 0 2px;font-size:1rem;display:flex;gap:7px;align-items:center}
+.cf-pasos p{margin:0;color:var(--muted);max-width:60ch}
+.cf-duenos{margin:0;padding:12px 14px;border-left:4px solid var(--sign);background:var(--panel);border-radius:0 var(--radius-sm) var(--radius-sm) 0;color:var(--muted);max-width:68ch}
+.cf-duenos b{color:var(--ink)}
+.cf-instalar{display:grid;gap:12px;padding:18px;border:1px solid var(--rule);border-radius:var(--radius);background:var(--panel)}
+.cf-instalar h3{margin:0;font-size:1.05rem}
+.cf-instalar > button{justify-self:start}
+.cf-instalar .badge{margin:0}
+.cf-instrucciones{margin:0;padding-left:22px;display:grid;gap:7px;max-width:62ch}
+.cf-instrucciones li::marker{font-family:var(--num);font-weight:700;color:var(--route)}
+.cf-instrucciones .icon{vertical-align:-3px}
+@media (max-width:760px){
+  .como-funciona .inner{grid-template-columns:minmax(0,1fr);gap:28px;padding:32px 16px 40px}
+}

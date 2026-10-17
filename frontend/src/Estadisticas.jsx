@@ -103,7 +103,10 @@ export default function Estadisticas({ estacionamientoId, dias }) {
                 title={`${etiquetaDia(d.fecha, d.dia_semana)}: ${clp(d.cobrado)} · ${d.vehiculos} ${d.vehiculos === 1 ? 'vehículo' : 'vehículos'}`}
                 className={'col' + (d.cobrado === 0 ? ' cero' : '') + (d.fecha === mejorDia.fecha ? ' pico' : '')}
               >
-                {dias <= 7 && d.cobrado > 0 && <b className="flujo-valor">{clpCorto(d.cobrado)}</b>}
+                {dias <= 7 && d.cobrado > 0 && (
+                  // "mil" va en su propia línea: siete montos lado a lado no caben en un teléfono.
+                  <b className="flujo-valor">{clpCorto(d.cobrado).replace(' mil', '')}{d.cobrado >= 1000 && <small>mil</small>}</b>
+                )}
                 <i style={{ height: `${Math.max(2, (d.cobrado / maxCobrado) * 100)}%` }} />
               </div>
             ))}

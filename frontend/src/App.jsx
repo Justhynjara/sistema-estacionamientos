@@ -12,6 +12,7 @@ import LegalPage from './legal/LegalPage.jsx';
 import Footer from './legal/Footer.jsx';
 import CookieNotice from './legal/CookieNotice.jsx';
 import {CONTACTO_LEGAL} from './legal/contenido.js';
+import ComoFunciona from './ComoFunciona.jsx';
 import Icon,{SignE} from './Icon.jsx';
 
 const NOMBRE_ROL={ADMIN:'Administrador',CLIENTE:'Dueño',SOPORTE:'Soporte',USUARIO:'Conductor'};
@@ -313,6 +314,7 @@ function App(){
            </div>
          </div>
        </section>
+       <ComoFunciona/>
      </main>
      <ChatBot onAbrirSolicitud={()=>setMostrarSolicitud(true)}/>
      <EscanearTicket onCodigo={abrirTicketEscaneado} rotulo="Escanear mi ticket" ayuda="Apunta al código QR de tu ticket para ver cuánto tiempo llevas y cuánto vas a pagar."/>
