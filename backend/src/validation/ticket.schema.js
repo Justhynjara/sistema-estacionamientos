@@ -43,6 +43,12 @@ export const dashboardQuerySchema = z.object({
   fecha: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Fecha debe tener formato YYYY-MM-DD').optional()
 });
 
+// Estadísticas de los últimos 7 o 30 días.
+export const estadisticasQuerySchema = z.object({
+  estacionamiento_id: uuid.optional(),
+  dias: z.enum(['7', '30'], { message: 'El período debe ser 7 o 30 días' }).default('7').transform(Number)
+});
+
 export const activeQuerySchema = z.object({
   estacionamiento_id: uuid.optional()
 });

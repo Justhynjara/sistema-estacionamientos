@@ -14,6 +14,7 @@ import { estadoReserva, formatRestante } from './utils/reserva.js';
 import Icon from './Icon.jsx';
 import TabsBase from './Tabs.jsx';
 import Capacidad from './Capacidad.jsx';
+import Estadisticas from './Estadisticas.jsx';
 
 // Un poco menos que el plazo del servidor (3 min), para no confirmar con una cotización que vence en el camino.
 const COTIZACION_VIGENTE_MS = 170000;
@@ -531,10 +532,13 @@ function DashboardTab({ parking }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [recarga, setRecarga] = useState(0);
+  // 'dia': el detalle de una fecha; '7' / '30': estadísticas de los últimos días.
+  const [vista, setVista] = useState('dia');
 
   // Igual que la tabla de vehículos activos, se refresca solo: si no, una venta recién cobrada no
   // aparece hasta que el dueño cambie el filtro o recargue la página a mano.
   useEffect(() => {
+    if (vista !== 'dia') return;
     let cancelado = false;
     function cargar(mostrarSpinner) {
       if (mostrarSpinner) setLoading(true);
@@ -546,7 +550,7 @@ function DashboardTab({ parking }) {
     cargar(true);
     const id = setInterval(() => cargar(false), 20000);
     return () => { cancelado = true; clearInterval(id); };
-  }, [estacionamientoId, fecha, recarga]);
+  }, [estacionamientoId, fecha, recarga, vista]);
 
   const esHoy = fecha === todayStr();
   const maxEntradas = data ? Math.max(1, ...data.flujoPorHora.map(h => h.entradas)) : 1;
@@ -567,13 +571,20 @@ function DashboardTab({ parking }) {
             <option value="">Todos mis estacionamientos</option>
             {parking.map(p => <option key={p.id} value={p.id}>{p.nombre}</option>)}
           </select>
-          <input type="date" value={fecha} onChange={e => setFecha(e.target.value)} max={todayStr()} aria-label="Filtrar por fecha" />
+          <div className="segmentos" role="radiogroup" aria-label="Período">
+            {[['dia', 'Un día'], ['7', '7 días'], ['30', '30 días']].map(([v, texto]) => (
+              <button key={v} type="button" role="radio" className="filtro" aria-checked={vista === v} onClick={() => setVista(v)}>{texto}</button>
+            ))}
+          </div>
+          {vista === 'dia' && <input type="date" value={fecha} onChange={e => setFecha(e.target.value)} max={todayStr()} aria-label="Filtrar por fecha" />}
         </div>
       </div>
 
-      {loading && <p className="loading-line"><span className="spinner" />Cargando datos...</p>}
+      {vista !== 'dia' && <Estadisticas estacionamientoId={estacionamientoId} dias={Number(vista)} />}
 
-      {error && !loading && (
+      {vista === 'dia' && loading && <p className="loading-line"><span className="spinner" />Cargando datos...</p>}
+
+      {vista === 'dia' && error && !loading && (
         <div className="card" role="alert">
           <p className="badge off" style={{ margin: 0 }}>
             {data ? `${error} Se muestran los últimos datos cargados.` : error}
@@ -584,7 +595,7 @@ function DashboardTab({ parking }) {
         </div>
       )}
 
-      {data && !loading && (
+      {vista === 'dia' && data && !loading && (
         <>
           <section className="tablero" aria-label="Resumen del día">
             <div className="celda">

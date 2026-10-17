@@ -3,8 +3,9 @@ import {auth} from '../middleware/auth.middleware.js';
 import {roles} from '../middleware/role.middleware.js';
 import {validateBody,validateQuery,validateParams} from '../middleware/validate.middleware.js';
 import {ticketPublicoLimiter,reservaPublicaLimiter} from '../middleware/rateLimit.middleware.js';
+import {ticketsEstadisticas} from '../services/estadisticas.service.js';
 import {createTicket,closeTicket,reserveTicket,checkinTicket,ticketsDashboard,quoteTicket,activeTickets,getReservaPublica,getTicketPublico} from '../services/ticket.service.js';
-import {createTicketSchema,reserveTicketSchema,closeTicketSchema,closeTicketWithMethodSchema,checkinSchema,dashboardQuerySchema,activeQuerySchema,codigoParamSchema} from '../validation/ticket.schema.js';
+import {createTicketSchema,reserveTicketSchema,closeTicketSchema,closeTicketWithMethodSchema,checkinSchema,dashboardQuerySchema,estadisticasQuerySchema,activeQuerySchema,codigoParamSchema} from '../validation/ticket.schema.js';
 
 const r=Router();
 
@@ -55,6 +56,10 @@ r.post('/checkin',auth,roles('CLIENTE'),validateBody(checkinSchema),async(req,re
 
 r.get('/dashboard',auth,roles('CLIENTE'),validateQuery(dashboardQuerySchema),async(req,res)=>{
   res.json(await ticketsDashboard(req.user.id, req.query.estacionamiento_id || null, req.query.fecha || null));
+});
+
+r.get('/estadisticas',auth,roles('CLIENTE'),validateQuery(estadisticasQuerySchema),async(req,res)=>{
+  res.json(await ticketsEstadisticas(req.user.id, req.query.estacionamiento_id || null, req.query.dias));
 });
 
 export default r;

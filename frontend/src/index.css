@@ -664,9 +664,9 @@ body:has(.buscador) .site-footer .inner,body:has(.buscador) .owner-strip .inner{
 .filtros{display:grid;gap:8px;margin:0 0 6px;padding-bottom:12px;border-bottom:1px solid var(--rule-soft)}
 .filtros-fila{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
 .filtros-etiqueta{font-size:.82rem;font-weight:700;color:var(--muted)}
-.filtros .filtro{display:inline-flex;align-items:center;gap:5px;padding:6px 12px;min-height:34px;font-size:.84rem;font-weight:700;border-radius:999px;background:var(--panel);color:var(--ink);border:1.5px solid var(--rule);box-shadow:none}
-.filtros .filtro:hover{background:var(--panel-alt);border-color:var(--ink);color:var(--ink)}
-.filtros .filtro[aria-pressed="true"],.filtros .filtro[aria-checked="true"]{background:var(--ink);border-color:var(--ink);color:#fff}
+.filtro{display:inline-flex;align-items:center;gap:5px;padding:6px 12px;min-height:34px;font-size:.84rem;font-weight:700;border-radius:999px;background:var(--panel);color:var(--ink);border:1.5px solid var(--rule);box-shadow:none}
+.filtro:hover{background:var(--panel-alt);border-color:var(--ink);color:var(--ink)}
+.filtro[aria-pressed="true"],.filtro[aria-checked="true"]{background:var(--ink);border-color:var(--ink);color:#fff}
 .opciones-cabecera{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:6px 12px}
 .opciones-cabecera .orden{width:auto;margin:0;padding:6px 8px;font-size:.84rem;font-weight:700}
 .parada .datos .costo{color:var(--ink)}
@@ -674,3 +674,13 @@ body:has(.buscador) .site-footer .inner,body:has(.buscador) .owner-strip .inner{
 
 /* Reserva en sus últimos minutos: el contador pasa a ámbar. */
 .ticket-metrica .valor.por-vencer{color:var(--warn)}
+
+/* ---------- Estadísticas del dueño ---------- */
+.segmentos{display:inline-flex;flex-wrap:wrap;gap:6px}
+/* Sobre el azul del tablero: verde y rojo aclarados (≥ 6:1). La flecha y el signo van siempre. */
+.tablero .variacion{font-weight:700}
+.tablero .variacion.sube{color:#a8ecc1}
+.tablero .variacion.baja{color:#ffc2bb}
+.flujo .flujo-valor{display:block;text-align:center;font:700 .72rem/1.2 var(--num);color:var(--ink);margin-bottom:3px;white-space:nowrap;font-variant-numeric:tabular-nums}
+/* Con el monto sobre cada barra: el espacio de arriba es para el rótulo de la barra más alta. */
+.flujo.con-valores{padding-top:20px;height:170px}
