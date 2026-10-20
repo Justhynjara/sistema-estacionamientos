@@ -3,12 +3,14 @@ import QRScanner from './QRScanner.jsx';
 import Icon from './Icon.jsx';
 import { extraerCodigoQR } from './utils/qr.js';
 
-// Los códigos de ticket y de reserva son UUID: cualquier otro QR (un menú, un enlace cualquiera)
-// se rechaza en vez de abrir una vista de ticket vacía.
+// Los tickets y reservas se emiten con un código hexadecimal aleatorio (generateQR en el backend:
+// 18 bytes = 36 caracteres); los más antiguos usaban UUID. Cualquier otro QR (un menú, un enlace
+// cualquiera) se rechaza en vez de abrir una vista de ticket vacía.
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const HEX = /^[0-9a-f]{32,64}$/i;
 export function codigoDeTicket(texto) {
   const c = extraerCodigoQR(texto);
-  return UUID.test(c) ? c : '';
+  return UUID.test(c) || HEX.test(c) ? c : '';
 }
 
 // Botón flotante, visible solo en teléfonos (lo decide el CSS), que abre la cámara para leer el
