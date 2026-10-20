@@ -4,7 +4,12 @@ export const API_ORIGIN=import.meta.env.VITE_API_URL || 'http://localhost:3000';
 // La sesión viaja en una cookie httpOnly que pone el propio servidor: el navegador la manda solo
 // con withCredentials:true, y JavaScript nunca llega a verla ni a guardarla (a diferencia del
 // token en localStorage de antes, que cualquier XSS podía leer y robar con un simple fetch).
-export const api=axios.create({baseURL:`${API_ORIGIN}/api`, withCredentials:true});
+// En la web publicada, VITE_API_BASE=/api: la propia web reenvía /api/* a la API (regla de
+// reescritura en Render), así la cookie de sesión es del mismo sitio. Como cookie de otro dominio
+// la bloquean Brave, Safari y las apps instaladas en la pantalla de inicio: el login "funcionaba"
+// pero el panel nunca cargaba. Sin la variable (desarrollo, app nativa) se llama directo a la API.
+export const API_BASE=import.meta.env.VITE_API_BASE || `${API_ORIGIN}/api`;
+export const api=axios.create({baseURL:API_BASE, withCredentials:true});
 
 // En la app nativa (iOS/Android) la web corre en capacitor://localhost o https://localhost y la
 // API vive en otro dominio: el WebView de iOS bloquea esa cookie de terceros, así que el login

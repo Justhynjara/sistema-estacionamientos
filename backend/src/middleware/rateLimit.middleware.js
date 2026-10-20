@@ -11,9 +11,30 @@ import rateLimit, { ipKeyGenerator } from 'express-rate-limit';
 // ipKeyGenerator normaliza IPv6 (un cliente IPv6 suele tener un bloque entero para sí mismo y
 // podría "rotar" de dirección dentro de ese bloque tan fácil como rotaría X-Forwarded-For si no
 // se trunca a un prefijo de subred).
-function realIp(req) {
+//
+// La web publicada llama a la API a través de su propio dominio (estacionamientos-web.onrender.com
+// reenvía /api/* aquí, para que la cookie de sesión sea del mismo sitio). En ese caso quien se
+// conecta a Cloudflare es el proxy de Render, no el teléfono: CF-Connecting-IP trae la IP del
+// proxy, igual para todos, y el límite de intentos sería uno solo para todo el mundo. La IP real
+// del cliente queda en X-Forwarded-For, tres posiciones antes de la del proxy (cliente, borde de
+// Cloudflare repetido, proxy). Se busca la ÚLTIMA aparición del proxy: lo que el cliente haya
+// inventado en X-Forwarded-For queda siempre a la izquierda de su IP real y no mueve esa posición.
+// Solo se hace si CF-Connecting-IP es del proxy de Render (74.220.48.0/24, visto en los logs): un
+// pedido directo a la API trae ahí la IP real del cliente, y si se le aplicara esta regla bastaría
+// con inventar un X-Forwarded-For para elegir la IP. Si Render cambia esa red, el límite pasa a ser
+// compartido entre todos (más estricto), nunca evitable.
+const IP_VALIDA = /^[0-9a-fA-F:.]+$/;
+const PROXY_RENDER = /^74\.220\.48\.\d{1,3}$/;
+
+export function realIp(req) {
   const cf = req.headers['cf-connecting-ip'];
-  const ip = (typeof cf === 'string' && /^[0-9a-fA-F:.]+$/.test(cf)) ? cf : req.ip;
+  let ip = (typeof cf === 'string' && IP_VALIDA.test(cf)) ? cf : req.ip;
+  const xff = req.headers['x-forwarded-for'];
+  if (ip === cf && PROXY_RENDER.test(cf) && typeof xff === 'string') {
+    const saltos = xff.split(',').map(s => s.trim());
+    const i = saltos.lastIndexOf(cf);
+    if (i >= 3 && IP_VALIDA.test(saltos[i - 3])) ip = saltos[i - 3];
+  }
   return ipKeyGenerator(ip);
 }
 
