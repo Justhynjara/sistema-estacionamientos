@@ -26,7 +26,6 @@ export async function auditarSeguridadInicial(logger) {
     logger.warn({ cuentas: expuestas },
       'SEGURIDAD: hay cuentas de ejemplo activas con la clave pública "password". Desactívalas o elimínalas desde el panel de administración.');
   }
-  if (env.jwtSecret === 'dev_secret' || env.jwtSecret.length < 32) {
-    logger.warn('SEGURIDAD: JWT_SECRET es el valor de desarrollo o tiene menos de 32 caracteres. Define uno largo y aleatorio.');
-  }
+  // JWT_SECRET ya no se revisa aquí: en producción lo valida problemasDeConfiguracion() al
+  // arrancar (server.js), que aborta en vez de solo advertir.
 }

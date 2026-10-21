@@ -34,3 +34,22 @@ export const env = {
     returnUrl: process.env.WEBPAY_RETURN_URL || 'http://localhost:3000/api/payments/webpay/return'
   }
 };
+
+// Varios valores tienen un valor por defecto cómodo para desarrollo (JWT_SECRET cae a 'dev_secret',
+// la base no tiene URL, etc.). En producción esos defaults son peligrosos: con 'dev_secret', que
+// está en el repositorio, cualquiera podría firmar un token de ADMIN y entrar como quien quiera.
+// Antes esto solo se advertía en los logs y el servidor arrancaba igual. Esta función lista los
+// problemas para que el arranque (server.js) aborte en vez de quedar corriendo inseguro.
+// El secreto del JWT también protege las cotizaciones (cotizacion.js deriva su clave de él).
+// Webpay no se valida aquí a propósito: sin credenciales cae a las públicas de integración de
+// Transbank (pruebas, sin dinero real), que es un estado válido, no un secreto filtrado.
+export function problemasDeConfiguracion(e = env) {
+  const problemas = [];
+  if (!e.jwtSecret || e.jwtSecret === 'dev_secret')
+    problemas.push('JWT_SECRET no está definido (usa el valor de desarrollo "dev_secret", que es público).');
+  else if (e.jwtSecret.length < 32)
+    problemas.push('JWT_SECRET tiene menos de 32 caracteres: debe ser largo y aleatorio.');
+  if (!e.databaseUrl)
+    problemas.push('DATABASE_URL no está definido.');
+  return problemas;
+}

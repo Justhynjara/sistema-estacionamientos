@@ -17,13 +17,14 @@ describe('cookie de sesión en producción', () => {
     await pool.end();
   });
 
-  test('en producción la cookie exige Secure y SameSite=None (obligatorio entre subdominios distintos)', async () => {
+  test('en producción la cookie exige Secure y SameSite=Lax (mismo sitio vía /api, cierra CSRF)', async () => {
     await request(app).post('/api/auth/register').send({ nombre: 'Prod Cookie', email, password });
     const res = await request(app).post('/api/auth/login').send({ email, password });
     const cookie = res.headers['set-cookie']?.find(c => c.startsWith('token='));
     assert.ok(cookie, 'debe fijar la cookie "token"');
     assert.match(cookie, /Secure/i);
-    assert.match(cookie, /SameSite=None/i);
+    assert.match(cookie, /SameSite=Lax/i);
+    assert.doesNotMatch(cookie, /SameSite=None/i);
     assert.match(cookie, /HttpOnly/i);
   });
 });

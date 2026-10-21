@@ -11,6 +11,11 @@ const RESET_TOKEN_TTL_MIN = 30;
 const LOGIN_MAX_INTENTOS = 5;
 const LOGIN_BLOQUEO_MIN = 15;
 
+// Hash señuelo para cuando el email no existe: sin esto, bcrypt.compare solo corría si el usuario
+// existía, y la diferencia de tiempo delataba qué correos están registrados pese a que el mensaje
+// de error es idéntico. Comparar siempre contra un hash real iguala el costo en ambos casos.
+const HASH_SENUELO = bcrypt.hashSync('cuenta-inexistente', 10);
+
 // El rate-limit por IP (authLimiter) no alcanza contra un atacante que reparte sus intentos
 // entre muchas IPs distintas apuntando siempre a la misma cuenta. Este bloqueo es por cuenta.
 // El mensaje de error se mantiene idéntico en todos los casos (no existe, contraseña incorrecta,
@@ -24,7 +29,9 @@ export async function login(req,res){
   if(u && u.bloqueado_hasta && new Date(u.bloqueado_hasta) > new Date())
     return res.status(401).json({error:'Credenciales inválidas'});
 
-  const passwordOk = u && await bcrypt.compare(password,u.password_hash);
+  // Siempre se compara contra un hash (el del usuario, o el señuelo si no existe) para que el
+  // tiempo de respuesta no revele si el email está registrado.
+  const passwordOk = await bcrypt.compare(password, u?.password_hash || HASH_SENUELO) && !!u;
   if(!u || !passwordOk){
     if(u){
       const intentos=u.intentos_fallidos+1;
