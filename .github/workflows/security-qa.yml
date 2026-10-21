@@ -84,6 +84,11 @@ jobs:
   production-security-smoke-test:
     name: Pruebas de seguridad contra producción
     runs-on: ubuntu-latest
+    # En un push a main, Render redeploya al mismo tiempo: la QA pegaría a producción a mitad del
+    # swap de instancias y fallaría por una condición transitoria (no por el código). El código ya
+    # lo validan los jobs backend-tests y frontend-tests en cada push. Contra producción se corre
+    # cuando ya está estable: en el schedule (cada 6 h) y a mano (workflow_dispatch).
+    if: github.event_name != 'push'
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-node@v5
