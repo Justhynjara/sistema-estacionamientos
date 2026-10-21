@@ -19,3 +19,8 @@ export const resetPasswordSchema = z.object({
   token: z.string().min(10, 'Token inválido'),
   password: z.string().min(8, 'La contraseña debe tener al menos 8 caracteres')
 });
+
+export const changePasswordSchema = z.object({
+  passwordActual: z.string().min(1, 'Contraseña actual requerida'),
+  passwordNueva: z.string().min(8, 'La contraseña debe tener al menos 8 caracteres')
+});

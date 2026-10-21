@@ -36,6 +36,12 @@ api.interceptors.response.use(
       tokenNativo=null;
       window.dispatchEvent(new Event('auth:logout'));
     }
+    // El backend bloquea toda la API mientras la cuenta deba cambiar su clave (primer ingreso).
+    // Si alguna petición cae en ese bloqueo, se avisa a la app para que muestre esa pantalla,
+    // aunque el estado local todavía no tuviera la marca.
+    if(err.response?.status===403 && err.response?.data?.code==='PASSWORD_CHANGE_REQUIRED'){
+      window.dispatchEvent(new Event('auth:must-change-password'));
+    }
     return Promise.reject(err);
   }
 );

@@ -38,4 +38,15 @@ describe('sesión en la app nativa (iOS/Android)', () => {
     api.defaults.adapter = adaptador;
     expect((await api.get('/auth/me')).data).toBeNull();
   });
+
+  test('un 403 PASSWORD_CHANGE_REQUIRED emite el evento que fuerza el cambio de clave', async () => {
+    const { api } = await cargar(false);
+    api.defaults.adapter = config => Promise.reject(Object.assign(new Error('403'),
+      { config, response: { status: 403, data: { code: 'PASSWORD_CHANGE_REQUIRED' } } }));
+    const handler = vi.fn();
+    window.addEventListener('auth:must-change-password', handler);
+    await expect(api.get('/tickets/active')).rejects.toThrow();
+    window.removeEventListener('auth:must-change-password', handler);
+    expect(handler).toHaveBeenCalled();
+  });
 });

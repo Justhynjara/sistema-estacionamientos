@@ -15,8 +15,10 @@ export async function createUser(req, res) {
   const { nombre, email, password, rol } = req.body;
   const hash = await bcrypt.hash(password, 10);
   try {
+    // La clave la eligió el admin (es temporal): se obliga a la persona a cambiarla en su primer
+    // ingreso. Hasta entonces el backend la bloquea de todo (ver auth.middleware.js).
     const r = await pool.query(
-      `INSERT INTO usuarios(nombre,email,password_hash,rol) VALUES($1,$2,$3,$4)
+      `INSERT INTO usuarios(nombre,email,password_hash,rol,debe_cambiar_password) VALUES($1,$2,$3,$4,TRUE)
        RETURNING id,nombre,email,rol,activo,created_at`,
       [nombre, email, hash, rol]
     );

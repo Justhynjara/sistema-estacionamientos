@@ -55,7 +55,7 @@ export async function login(req,res){
   // para JavaScript. El token sigue en el cuerpo de la respuesta por compatibilidad con scripts
   // y pruebas automáticas que lo usan como Bearer; la propia web ya no lo lee de ahí.
   setSessionCookie(res,token);
-  res.json({token,user:{id:u.id,nombre:u.nombre,email:u.email,rol:u.rol}});
+  res.json({token,user:{id:u.id,nombre:u.nombre,email:u.email,rol:u.rol},debeCambiarPassword:u.debe_cambiar_password});
 }
 
 export async function logout(req,res){
@@ -64,9 +64,10 @@ export async function logout(req,res){
 }
 
 export async function me(req,res){
-  const r=await pool.query('SELECT id,nombre,email,rol FROM usuarios WHERE id=$1 AND activo=true',[req.user.id]);
+  const r=await pool.query('SELECT id,nombre,email,rol,debe_cambiar_password FROM usuarios WHERE id=$1 AND activo=true',[req.user.id]);
   if(!r.rowCount) return res.status(401).json({error:'Sesión inválida'});
-  res.json(r.rows[0]);
+  const {debe_cambiar_password,...u}=r.rows[0];
+  res.json({...u,debeCambiarPassword:debe_cambiar_password});
 }
 
 // Registro público: siempre crea cuentas rol USUARIO (buscar/reservar).
@@ -133,5 +134,28 @@ export async function resetPassword(req,res){
   } catch(e) { await client.query('ROLLBACK'); throw e; }
   finally { client.release(); }
 
+  res.json({mensaje:'Contraseña actualizada correctamente'});
+}
+
+// Cambio de contraseña de la propia sesión (con su clave actual). Lo usa el flujo de cambio
+// obligatorio al primer ingreso, pero sirve igual para un cambio voluntario. La política de
+// longitud (mínimo 8) la valida el schema zod antes de llegar aquí.
+export async function changePassword(req,res){
+  const {passwordActual,passwordNueva}=req.body;
+  const r=await pool.query('SELECT password_hash FROM usuarios WHERE id=$1 AND activo=true',[req.user.id]);
+  if(!r.rowCount) return res.status(401).json({error:'Sesión inválida'});
+
+  const actualOk=await bcrypt.compare(passwordActual, r.rows[0].password_hash);
+  if(!actualOk) return res.status(401).json({error:'La contraseña actual no es correcta'});
+
+  // La nueva no puede ser la misma que la vigente: cambiarla por sí misma no cumple el objetivo.
+  if(await bcrypt.compare(passwordNueva, r.rows[0].password_hash))
+    return res.status(400).json({error:'La nueva contraseña debe ser distinta de la actual'});
+
+  const hash=await bcrypt.hash(passwordNueva,10);
+  await pool.query(
+    'UPDATE usuarios SET password_hash=$1, debe_cambiar_password=FALSE, intentos_fallidos=0, bloqueado_hasta=NULL WHERE id=$2',
+    [hash,req.user.id]
+  );
   res.json({mensaje:'Contraseña actualizada correctamente'});
 }

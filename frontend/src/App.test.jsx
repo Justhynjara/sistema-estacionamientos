@@ -152,6 +152,71 @@ describe('App', () => {
     });
   });
 
+  describe('cambio de contraseña obligatorio al primer ingreso', () => {
+    const usuarioMarcado = { id: '9', nombre: 'Nuevo Dueño', email: 'nuevo@demo.cl', rol: 'CLIENTE', debeCambiarPassword: true };
+
+    test('un usuario marcado ve la pantalla obligatoria, no su panel', async () => {
+      api.get.mockImplementation(url => (url === '/auth/me'
+        ? Promise.resolve({ data: usuarioMarcado })
+        : Promise.resolve({ data: [] })));
+      render(<App />);
+
+      expect(await screen.findByRole('heading', { name: /crea tu nueva contraseña/i })).toBeInTheDocument();
+      expect(screen.queryByText('MockClientePanel')).not.toBeInTheDocument();
+    });
+
+    test('tras login, si la respuesta marca el cambio, va a la pantalla obligatoria', async () => {
+      api.post.mockResolvedValueOnce({
+        data: { token: 'fake-jwt', user: { id: '9', nombre: 'Nuevo Dueño', email: 'nuevo@demo.cl', rol: 'CLIENTE' }, debeCambiarPassword: true }
+      });
+      const user = userEvent.setup();
+      render(<App />);
+      await screen.findByText('MockBuscarCercanos');
+      await user.click(screen.getByRole('button', { name: /acceso dueños/i }));
+      await user.type(screen.getByLabelText('Email'), 'nuevo@demo.cl');
+      await user.type(screen.getByLabelText('Contraseña'), 'claveTemporal1');
+      await user.click(screen.getByRole('button', { name: /iniciar sesión/i }));
+
+      expect(await screen.findByRole('heading', { name: /crea tu nueva contraseña/i })).toBeInTheDocument();
+      expect(screen.queryByText('MockClientePanel')).not.toBeInTheDocument();
+    });
+
+    test('completar el cambio llama a /auth/change-password y desbloquea el panel', async () => {
+      api.get.mockImplementation(url => (url === '/auth/me'
+        ? Promise.resolve({ data: usuarioMarcado })
+        : Promise.resolve({ data: [] })));
+      api.post.mockResolvedValue({ data: { mensaje: 'Contraseña actualizada correctamente' } });
+      const user = userEvent.setup();
+      render(<App />);
+      await screen.findByRole('heading', { name: /crea tu nueva contraseña/i });
+
+      await user.type(screen.getByLabelText('Contraseña actual'), 'claveTemporal1');
+      await user.type(screen.getByLabelText('Nueva contraseña'), 'miClaveNueva9');
+      await user.type(screen.getByLabelText('Confirmar nueva contraseña'), 'miClaveNueva9');
+      await user.click(screen.getByRole('button', { name: /guardar y continuar/i }));
+
+      expect(await screen.findByText('MockClientePanel')).toBeInTheDocument();
+      expect(api.post).toHaveBeenCalledWith('/auth/change-password', { passwordActual: 'claveTemporal1', passwordNueva: 'miClaveNueva9' });
+    });
+
+    test('si la confirmación no coincide, avisa y no llama a la API', async () => {
+      api.get.mockImplementation(url => (url === '/auth/me'
+        ? Promise.resolve({ data: usuarioMarcado })
+        : Promise.resolve({ data: [] })));
+      const user = userEvent.setup();
+      render(<App />);
+      await screen.findByRole('heading', { name: /crea tu nueva contraseña/i });
+
+      await user.type(screen.getByLabelText('Contraseña actual'), 'claveTemporal1');
+      await user.type(screen.getByLabelText('Nueva contraseña'), 'miClaveNueva9');
+      await user.type(screen.getByLabelText('Confirmar nueva contraseña'), 'otraDistinta9');
+      await user.click(screen.getByRole('button', { name: /guardar y continuar/i }));
+
+      expect(await screen.findByText(/no coinciden/i)).toBeInTheDocument();
+      expect(api.post).not.toHaveBeenCalledWith('/auth/change-password', expect.anything());
+    });
+  });
+
   describe('páginas legales (?legal=...)', () => {
     test('la landing enlaza a las tres páginas legales desde el pie de página', async () => {
       render(<App />);

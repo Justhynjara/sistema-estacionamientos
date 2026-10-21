@@ -49,7 +49,7 @@ function Login({onLogin,onCancel,onForgot}){
   async function submit(e){
     e.preventDefault();
     setLoading(true);
-    try{const r=await api.post('/auth/login',{email,password});guardarSesionNativa(r.data.token);onLogin(r.data.user)}
+    try{const r=await api.post('/auth/login',{email,password});guardarSesionNativa(r.data.token);onLogin({...r.data.user,debeCambiarPassword:r.data.debeCambiarPassword})}
     catch{alert('Credenciales inválidas')}
     finally{setLoading(false)}
   }
@@ -126,6 +126,43 @@ function ResetPassword({token,onDone}){
           <input id="reset-clave" type="password" autoComplete="new-password" value={password} onChange={e=>setPassword(e.target.value)} placeholder="Mínimo 8 caracteres" aria-label="Nueva contraseña" required minLength={8}/>
           <button type="submit" disabled={loading}>{loading && <span className="spinner"/>}{loading?'Guardando...':'Guardar contraseña'}</button>
         </form>}
+  </LoginShell>;
+}
+
+// Cambio de contraseña obligatorio al primer ingreso: el admin crea la cuenta con una clave
+// temporal y el backend bloquea todo hasta que la persona defina la suya. Esta pantalla es la
+// única salida de ese estado (además de "Salir"); el backend exige la clave actual.
+function CambiarPasswordObligatorio({onListo,onSalir}){
+  const [actual,setActual]=useState(''),[nueva,setNueva]=useState(''),[confirmar,setConfirmar]=useState('');
+  const [loading,setLoading]=useState(false);
+  const [error,setError]=useState('');
+  async function submit(e){
+    e.preventDefault();
+    setError('');
+    if(nueva!==confirmar){ setError('Las nuevas contraseñas no coinciden'); return; }
+    setLoading(true);
+    try{
+      await api.post('/auth/change-password',{passwordActual:actual,passwordNueva:nueva});
+      onListo();
+    }catch(err){ setError(err.response?.data?.error || 'No se pudo cambiar la contraseña'); }
+    finally{ setLoading(false); }
+  }
+  return <LoginShell>
+    <div className="login-head"><SignE size={40}/><h1>Crea tu nueva contraseña</h1></div>
+    <p className="lead">Tu cuenta se creó con una contraseña temporal. Antes de continuar, define una contraseña propia.</p>
+    <form onSubmit={submit}>
+      {error && <p className="badge off">{error}</p>}
+      <label htmlFor="cpo-actual">Contraseña actual</label>
+      <input id="cpo-actual" type="password" autoComplete="current-password" value={actual} onChange={e=>setActual(e.target.value)} aria-label="Contraseña actual" required/>
+      <label htmlFor="cpo-nueva">Nueva contraseña</label>
+      <input id="cpo-nueva" type="password" autoComplete="new-password" value={nueva} onChange={e=>setNueva(e.target.value)} placeholder="Mínimo 8 caracteres" aria-label="Nueva contraseña" required minLength={8}/>
+      <label htmlFor="cpo-confirmar">Confirmar nueva contraseña</label>
+      <input id="cpo-confirmar" type="password" autoComplete="new-password" value={confirmar} onChange={e=>setConfirmar(e.target.value)} aria-label="Confirmar nueva contraseña" required minLength={8}/>
+      <button type="submit" disabled={loading}>{loading && <span className="spinner"/>}{loading?'Guardando...':'Guardar y continuar'}</button>
+    </form>
+    <div className="enlaces">
+      <button type="button" onClick={onSalir} className="link-button"><Icon name="logout" size={16}/>Salir</button>
+    </div>
   </LoginShell>;
 }
 
@@ -243,9 +280,26 @@ function App(){
    return ()=>window.removeEventListener('auth:logout',onLogout);
  },[]);
 
+ // Si cualquier petición choca con el bloqueo de cambio obligatorio (403), se marca al usuario para
+ // que caiga en esa pantalla, aunque el estado local no tuviera la marca todavía.
+ useEffect(()=>{
+   const onMustChange=()=>setUser(u=>u?{...u,debeCambiarPassword:true}:u);
+   window.addEventListener('auth:must-change-password',onMustChange);
+   return ()=>window.removeEventListener('auth:must-change-password',onMustChange);
+ },[]);
+
  const abrirLogin=()=>{setShowLogin(true);setAuthView('login');};
 
  if(checkingSession) return <div className="login-shell"><main className="login-main"><p className="loading-line"><span className="spinner"/>Cargando sesión…</p></main></div>;
+
+ // Cuenta marcada para cambio obligatorio: solo puede cambiar la clave o salir. El backend igual
+ // bloquea todo lo demás (ver auth.middleware.js), así que esto es la cara visible de esa regla.
+ if(user?.debeCambiarPassword){
+   return <CambiarPasswordObligatorio
+     onListo={()=>setUser(u=>({...u,debeCambiarPassword:false}))}
+     onSalir={salir}
+   />;
+ }
 
  if(resetToken){
    return <ResetPassword token={resetToken} onDone={()=>{setResetToken(null); setShowLogin(true); setAuthView('login');}}/>;
