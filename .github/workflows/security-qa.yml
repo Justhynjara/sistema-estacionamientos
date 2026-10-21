@@ -21,7 +21,7 @@ jobs:
     name: Auditoría de dependencias (npm audit)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
       - uses: actions/setup-node@v5
         with: { node-version: 22 }
       # --omit=dev: nos interesa lo que realmente se despliega (web en Render, API en Render).
@@ -54,7 +54,7 @@ jobs:
       DATABASE_URL: postgresql://postgres:postgres@localhost:5432/estacionamientos
       JWT_SECRET: ci_test_secret_no_usar_en_produccion
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
       - uses: actions/setup-node@v5
         with: { node-version: 22 }
       - name: Instalar dependencias
@@ -71,7 +71,7 @@ jobs:
     name: Suite de tests del frontend
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
       - uses: actions/setup-node@v5
         with: { node-version: 22 }
       - name: Instalar dependencias
@@ -90,7 +90,7 @@ jobs:
     # cuando ya está estable: en el schedule (cada 6 h) y a mano (workflow_dispatch).
     if: github.event_name != 'push'
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
       - uses: actions/setup-node@v5
         with: { node-version: 22 }
       - name: Ejecutar pruebas de caja negra contra la API en vivo
