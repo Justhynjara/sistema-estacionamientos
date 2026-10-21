@@ -170,8 +170,11 @@ async function main() {
       record('Login de la cuenta de prueba funciona', r.status === 200 && !!tokenUsuario, `status ${r.status}`);
 
       const cookie = r.headers.get('set-cookie') || '';
-      const banderas = /httponly/i.test(cookie) && (!ES_HTTPS || (/;\s*secure/i.test(cookie) && /samesite=none/i.test(cookie)));
-      record(`Cookie de sesión con HttpOnly${ES_HTTPS ? ', Secure y SameSite=None' : ''}`, banderas, cookie ? '' : 'sin Set-Cookie');
+      // SameSite=Lax (no None): endurecimiento anti-CSRF. La app es de origen propio (la web
+      // proxya /api), así que no necesita None; Lax corta el envío de la cookie en peticiones
+      // cross-site y es estrictamente más seguro.
+      const banderas = /httponly/i.test(cookie) && (!ES_HTTPS || (/;\s*secure/i.test(cookie) && /samesite=lax/i.test(cookie)));
+      record(`Cookie de sesión con HttpOnly${ES_HTTPS ? ', Secure y SameSite=Lax' : ''}`, banderas, cookie ? '' : 'sin Set-Cookie');
       const conLimite = !!(r.headers.get('ratelimit-limit') || r.headers.get('ratelimit-policy') || r.headers.get('ratelimit'));
       record('El login informa su límite de intentos (cabeceras RateLimit)', conLimite);
     });
