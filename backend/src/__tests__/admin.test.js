@@ -41,7 +41,11 @@ describe('admin: auditoría y control de acceso', () => {
     // Las filas de auditoría de usuarios borrados en los tests quedan con usuario NULL: se limpian.
     await pool.query('DELETE FROM audit_log WHERE usuario_id IS NULL AND created_at >= $1', [inicio]);
     if (parkingId) await pool.query('DELETE FROM estacionamientos WHERE id=$1', [parkingId]);
-    if (extraParkings.length) await pool.query('DELETE FROM estacionamientos WHERE id=ANY($1)', [extraParkings]);
+    if (extraParkings.length) {
+      // Algunos estacionamientos de prueba quedan con tickets: hay que borrarlos antes (FK).
+      await pool.query('DELETE FROM tickets WHERE estacionamiento_id=ANY($1)', [extraParkings]);
+      await pool.query('DELETE FROM estacionamientos WHERE id=ANY($1)', [extraParkings]);
+    }
     await pool.query('DELETE FROM usuarios WHERE email=ANY($1)', [[adminEmail, noAdminEmail, nuevoUsuarioEmail, ...extraEmails]]);
     await pool.end();
   });
@@ -230,5 +234,47 @@ describe('admin: auditoría y control de acceso', () => {
     assert.ok(entrada, 'debe quedar registro del cambio de dueño');
     assert.equal(entrada.detalle.cliente_id_anterior, original.rows[0].id);
     assert.equal(entrada.detalle.cliente_id_nuevo, nuevo.rows[0].id);
+  });
+
+  test('el admin puede eliminar un estacionamiento sin movimientos y queda auditado', async () => {
+    const email = `dueno_del_${suffix}@demo.cl`;
+    extraEmails.push(email);
+    const hash = await bcrypt.hash('clave12345', 10);
+    const u = await pool.query(`INSERT INTO usuarios(nombre,email,password_hash,rol) VALUES('Dueño Del',$1,$2,'CLIENTE') RETURNING id`, [email, hash]);
+    const p = await pool.query(
+      `INSERT INTO estacionamientos(cliente_id,nombre,direccion,latitud,longitud,precio_minuto,tarifa_minima,cupo_maximo,cupos_disponibles)
+       VALUES($1,'Parking A Eliminar','Calle Del',-33.45,-70.66,10,300,5,5) RETURNING id`, [u.rows[0].id]);
+
+    const del = await request(app).delete(`/api/admin/parking/${p.rows[0].id}`).set('Authorization', `Bearer ${tokenAdmin}`);
+    assert.equal(del.status, 200);
+    const existe = await pool.query('SELECT 1 FROM estacionamientos WHERE id=$1', [p.rows[0].id]);
+    assert.equal(existe.rowCount, 0, 'el estacionamiento sin movimientos se elimina');
+
+    const log = await request(app).get('/api/admin/audit-log').set('Authorization', `Bearer ${tokenAdmin}`).query({ entidad: 'estacionamiento' });
+    const entrada = log.body.find(e => e.entidad_id === p.rows[0].id && e.accion === 'estacionamiento.eliminar');
+    assert.ok(entrada, 'debe quedar registro de la eliminación del estacionamiento');
+    assert.equal(entrada.detalle.nombre, 'Parking A Eliminar');
+  });
+
+  test('no se puede eliminar un estacionamiento con tickets en su historial', async () => {
+    const p = await pool.query(
+      `INSERT INTO estacionamientos(cliente_id,nombre,direccion,latitud,longitud,precio_minuto,tarifa_minima,cupo_maximo,cupos_disponibles)
+       VALUES($1,'Parking Con Historial','Calle His',-33.45,-70.66,10,300,5,5) RETURNING id`, [adminId]);
+    extraParkings.push(p.rows[0].id);
+    await pool.query(`INSERT INTO tickets(estacionamiento_id,codigo_qr) VALUES($1,$2)`, [p.rows[0].id, `qr_del_${suffix}`]);
+
+    const del = await request(app).delete(`/api/admin/parking/${p.rows[0].id}`).set('Authorization', `Bearer ${tokenAdmin}`);
+    assert.equal(del.status, 409);
+    assert.match(del.body.error, /historial|tickets|movimientos/i);
+    const existe = await pool.query('SELECT 1 FROM estacionamientos WHERE id=$1', [p.rows[0].id]);
+    assert.equal(existe.rowCount, 1, 'el estacionamiento con historial no se borra');
+  });
+
+  test('eliminar un estacionamiento inexistente da 404 y un no-admin no puede eliminar', async () => {
+    const id = '11111111-1111-4111-8111-111111111111';
+    const inexistente = await request(app).delete(`/api/admin/parking/${id}`).set('Authorization', `Bearer ${tokenAdmin}`);
+    assert.equal(inexistente.status, 404);
+    const sinPermiso = await request(app).delete(`/api/admin/parking/${id}`).set('Authorization', `Bearer ${tokenNoAdmin}`);
+    assert.equal(sinPermiso.status, 403);
   });
 });

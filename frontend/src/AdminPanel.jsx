@@ -74,6 +74,14 @@ function ParkingTab({ parking, reloadParking, users }) {
     } catch (err) { alert(err.response?.data?.error || 'Error al actualizar cupo'); }
   }
 
+  async function eliminar(p) {
+    if (!confirm(`¿Eliminar el estacionamiento "${p.nombre}"? Esta acción no se puede deshacer.`)) return;
+    try {
+      await api.delete(`/admin/parking/${p.id}`);
+      reloadParking();
+    } catch (err) { alert(err.response?.data?.error || 'No se pudo eliminar el estacionamiento'); }
+  }
+
   async function cambiarTarifa(p) {
     const precio = prompt('Nuevo precio por minuto (CLP)', Number(p.precio_minuto));
     if (precio === null || precio.trim() === '') return;
@@ -153,6 +161,14 @@ function ParkingTab({ parking, reloadParking, users }) {
             ) : (
               <div className="row-form">
                 <button type="button" className="link-button" onClick={() => setReasignando({ p, clienteId: '', loading: false })}>Cambiar dueño</button>
+                <button
+                  type="button"
+                  className="danger small"
+                  disabled={(p.total_tickets ?? 0) > 0}
+                  title={(p.total_tickets ?? 0) > 0 ? 'No se puede eliminar: tiene tickets en su historial. Solo se eliminan estacionamientos sin movimientos.' : undefined}
+                  onClick={() => eliminar(p)}
+                  aria-label={`Eliminar ${p.nombre}`}
+                ><Icon name="trash" size={16} />Eliminar</button>
               </div>
             )}
           </div>
@@ -202,7 +218,21 @@ function CrearUsuarioForm({ reloadUsers }) {
 }
 
 function UsersTab({ users, reloadUsers, currentUserId }) {
-  const { pageItems, page, setPage, totalPages } = usePagination(users, 10);
+  const [q, setQ] = useState('');
+  const [rolFiltro, setRolFiltro] = useState('TODOS');
+  const [estadoFiltro, setEstadoFiltro] = useState('TODOS');
+
+  // El listado se carga entero (cientos de filas cargan sin problema), así que el filtro es local
+  // e instantáneo. Si algún día crece a muchos miles, conviene pasar a paginación en el servidor.
+  const filtrados = users.filter(u => {
+    if (q.trim() && !`${u.nombre} ${u.email}`.toLowerCase().includes(q.trim().toLowerCase())) return false;
+    if (rolFiltro !== 'TODOS' && u.rol !== rolFiltro) return false;
+    if (estadoFiltro === 'ACTIVO' && !u.activo) return false;
+    if (estadoFiltro === 'INACTIVO' && u.activo) return false;
+    return true;
+  });
+  const { pageItems, page, setPage, totalPages } = usePagination(filtrados, 10);
+  useEffect(() => { setPage(1); }, [q, rolFiltro, estadoFiltro]);
 
   async function toggleActivo(u) {
     try {
@@ -229,10 +259,27 @@ function UsersTab({ users, reloadUsers, currentUserId }) {
     <CrearUsuarioForm reloadUsers={reloadUsers} />
     <div className="card">
       <h3>Usuarios</h3>
+      <div className="row-form filtros-admin">
+        <input type="search" placeholder="Buscar por nombre o email…" aria-label="Buscar usuarios" value={q} onChange={e => setQ(e.target.value)} />
+        <select value={rolFiltro} onChange={e => setRolFiltro(e.target.value)} aria-label="Filtrar por rol">
+          <option value="TODOS">Todos los roles</option>
+          <option value="USUARIO">USUARIO</option>
+          <option value="CLIENTE">CLIENTE</option>
+          <option value="SOPORTE">SOPORTE</option>
+          <option value="ADMIN">ADMIN</option>
+        </select>
+        <select value={estadoFiltro} onChange={e => setEstadoFiltro(e.target.value)} aria-label="Filtrar por estado">
+          <option value="TODOS">Todos los estados</option>
+          <option value="ACTIVO">Activos</option>
+          <option value="INACTIVO">Inactivos</option>
+        </select>
+      </div>
+      <p className="muted small" style={{ marginTop: 0 }}>Mostrando <span className="mono">{filtrados.length}</span> de <span className="mono">{users.length}</span></p>
       <div className="table-wrap">
       <table className="table">
         <thead><tr><th>Nombre</th><th>Email</th><th>Rol</th><th>Estado</th><th><span className="sr-only">Acciones</span></th></tr></thead>
         <tbody>
+          {filtrados.length === 0 && <tr><td colSpan={5} className="muted">Ningún usuario coincide con el filtro.</td></tr>}
           {pageItems.map(u => (
             <tr key={u.id}>
               <td>{u.nombre}</td>

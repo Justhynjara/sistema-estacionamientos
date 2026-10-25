@@ -212,6 +212,9 @@ button.secondary.small,button.danger.small{padding:5.5px 10px}
 .row-form{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
 .row-form input,.row-form select{margin:0;flex:1;min-width:190px}
 .row-form button{white-space:nowrap}
+/* Barra de filtros de los listados de admin: el buscador manda, los selectores se ajustan. */
+.filtros-admin{margin-top:4px}
+.filtros-admin input[type=search]{flex:2}
 .stack{display:grid;gap:12px}
 
 /* ---------- Estado: chip (en línea) y aviso (bloque) ---------- */

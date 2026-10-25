@@ -86,6 +86,23 @@ export async function listParkingAdmin(req,res){
     ORDER BY e.nombre`);
   res.json(r.rows.map(conHorario));
 }
+// Solo se eliminan estacionamientos sin movimientos: si tiene tickets o pagos en su historial, la
+// FK lo impide (error 23503) y se responde 409 explicando por qué, para no destruir registros
+// financieros/contables. Para sacar de circulación uno con historial, el camino es desactivarlo.
+export async function deleteParking(req,res){
+  const e=await pool.query('SELECT id,nombre,cliente_id FROM estacionamientos WHERE id=$1',[req.params.id]);
+  if(!e.rowCount) return res.status(404).json({error:'No encontrado'});
+  const est=e.rows[0];
+  try {
+    await pool.query('DELETE FROM estacionamientos WHERE id=$1',[est.id]);
+  } catch (err) {
+    if(err.code==='23503')
+      return res.status(409).json({error:'No se puede eliminar: el estacionamiento tiene tickets o pagos en su historial. Solo puedes eliminar estacionamientos sin movimientos.'});
+    throw err;
+  }
+  await registrarAuditoria(req.user.id, 'estacionamiento.eliminar', 'estacionamiento', est.id, { nombre: est.nombre, cliente_id: est.cliente_id });
+  res.json({ ok: true });
+}
 export async function updateOwner(req,res){
   const {cliente_id}=req.body;
   const due=await pool.query(`SELECT rol FROM usuarios WHERE id=$1`,[cliente_id]);
