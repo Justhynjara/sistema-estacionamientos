@@ -1,5 +1,5 @@
 import {useEffect,useState} from 'react';
-import {api,guardarSesionNativa,esAppNativa} from './services/api.js';
+import {api,guardarSesionNativa} from './services/api.js';
 import AdminPanel from './AdminPanel.jsx';
 import ClientePanel from './ClientePanel.jsx';
 import BuscarCercanos from './BuscarCercanos.jsx';
@@ -17,17 +17,6 @@ import Icon,{SignE} from './Icon.jsx';
 
 const NOMBRE_ROL={ADMIN:'Administrador',CLIENTE:'Dueño',SOPORTE:'Soporte',USUARIO:'Conductor'};
 const TITULO_PANEL={ADMIN:'Administración',CLIENTE:'Panel del dueño',SOPORTE:'Soporte',USUARIO:'Buscar estacionamiento'};
-
-// El video promocional es para captar a quien llega por la web/navegador. A quien ya tiene la app
-// instalada (PWA en pantalla de inicio o app nativa) no hay que convencerlo: ahí se oculta.
-function appInstalada(){
-  try{
-    if(esAppNativa) return true;
-    const mm=window.matchMedia;
-    if(mm && (mm('(display-mode: standalone)').matches || mm('(display-mode: minimal-ui)').matches || mm('(display-mode: fullscreen)').matches)) return true;
-    return window.navigator.standalone===true; // iOS
-  }catch{ return false; }
-}
 
 function Header({user,onSalir,onAcceso,onPostular}){
   return <header className="site-header">
@@ -379,16 +368,6 @@ function App(){
            </div>
          </div>
        </section>
-       {!appInstalada() &&
-         <section className="promo-band" aria-labelledby="promo-title">
-           <div className="inner">
-             <h2 id="promo-title">Mira Estacionados en 30 segundos</h2>
-             <p className="promo-sub">Todo lo que la app hace por ti, en un vistazo.</p>
-             <div className="promo-frame">
-               <iframe src="/promo.html" title="Video promocional de Estacionados" loading="lazy"></iframe>
-             </div>
-           </div>
-         </section>}
        <ComoFunciona/>
      </main>
      <ChatBot onAbrirSolicitud={()=>setMostrarSolicitud(true)}/>
