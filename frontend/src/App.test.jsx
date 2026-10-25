@@ -42,6 +42,12 @@ describe('App', () => {
     expect(screen.getByRole('heading', { name: '¿Administras un estacionamiento?' })).toBeInTheDocument();
   });
 
+  test('la landing incluye el video promocional de Estacionados', async () => {
+    render(<App />);
+    await screen.findByText('MockBuscarCercanos');
+    expect(screen.getByTitle('Video promocional de Estacionados')).toBeInTheDocument();
+  });
+
   test('el acceso de dueño/admin lleva al formulario de login', async () => {
     const user = userEvent.setup();
     render(<App />);

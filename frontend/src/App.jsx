@@ -368,6 +368,15 @@ function App(){
            </div>
          </div>
        </section>
+       <section className="promo-band" aria-labelledby="promo-title">
+         <div className="inner">
+           <h2 id="promo-title">Mira Estacionados en 30 segundos</h2>
+           <p className="promo-sub">Todo lo que la app hace por ti, en un vistazo.</p>
+           <div className="promo-frame">
+             <iframe src="/promo.html" title="Video promocional de Estacionados" loading="lazy"></iframe>
+           </div>
+         </div>
+       </section>
        <ComoFunciona/>
      </main>
      <ChatBot onAbrirSolicitud={()=>setMostrarSolicitud(true)}/>

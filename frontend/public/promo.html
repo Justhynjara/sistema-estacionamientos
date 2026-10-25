@@ -1,0 +1,282 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Estacionados — video</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Sora:wght@500;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap">
+<style>
+  /* Promo autorreproducible embebida en la landing (iframe 16:9). El cuerpo ES el escenario;
+     los controles van superpuestos abajo. Mundo de marca único (navy + verde "en vivo"). */
+  :root{
+    --bg:#040f1f; --panel:rgba(7,25,47,.72); --glow:#0a2744;
+    --stage-a:#0b2a4a; --stage-b:#05162b;
+    --ink:#eaf2fb; --muted:#9fb6d4;
+    --brand:#2f86e4; --brand-deep:#0a3f7a; --accent:#27d07a;
+    --line:rgba(255,255,255,.14);
+    --display:"Sora",system-ui,sans-serif; --body:"Plus Jakarta Sans",system-ui,sans-serif;
+    color-scheme:dark;
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%}
+  body{margin:0;font-family:var(--body);color:var(--ink);
+    background:linear-gradient(160deg,var(--stage-a),var(--stage-b) 70%);overflow:hidden}
+  .stage{position:fixed;inset:0;container-type:size;overflow:hidden;isolation:isolate}
+  .stage::after{content:"";position:absolute;inset:0;pointer-events:none;
+    background:radial-gradient(130% 120% at 50% 18%, transparent 55%, rgba(0,0,0,.5));z-index:5}
+
+  .scene{position:absolute;inset:0;display:grid;place-content:center;justify-items:center;
+    text-align:center;gap:3.2cqh;padding:7cqw 7cqw 12cqh;opacity:0;visibility:hidden;
+    transition:opacity .55s ease, visibility .55s}
+  .scene.active{opacity:1;visibility:visible}
+
+  .eyebrow{font-weight:700;letter-spacing:.22em;text-transform:uppercase;font-size:2.4cqh;color:var(--accent)}
+  .headline{font-family:var(--display);font-weight:800;line-height:1.02;letter-spacing:-.015em;
+    font-size:9cqh;text-wrap:balance;max-width:92%;margin:0}
+  .headline .hl{color:var(--accent)}
+  .subline{font-size:3.6cqh;color:var(--muted);max-width:82%;line-height:1.3;font-weight:500;margin:0}
+  .motif{display:grid;place-items:center;height:30cqh;margin-bottom:.5cqh}
+
+  .scene .anim{opacity:0;transform:translateY(16px);transition:opacity .6s ease,transform .6s cubic-bezier(.2,.7,.2,1)}
+  .scene.active .anim{opacity:1;transform:none}
+  .scene.active .d1{transition-delay:.12s}
+  .scene.active .d2{transition-delay:.26s}
+  .scene.active .d3{transition-delay:.4s}
+
+  .mark{--s:min(26cqh,34cqw);width:var(--s);height:var(--s);border-radius:calc(var(--s)*.2);
+    display:grid;place-items:center;color:#fff;font-family:var(--display);font-weight:800;
+    font-size:calc(var(--s)*.6);line-height:1;padding-top:calc(var(--s)*.04);
+    background:linear-gradient(150deg,var(--brand),var(--brand-deep));
+    box-shadow:inset 0 0 0 calc(var(--s)*.035) rgba(255,255,255,.95),0 0 0 1px var(--brand-deep),0 18px 48px -12px rgba(47,134,228,.6)}
+  .wordmark{font-family:var(--display);font-weight:800;letter-spacing:-.02em;font-size:11cqh;line-height:1}
+  .brandrow{display:flex;align-items:center;gap:3.2cqw}
+
+  .live{display:inline-flex;align-items:center;gap:.6em;font-weight:700;color:var(--accent);font-size:2.8cqh;letter-spacing:.02em}
+  .dot{width:1.1cqh;height:1.1cqh;min-width:7px;min-height:7px;border-radius:50%;background:var(--accent);
+    box-shadow:0 0 0 0 rgba(39,208,122,.6);animation:pulse 1.8s infinite}
+  @keyframes pulse{0%{box-shadow:0 0 0 0 rgba(39,208,122,.55)}70%{box-shadow:0 0 0 2.2cqh rgba(39,208,122,0)}100%{box-shadow:0 0 0 0 rgba(39,208,122,0)}}
+
+  .pricetag{font-family:var(--display);font-weight:800;font-size:18cqh;line-height:1;font-variant-numeric:tabular-nums;color:#fff;text-shadow:0 10px 40px rgba(39,208,122,.35)}
+  .pricetag .cur{color:var(--accent);font-size:.6em;vertical-align:.12em}
+
+  .motif svg{height:100%;width:auto;overflow:visible}
+  .stroke{fill:none;stroke:currentColor;stroke-width:2.4;stroke-linecap:round;stroke-linejoin:round}
+  .spin{transform-origin:center;animation:spin 6s linear infinite}
+  @keyframes spin{to{transform:rotate(360deg)}}
+
+  .bar{transform:scaleY(.08);transform-origin:bottom;transition:transform .9s cubic-bezier(.2,.8,.2,1)}
+  .scene.active .bar{transform:scaleY(1)}
+  .scene.active .bar.b2{transition-delay:.12s}
+  .scene.active .bar.b3{transition-delay:.24s}
+  .scene.active .bar.b4{transition-delay:.36s}
+
+  .qr{display:grid;grid-template-columns:repeat(7,1fr);gap:6%;width:24cqh;height:24cqh;padding:9%;background:#fff;border-radius:10%;box-shadow:0 18px 48px -14px rgba(0,0,0,.6)}
+  .qr i{background:#06203b;border-radius:14%}
+  .qr i.off{background:transparent}
+
+  .segs{position:absolute;top:3cqh;left:5cqw;right:5cqw;display:flex;gap:1cqw;z-index:6}
+  .seg{flex:1;height:.9cqh;min-height:4px;border-radius:999px;background:rgba(255,255,255,.22);overflow:hidden}
+  .seg .fill{display:block;height:100%;width:0;background:#fff;border-radius:999px}
+
+  .controls{position:absolute;left:0;right:0;bottom:3.4cqh;z-index:7;display:flex;align-items:center;
+    justify-content:center;gap:2cqw;flex-wrap:wrap;padding:0 5cqw}
+  button.ctrl{font-family:var(--body);font-weight:600;font-size:2.5cqh;color:var(--ink);
+    background:var(--panel);backdrop-filter:blur(6px);border:1px solid var(--line);border-radius:999px;
+    padding:1.4cqh 3cqw;display:inline-flex;align-items:center;gap:.6em;cursor:pointer;transition:border-color .2s,transform .06s}
+  button.ctrl:hover{border-color:var(--brand)}
+  button.ctrl:active{transform:translateY(1px)}
+  button.ctrl.primary{background:linear-gradient(150deg,var(--brand),var(--brand-deep));border-color:transparent}
+  button.ctrl svg{width:2.6cqh;height:2.6cqh}
+  .dots{display:flex;gap:1.1cqw}
+  .jd{width:1.3cqh;height:1.3cqh;min-width:8px;min-height:8px;border-radius:50%;background:rgba(255,255,255,.28);border:0;padding:0;cursor:pointer;transition:background .2s,transform .2s}
+  .jd[aria-current="true"]{background:var(--accent);transform:scale(1.25)}
+  :focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+  @media (prefers-reduced-motion:reduce){
+    .scene .anim{transition-duration:.001s}.bar{transition-duration:.001s}.dot{animation:none}.spin{animation:none}
+  }
+</style>
+</head>
+<body>
+  <div class="stage" id="stage" aria-label="Video promocional de Estacionados">
+    <div class="segs" id="segs" aria-hidden="true"></div>
+
+    <section class="scene" data-dur="4200">
+      <div class="brandrow anim d1"><span class="mark">E</span></div>
+      <h1 class="wordmark anim d2">Estacionados</h1>
+      <p class="subline anim d3">Tu estacionamiento, a un toque.</p>
+    </section>
+
+    <section class="scene" data-dur="3400">
+      <div class="motif anim d1" style="color:var(--muted)">
+        <svg viewBox="0 0 120 120" role="img" aria-label="Dando vueltas">
+          <g class="spin"><circle class="stroke" cx="60" cy="60" r="46" stroke-dasharray="10 12" opacity=".6"/></g>
+          <path class="stroke" d="M38 70h44l-6-16a8 8 0 0 0-7-5H51a8 8 0 0 0-7 5z" style="stroke:var(--ink)"/>
+          <circle cx="48" cy="74" r="5" style="fill:var(--ink)"/><circle cx="72" cy="74" r="5" style="fill:var(--ink)"/>
+        </svg>
+      </div>
+      <h2 class="headline anim d2" style="font-size:7cqh">¿Cuántas vueltas das<br>buscando dónde estacionar?</h2>
+    </section>
+
+    <section class="scene" data-dur="3800">
+      <div class="motif anim d1" style="color:var(--accent)">
+        <svg viewBox="0 0 160 110" role="img" aria-label="Mapa con cupos">
+          <rect x="4" y="6" width="152" height="98" rx="10" style="fill:rgba(255,255,255,.05);stroke:var(--line)" class="stroke"/>
+          <path class="stroke" d="M30 10v92M86 10v92M12 42h136M12 74h136" style="stroke:rgba(255,255,255,.12);stroke-width:1.5"/>
+          <g style="color:var(--accent)"><path d="M58 34a12 12 0 1 0-24 0c0 9 12 22 12 22s12-13 12-22z" style="fill:currentColor"/><circle cx="46" cy="34" r="4.5" style="fill:#06203b"/></g>
+          <g style="color:var(--brand)"><path d="M126 60a11 11 0 1 0-22 0c0 8 11 20 11 20s11-12 11-20z" style="fill:currentColor"/><circle cx="115" cy="60" r="4" style="fill:#fff"/></g>
+        </svg>
+      </div>
+      <div class="live anim d2"><span class="dot"></span>CUPOS EN TIEMPO REAL</div>
+      <h2 class="headline anim d2" style="font-size:7.2cqh">Mira <span class="hl">dónde hay espacio</span><br>antes de salir de casa.</h2>
+    </section>
+
+    <section class="scene" data-dur="3400">
+      <div class="motif anim d1" style="color:var(--accent)">
+        <svg viewBox="0 0 120 110" role="img" aria-label="Sin registro">
+          <circle class="stroke" cx="60" cy="52" r="40" style="stroke:var(--accent)"/>
+          <path class="stroke" d="M42 53l12 12 24-26" style="stroke:var(--accent);stroke-width:3.4"/>
+        </svg>
+      </div>
+      <h2 class="headline anim d2">Sin registro.</h2>
+      <p class="subline anim d3">Busca y reserva en segundos. No necesitas crear una cuenta.</p>
+    </section>
+
+    <section class="scene" data-dur="3800">
+      <div class="pricetag anim d1"><span class="cur">$</span>100</div>
+      <h2 class="headline anim d2" style="font-size:7.2cqh">Reserva tu cupo por <span class="hl">$100</span>.</h2>
+      <p class="subline anim d3">Y se descuentan de lo que pagas al salir. Reservar no te cuesta de más.</p>
+    </section>
+
+    <section class="scene" data-dur="3400">
+      <div class="motif anim d1" style="color:var(--brand)">
+        <svg viewBox="0 0 150 110" role="img" aria-label="Pago seguro con Webpay">
+          <rect x="18" y="26" width="114" height="64" rx="10" style="fill:rgba(47,134,228,.14);stroke:var(--brand)" class="stroke"/>
+          <rect x="18" y="40" width="114" height="12" style="fill:var(--brand)"/>
+          <rect x="30" y="68" width="40" height="8" rx="4" style="fill:rgba(255,255,255,.5)"/>
+          <path class="stroke" d="M112 58l6 6 12-14" style="stroke:var(--accent);stroke-width:3"/>
+        </svg>
+      </div>
+      <h2 class="headline anim d2" style="font-size:7.2cqh">Paga seguro con <span class="hl">Webpay</span>.</h2>
+      <p class="subline anim d3">Débito o crédito, con el respaldo de Transbank.</p>
+    </section>
+
+    <section class="scene" data-dur="3800">
+      <div class="motif anim d1"><div class="qr" id="qr" role="img" aria-label="Código QR del ticket"></div></div>
+      <h2 class="headline anim d2" style="font-size:7cqh">Tu ticket, con <span class="hl">código QR</span>.</h2>
+      <p class="subline anim d3">Escanéalo y mira al instante cuánto tiempo llevas y tu total a pagar.</p>
+    </section>
+
+    <section class="scene" data-dur="4200">
+      <div class="motif anim d1" style="color:var(--accent)">
+        <svg viewBox="0 0 150 100" role="img" aria-label="Panel del dueño">
+          <line x1="16" y1="88" x2="138" y2="88" class="stroke" style="stroke:var(--line)"/>
+          <rect class="bar b1" x="26" y="20" width="18" height="68" rx="4" style="fill:var(--brand)"/>
+          <rect class="bar b2" x="54" y="20" width="18" height="68" rx="4" style="fill:var(--brand)"/>
+          <rect class="bar b3" x="82" y="20" width="18" height="68" rx="4" style="fill:var(--accent)"/>
+          <rect class="bar b4" x="110" y="20" width="18" height="68" rx="4" style="fill:var(--accent)"/>
+        </svg>
+      </div>
+      <div class="eyebrow anim d1">¿Tienes un estacionamiento?</div>
+      <h2 class="headline anim d2" style="font-size:6.4cqh">Cobra con QR, ocupación en vivo<br>y tu <span class="hl">recaudación del día</span>.</h2>
+    </section>
+
+    <section class="scene" data-dur="4400">
+      <div class="brandrow anim d1"><span class="mark" style="--s:min(16cqh,22cqw)">E</span>
+        <span class="wordmark" style="font-size:9cqh">Estacionados</span></div>
+      <h2 class="headline anim d2" style="font-size:6.4cqh">Tu estacionamiento,<br><span class="hl">a un toque.</span></h2>
+      <p class="subline anim d3">Instálala desde tu navegador. Sin pasar por la tienda de apps.</p>
+    </section>
+
+    <div class="controls">
+      <button class="ctrl primary" id="playBtn" aria-label="Reproducir o pausar">
+        <svg id="playIcon" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg>
+        <span id="playLabel">Pausar</span>
+      </button>
+      <button class="ctrl" id="replayBtn" aria-label="Repetir">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12a9 9 0 1 1-3-6.7"/><path d="M21 3v5h-5"/></svg>
+        Repetir
+      </button>
+      <div class="dots" id="dots" role="tablist" aria-label="Ir a una escena"></div>
+    </div>
+  </div>
+
+<script>
+(function(){
+  var stage=document.getElementById('stage');
+  var scenes=[].slice.call(stage.querySelectorAll('.scene'));
+  var durs=scenes.map(function(s){return +s.dataset.dur||3500});
+  var starts=[],acc=0; durs.forEach(function(d){starts.push(acc);acc+=d}); var total=acc;
+
+  var segsEl=document.getElementById('segs'), fills=[];
+  scenes.forEach(function(){
+    var seg=document.createElement('div'); seg.className='seg';
+    var f=document.createElement('span'); f.className='fill'; seg.appendChild(f);
+    segsEl.appendChild(seg); fills.push(f);
+  });
+
+  var dotsEl=document.getElementById('dots'), dots=[];
+  scenes.forEach(function(_,i){
+    var b=document.createElement('button'); b.className='jd'; b.setAttribute('role','tab');
+    b.setAttribute('aria-label','Escena '+(i+1));
+    b.addEventListener('click',function(){ seek(i); });
+    dotsEl.appendChild(b); dots.push(b);
+  });
+
+  var qr=document.getElementById('qr');
+  if(qr){
+    var pat=[1,1,1,0,1,1,1, 1,0,1,0,0,0,1, 1,1,1,0,1,0,1, 0,0,0,1,0,1,0, 1,0,1,0,1,1,1, 1,0,0,1,0,0,1, 1,1,1,0,1,0,1];
+    pat.forEach(function(v){var i=document.createElement('i'); if(!v)i.className='off'; qr.appendChild(i);});
+  }
+
+  var elapsed=0, playing=true, last=null, cur=-1, ended=false;
+  var playBtn=document.getElementById('playBtn'),
+      playLabel=document.getElementById('playLabel'),
+      playIcon=document.getElementById('playIcon');
+  var ICON_PAUSE='M6 5h4v14H6zM14 5h4v14h-4z', ICON_PLAY='M8 5v14l11-7z';
+
+  function setScene(i){
+    if(i===cur) return; cur=i;
+    scenes.forEach(function(s,k){ s.classList.toggle('active',k===i); });
+    dots.forEach(function(d,k){ d.setAttribute('aria-current', k===i?'true':'false'); });
+  }
+  function paint(){
+    var i=0; for(var k=0;k<scenes.length;k++){ if(elapsed>=starts[k]) i=k; }
+    setScene(i);
+    for(var j=0;j<fills.length;j++){
+      var p = elapsed>=starts[j]+durs[j] ? 1 : (elapsed<=starts[j] ? 0 : (elapsed-starts[j])/durs[j]);
+      fills[j].style.width=(p*100)+'%';
+    }
+  }
+  function setPlaying(p){
+    playing=p; playLabel.textContent=p?'Pausar':'Reproducir';
+    playIcon.innerHTML='<path d="'+(p?ICON_PAUSE:ICON_PLAY)+'"/>';
+  }
+  function loop(ts){
+    if(last==null) last=ts;
+    var dt=ts-last; last=ts;
+    if(playing && !ended){
+      elapsed+=dt;
+      if(elapsed>=total){ elapsed=total; ended=true; setPlaying(false); }
+      paint();
+    }
+    requestAnimationFrame(loop);
+  }
+  function seek(i){ elapsed=starts[i]+1; ended=false; last=null; if(!playing)setPlaying(true); paint(); }
+
+  playBtn.addEventListener('click',function(){
+    if(ended){ elapsed=0; ended=false; last=null; setPlaying(true); paint(); return; }
+    setPlaying(!playing);
+  });
+  document.getElementById('replayBtn').addEventListener('click',function(){
+    elapsed=0; ended=false; last=null; setPlaying(true); paint();
+  });
+
+  setScene(0); paint(); setPlaying(true);
+  requestAnimationFrame(loop);
+})();
+</script>
+</body>
+</html>

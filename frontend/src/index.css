@@ -356,6 +356,17 @@ button.badge:hover{filter:brightness(.98);box-shadow:none}
 .owner-strip p{margin:3px 0 0;color:var(--muted);max-width:62ch}
 .owner-strip .acciones{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end}
 
+/* ---------- Video promocional ---------- */
+.promo-band{background:var(--panel);border-top:1px solid var(--rule)}
+.promo-band .inner{max-width:1000px;margin:0 auto;padding:36px 28px;text-align:center}
+.promo-band h2{margin:0;font-size:1.5rem}
+.promo-band .promo-sub{margin:6px 0 0;color:var(--muted)}
+.promo-frame{position:relative;width:100%;max-width:960px;margin:20px auto 0;aspect-ratio:16/9;
+  border-radius:16px;overflow:hidden;background:#05162b;
+  box-shadow:0 24px 60px -24px rgba(10,63,122,.5),0 0 0 1px var(--rule)}
+.promo-frame iframe{position:absolute;inset:0;width:100%;height:100%;border:0;display:block}
+@media (max-width:640px){.promo-band .inner{padding:24px 16px}.promo-band h2{font-size:1.2rem}}
+
 /* ---------- Pestañas ---------- */
 .tabs{display:flex;gap:2px;border-bottom:1px solid var(--rule);overflow-x:auto;margin-bottom:4px}
 .tab{
