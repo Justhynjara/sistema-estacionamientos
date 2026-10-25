@@ -17,7 +17,7 @@ export const api=axios.create({baseURL:API_BASE, withCredentials:true});
 // ya devuelve en el cuerpo, enviado en el encabezado Authorization (la API lo acepta igual que la
 // cookie). Se guarda solo en memoria, nunca en localStorage: al cerrar la app hay que volver a
 // iniciar sesión, a cambio de que ningún script pueda leerlo desde el almacenamiento.
-const esAppNativa=Capacitor.isNativePlatform();
+export const esAppNativa=Capacitor.isNativePlatform();
 let tokenNativo=null;
 
 export function guardarSesionNativa(token){

@@ -16,7 +16,8 @@ vi.mock('./QRScanner.jsx', () => ({ default: ({ onResult }) => <button type="but
 
 vi.mock('./services/api.js', () => ({
   api: { get: vi.fn(), post: vi.fn() },
-  guardarSesionNativa: vi.fn()
+  guardarSesionNativa: vi.fn(),
+  esAppNativa: false
 }));
 
 import App from './App.jsx';
@@ -46,6 +47,21 @@ describe('App', () => {
     render(<App />);
     await screen.findByText('MockBuscarCercanos');
     expect(screen.getByTitle('Video promocional de Estacionados')).toBeInTheDocument();
+  });
+
+  test('el video NO aparece cuando la app está instalada (display-mode standalone)', async () => {
+    const original = window.matchMedia;
+    window.matchMedia = vi.fn().mockImplementation(q => ({
+      matches: /standalone|minimal-ui|fullscreen/.test(q), media: q,
+      addListener() {}, removeListener() {}, addEventListener() {}, removeEventListener() {}, dispatchEvent() { return false; }
+    }));
+    try {
+      render(<App />);
+      await screen.findByText('MockBuscarCercanos');
+      expect(screen.queryByTitle('Video promocional de Estacionados')).not.toBeInTheDocument();
+    } finally {
+      window.matchMedia = original;
+    }
   });
 
   test('el acceso de dueño/admin lleva al formulario de login', async () => {
