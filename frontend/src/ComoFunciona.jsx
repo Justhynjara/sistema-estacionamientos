@@ -51,7 +51,7 @@ const INSTRUCCIONES = {
     navegador: 'Chrome o Edge',
     pasos: [
       <>Abre esta página en <b>Chrome</b> o <b>Edge</b>.</>,
-      <>Haz clic en el ícono de instalar al final de la barra de direcciones, o en el menú elige <b>Instalar Sistema de Estacionamientos</b>.</>,
+      <>Haz clic en el ícono de instalar al final de la barra de direcciones, o en el menú elige <b>Instalar Estacionados</b>.</>,
       <>Confirma con <b>Instalar</b>: queda en el escritorio y en el menú de inicio.</>
     ]
   }

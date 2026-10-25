@@ -1,6 +1,6 @@
 {
-  "name": "Sistema de Estacionamientos",
-  "short_name": "Estacionamientos",
+  "name": "Estacionados",
+  "short_name": "Estacionados",
   "description": "Encuentra estacionamiento cerca de tu destino, con cupos en tiempo real, y reserva tu cupo.",
   "lang": "es-CL",
   "id": "/",

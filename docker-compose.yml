@@ -30,7 +30,7 @@ services:
       SMTP_PORT: ${SMTP_PORT:-587}
       SMTP_USER: ${SMTP_USER:-}
       SMTP_PASS: ${SMTP_PASS:-}
-      SMTP_FROM: ${SMTP_FROM:-Sistema de Estacionamientos <no-reply@estacionamientos.local>}
+      SMTP_FROM: ${SMTP_FROM:-Estacionados <no-reply@estacionamientos.local>}
       WEBPAY_COMMERCE_CODE: ${WEBPAY_COMMERCE_CODE:-}
       WEBPAY_API_KEY: ${WEBPAY_API_KEY:-}
       WEBPAY_ENV: ${WEBPAY_ENV:-integration}

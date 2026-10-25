@@ -103,7 +103,7 @@ export async function forgotPassword(req,res){
   const link=`${env.frontendUrl}/?reset=${token}`;
   await sendMail({
     to: email,
-    subject: 'Recupera tu contraseña — Sistema de Estacionamientos',
+    subject: 'Recupera tu contraseña — Estacionados',
     // El nombre lo escribió la propia persona al registrarse: sin escapar, algo como
     // `<a href="http://evil">click</a>` se renderizaría como un enlace real en su propio correo.
     html: `<p>Hola ${escapeHtml(usuario.nombre)},</p><p>Haz clic en el siguiente enlace para definir una nueva contraseña (válido por ${RESET_TOKEN_TTL_MIN} minutos):</p><p><a href="${link}">${link}</a></p><p>Si no solicitaste esto, ignora este correo.</p>`

@@ -22,7 +22,7 @@ export const env = {
     port: Number(process.env.SMTP_PORT || 587),
     user: process.env.SMTP_USER || '',
     pass: process.env.SMTP_PASS || '',
-    from: process.env.SMTP_FROM || 'Sistema de Estacionamientos <no-reply@estacionamientos.local>'
+    from: process.env.SMTP_FROM || 'Estacionados <no-reply@estacionamientos.local>'
   },
   // Alerta opcional de errores 500: URL de un webhook entrante de Slack, o de Discord
   // agregando "/slack" al final de su URL de webhook (Discord entiende el formato de Slack).

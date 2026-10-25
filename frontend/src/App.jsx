@@ -20,7 +20,7 @@ const TITULO_PANEL={ADMIN:'Administración',CLIENTE:'Panel del dueño',SOPORTE:'
 
 function Header({user,onSalir,onAcceso,onPostular}){
   return <header className="site-header">
-    <a className="brand" href="/"><SignE/>Sistema de Estacionamientos</a>
+    <a className="brand" href="/"><SignE/>Estacionados</a>
     <div className="actions">
       {user
         ? <>
@@ -37,7 +37,7 @@ function Header({user,onSalir,onAcceso,onPostular}){
 
 function LoginShell({children}){
   return <div className="login-shell">
-    <header className="site-header"><a className="brand" href="/"><SignE/>Sistema de Estacionamientos</a></header>
+    <header className="site-header"><a className="brand" href="/"><SignE/>Estacionados</a></header>
     <main className="login-main"><div className="card login-card">{children}</div></main>
     <Footer/>
   </div>;

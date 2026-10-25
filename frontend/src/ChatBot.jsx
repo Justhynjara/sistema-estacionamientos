@@ -53,7 +53,7 @@ const FAQ = [
   }
 ];
 
-const SALUDO = { rol: 'bot', texto: '¡Hola! Soy el asistente del Sistema de Estacionamientos. Puedes preguntarme sobre cómo buscar, reservar o pagar un estacionamiento.' };
+const SALUDO = { rol: 'bot', texto: '¡Hola! Soy el asistente de Estacionados. Puedes preguntarme sobre cómo buscar, reservar o pagar un estacionamiento.' };
 const FALLBACK = 'No tengo una respuesta exacta para eso. Prueba con alguna de las preguntas frecuentes de abajo, o si es algo puntual de tu reserva, contacta directamente al estacionamiento con tu código de comprobante.';
 
 function normalizar(texto) {
