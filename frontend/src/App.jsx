@@ -13,14 +13,27 @@ import Footer from './legal/Footer.jsx';
 import CookieNotice from './legal/CookieNotice.jsx';
 import {CONTACTO_LEGAL} from './legal/contenido.js';
 import ComoFunciona from './ComoFunciona.jsx';
+import AccesoAuto from './AccesoAuto.jsx';
 import Icon,{SignE} from './Icon.jsx';
 
 const NOMBRE_ROL={ADMIN:'Administrador',CLIENTE:'Dueño',SOPORTE:'Soporte',USUARIO:'Conductor'};
 const TITULO_PANEL={ADMIN:'Administración',CLIENTE:'Panel del dueño',SOPORTE:'Soporte',USUARIO:'Buscar estacionamiento'};
+const BAJADA_PANEL={
+  ADMIN:'Usuarios, estacionamientos, solicitudes y auditoría de toda la plataforma.',
+  CLIENTE:'Tus estacionamientos, los vehículos dentro y lo cobrado en caja.',
+  SOPORTE:'Solicitudes de nuevos estacionamientos por revisar.',
+  USUARIO:'Busca dónde estacionar cerca de tu destino.'
+};
 
-function Header({user,onSalir,onAcceso,onPostular}){
+// Iniciales para el avatar del saludo: "Cliente Demo" → "CD".
+function iniciales(nombre=''){
+  return nombre.trim().split(/\s+/).slice(0,2).map(p=>p[0]||'').join('').toUpperCase();
+}
+
+function Header({user,onSalir,onAcceso,onPostular,saludo}){
   return <header className="site-header">
     <a className="brand" href="/"><SignE/>Estacionados</a>
+    {saludo && user && <span className="saludo"><span className="avatar" aria-hidden="true">{iniciales(user.nombre)}</span>Hola, {user.nombre}</span>}
     <div className="actions">
       {user
         ? <>
@@ -35,10 +48,24 @@ function Header({user,onSalir,onAcceso,onPostular}){
   </header>;
 }
 
-function LoginShell({children}){
-  return <div className="login-shell">
+// Pantallas de acceso: el auto asoma sobre la tarjeta y sigue lo que se escribe (ver AccesoAuto).
+// Los campos de contraseña se marcan con data-clave para que el auto apague los focos.
+function LoginShell({children,paso,mostrarClave}){
+  const [vista,setVista]=useState({modo:'reposo',avance:0});
+  function leer(t){
+    if(!t||t.tagName!=='INPUT') return;
+    if(t.dataset.clave!==undefined) setVista({modo:'tapa',avance:0});
+    else setVista({modo:'mira',avance:t.value.length/28});
+  }
+  const modo=paso?'pasa':(vista.modo==='tapa'&&mostrarClave?'espia':vista.modo);
+  return <div className="login-shell acceso">
     <header className="site-header"><a className="brand" href="/"><SignE/>Estacionados</a></header>
-    <main className="login-main"><div className="card login-card">{children}</div></main>
+    <main className="login-main">
+      <div className="acceso-escena">
+        <AccesoAuto modo={modo} avance={vista.avance}/>
+        <div className="card login-card" onFocus={e=>leer(e.target)} onInput={e=>leer(e.target)} onBlur={()=>setVista({modo:'reposo',avance:0})}>{children}</div>
+      </div>
+    </main>
     <Footer/>
   </div>;
 }
@@ -46,22 +73,36 @@ function LoginShell({children}){
 function Login({onLogin,onCancel,onForgot}){
   const [email,setEmail]=useState(''),[password,setPassword]=useState('');
   const [loading,setLoading]=useState(false);
+  const [mostrarClave,setMostrarClave]=useState(false);
+  const [paso,setPaso]=useState(false);
   async function submit(e){
     e.preventDefault();
     setLoading(true);
-    try{const r=await api.post('/auth/login',{email,password});guardarSesionNativa(r.data.token);onLogin({...r.data.user,debeCambiarPassword:r.data.debeCambiarPassword})}
+    try{
+      const r=await api.post('/auth/login',{email,password});
+      guardarSesionNativa(r.data.token);
+      // La barrera sube y el auto entra antes de abrir el panel (sin espera si se pidió menos movimiento).
+      setPaso(true);
+      const reducido=window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches;
+      await new Promise(ok=>setTimeout(ok,reducido?0:650));
+      onLogin({...r.data.user,debeCambiarPassword:r.data.debeCambiarPassword});
+    }
     catch{alert('Credenciales inválidas')}
     finally{setLoading(false)}
   }
-  return <LoginShell>
+  return <LoginShell paso={paso} mostrarClave={mostrarClave}>
     <div className="login-head"><SignE size={40}/><h1>Acceso Cliente / Administrador</h1></div>
     <p className="lead">Solo dueños de estacionamientos y administradores necesitan iniciar sesión. Para buscar o reservar un cupo no hace falta una cuenta.</p>
     <form onSubmit={submit}>
       <label htmlFor="login-email">Email</label>
       <input id="login-email" type="email" autoComplete="username" value={email} onChange={e=>setEmail(e.target.value)} placeholder="nombre@correo.cl" aria-label="Email"/>
       <label htmlFor="login-clave">Contraseña</label>
-      <input id="login-clave" type="password" autoComplete="current-password" value={password} onChange={e=>setPassword(e.target.value)} aria-label="Contraseña"/>
-      <button type="submit" disabled={loading}>{loading && <span className="spinner"/>}{loading?'Ingresando...':'Iniciar sesión'}</button>
+      <div className="clave-campo">
+        <input id="login-clave" data-clave="" type={mostrarClave?'text':'password'} autoComplete="current-password" value={password} onChange={e=>setPassword(e.target.value)} aria-label="Contraseña"/>
+        {/* mouseDown sin foco: el campo sigue activo y el auto pasa de "tapa" a "espía". */}
+        <button type="button" className="ver-clave" onMouseDown={e=>e.preventDefault()} onClick={()=>setMostrarClave(v=>!v)} aria-pressed={mostrarClave} aria-label={mostrarClave?'Ocultar contraseña':'Mostrar contraseña'}><Icon name={mostrarClave?'eyeOff':'eye'} size={18}/></button>
+      </div>
+      <button type="submit" className="entrar" disabled={loading}>{loading && <span className="spinner"/>}{loading?'Ingresando...':'Iniciar sesión'}{!loading && <Icon name="arrowRight" size={18}/>}</button>
     </form>
     <div className="enlaces">
       <button type="button" onClick={onCancel} className="link-button"><Icon name="arrowLeft" size={16}/>Volver a la búsqueda</button>
@@ -123,7 +164,7 @@ function ResetPassword({token,onDone}){
       : <form onSubmit={submit}>
           {error && <p className="badge off">{error}</p>}
           <label htmlFor="reset-clave">Nueva contraseña</label>
-          <input id="reset-clave" type="password" autoComplete="new-password" value={password} onChange={e=>setPassword(e.target.value)} placeholder="Mínimo 8 caracteres" aria-label="Nueva contraseña" required minLength={8}/>
+          <input id="reset-clave" data-clave="" type="password" autoComplete="new-password" value={password} onChange={e=>setPassword(e.target.value)} placeholder="Mínimo 8 caracteres" aria-label="Nueva contraseña" required minLength={8}/>
           <button type="submit" disabled={loading}>{loading && <span className="spinner"/>}{loading?'Guardando...':'Guardar contraseña'}</button>
         </form>}
   </LoginShell>;
@@ -153,11 +194,11 @@ function CambiarPasswordObligatorio({onListo,onSalir}){
     <form onSubmit={submit}>
       {error && <p className="badge off">{error}</p>}
       <label htmlFor="cpo-actual">Contraseña actual</label>
-      <input id="cpo-actual" type="password" autoComplete="current-password" value={actual} onChange={e=>setActual(e.target.value)} aria-label="Contraseña actual" required/>
+      <input id="cpo-actual" data-clave="" type="password" autoComplete="current-password" value={actual} onChange={e=>setActual(e.target.value)} aria-label="Contraseña actual" required/>
       <label htmlFor="cpo-nueva">Nueva contraseña</label>
-      <input id="cpo-nueva" type="password" autoComplete="new-password" value={nueva} onChange={e=>setNueva(e.target.value)} placeholder="Mínimo 8 caracteres" aria-label="Nueva contraseña" required minLength={8}/>
+      <input id="cpo-nueva" data-clave="" type="password" autoComplete="new-password" value={nueva} onChange={e=>setNueva(e.target.value)} placeholder="Mínimo 8 caracteres" aria-label="Nueva contraseña" required minLength={8}/>
       <label htmlFor="cpo-confirmar">Confirmar nueva contraseña</label>
-      <input id="cpo-confirmar" type="password" autoComplete="new-password" value={confirmar} onChange={e=>setConfirmar(e.target.value)} aria-label="Confirmar nueva contraseña" required minLength={8}/>
+      <input id="cpo-confirmar" data-clave="" type="password" autoComplete="new-password" value={confirmar} onChange={e=>setConfirmar(e.target.value)} aria-label="Confirmar nueva contraseña" required minLength={8}/>
       <button type="submit" disabled={loading}>{loading && <span className="spinner"/>}{loading?'Guardando...':'Guardar y continuar'}</button>
     </form>
     <div className="enlaces">
@@ -188,8 +229,8 @@ function PagoBanner({estado,monto,orden,onClose}){
   </div>;
 }
 
-function SignBand({titulo,children,slim}){
-  return <div className={'sign-band'+(slim?' slim':'')}>
+function SignBand({titulo,children}){
+  return <div className="sign-band">
     <div className="inner">
       <h1>{titulo}</h1>
       {children}
@@ -290,7 +331,7 @@ function App(){
 
  const abrirLogin=()=>{setShowLogin(true);setAuthView('login');};
 
- if(checkingSession) return <div className="login-shell"><main className="login-main"><p className="loading-line"><span className="spinner"/>Cargando sesión…</p></main></div>;
+ if(checkingSession) return <div className="login-shell acceso"><main className="login-main"><p className="loading-line"><span className="spinner"/>Cargando sesión…</p></main></div>;
 
  // Cuenta marcada para cambio obligatorio: solo puede cambiar la clave o salir. El backend igual
  // bloquea todo lo demás (ver auth.middleware.js), así que esto es la cara visible de esa regla.
@@ -306,22 +347,22 @@ function App(){
  }
 
  if(legalPage){
-   return <>
+   return <div className="vidrio">
      <Header/>
      <main className="container legal"><LegalPage pagina={legalPage} onVolver={cerrarLegal}/></main>
      <Footer/>
-   </>;
+   </div>;
  }
 
  if(mostrarSolicitud){
-   return <>
+   return <div className="vidrio">
      <Header/>
-     <SignBand titulo="Postula tu estacionamiento" slim/>
      <main className="container" style={{maxWidth:880}}>
+       <div className="vidrio-cabeza"><h1>Postula tu estacionamiento</h1></div>
        <SolicitudClienteForm onCerrar={()=>setMostrarSolicitud(false)}/>
      </main>
      <Footer/>
-   </>;
+   </div>;
  }
 
  if(!user && showLogin){
@@ -332,7 +373,7 @@ function App(){
  // Vista pública del ticket (QR escaneado con la cámara). Un dueño con sesión iniciada no la ve:
  // cae directo al cobro más abajo (ClientePanel).
  if(ticketCodigo && (!user || user.rol!=='CLIENTE')){
-   return <>
+   return <div className="vidrio">
      <Header user={user} onSalir={salir}/>
      <main className="container">
        <TicketPublico
@@ -343,11 +384,11 @@ function App(){
      </main>
      <Footer/>
      <CookieNotice/>
-   </>;
+   </div>;
  }
 
  if(!user){
-   return <>
+   return <div className="vidrio">
      <Header onAcceso={abrirLogin} onPostular={()=>setMostrarSolicitud(true)}/>
      <SignBand titulo="Encuentra estacionamiento cerca de tu destino">
        <p><span className="live"><span className="live-dot" aria-hidden="true"/>Cupos en tiempo real</span><br/>Sin registro. Reserva tu cupo por $100, que se descuentan al salir.</p>
@@ -374,28 +415,30 @@ function App(){
      <EscanearTicket onCodigo={abrirTicketEscaneado} rotulo="Escanear mi ticket" ayuda="Apunta al código QR de tu ticket para ver cuánto tiempo llevas y cuánto vas a pagar."/>
      <Footer/>
      <CookieNotice/>
-   </>;
+   </div>;
  }
 
- return <>
- <Header user={user} onSalir={salir}/>
- <SignBand titulo={TITULO_PANEL[user.rol]||'Panel'} slim>
-   <p>{user.nombre}</p>
- </SignBand>
- <PagoBanner estado={pago?.estado} monto={pago?.monto} orden={pago?.orden} onClose={()=>setPago(null)}/>
- <main className="container">
-  {user.rol==='ADMIN'
-    ? <AdminPanel user={user}/>
-    : user.rol==='CLIENTE'
-    ? <ClientePanel key={lecturaQR} ticketInicial={ticketCodigo} onTicketConsumido={cerrarTicket}/>
-    : user.rol==='SOPORTE'
-    ? <SoportePanel/>
-    : <BuscarCercanos reservaCodigoInicial={reservaCodigo}/>}
- </main>
- {user.rol==='CLIENTE' && <EscanearTicket onCodigo={abrirTicketEscaneado} rotulo="Escanear para cobrar" ayuda="Apunta al código QR del ticket del conductor: si es de uno de tus estacionamientos, pasas directo al cobro."/>}
- {user.rol==='USUARIO' && <EscanearTicket onCodigo={abrirTicketEscaneado} rotulo="Escanear mi ticket" ayuda="Apunta al código QR de tu ticket para ver cuánto tiempo llevas y cuánto vas a pagar."/>}
- <Footer/>
- <CookieNotice/>
- </>
+ // Paneles con sesión: barra flotante con saludo, titular sobre el azul de la marca y tarjetas de vidrio.
+ return <div className="vidrio">
+   <Header user={user} onSalir={salir} saludo/>
+   <PagoBanner estado={pago?.estado} monto={pago?.monto} orden={pago?.orden} onClose={()=>setPago(null)}/>
+   <main className="container">
+     <div className="vidrio-cabeza">
+       <h1>{TITULO_PANEL[user.rol]||'Panel'}</h1>
+       {BAJADA_PANEL[user.rol] && <p>{BAJADA_PANEL[user.rol]}</p>}
+     </div>
+     {user.rol==='ADMIN'
+       ? <AdminPanel user={user}/>
+       : user.rol==='CLIENTE'
+       ? <ClientePanel key={lecturaQR} ticketInicial={ticketCodigo} onTicketConsumido={cerrarTicket}/>
+       : user.rol==='SOPORTE'
+       ? <SoportePanel/>
+       : <BuscarCercanos reservaCodigoInicial={reservaCodigo}/>}
+   </main>
+   {user.rol==='CLIENTE' && <EscanearTicket onCodigo={abrirTicketEscaneado} rotulo="Escanear para cobrar" ayuda="Apunta al código QR del ticket del conductor: si es de uno de tus estacionamientos, pasas directo al cobro."/>}
+   {user.rol==='USUARIO' && <EscanearTicket onCodigo={abrirTicketEscaneado} rotulo="Escanear mi ticket" ayuda="Apunta al código QR de tu ticket para ver cuánto tiempo llevas y cuánto vas a pagar."/>}
+   <Footer/>
+   <CookieNotice/>
+ </div>;
 }
 export default App;

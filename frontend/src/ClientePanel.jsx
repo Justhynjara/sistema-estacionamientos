@@ -599,14 +599,14 @@ function DashboardTab({ parking }) {
         <>
           <section className="tablero" aria-label="Resumen del día">
             <div className="celda">
-              <h3>Vehículos ingresados</h3>
+              <div className="celda-cab"><span className="kpi-ico"><Icon name="car" size={18} /></span><h3>Vehículos ingresados</h3></div>
               <p className="cifra">{data.totalTickets}</p>
               {esHoy && data.vehiculosDentro != null && (
                 <small>{data.vehiculosDentro} dentro ahora</small>
               )}
             </div>
             <div className="celda">
-              <h3>Cobrado en caja</h3>
+              <div className="celda-cab"><span className="kpi-ico"><Icon name="coin" size={18} /></span><h3>Cobrado en caja</h3></div>
               <p className="cifra">${data.totalCobrado.toLocaleString('es-CL')}</p>
               {data.cobros != null && (
                 <small>
@@ -631,13 +631,13 @@ function DashboardTab({ parking }) {
               )}
             </div>
             <div className="celda">
-              <h3>Permanencia promedio</h3>
+              <div className="celda-cab"><span className="kpi-ico"><Icon name="clock" size={18} /></span><h3>Permanencia promedio</h3></div>
               {data.permanenciaPromedioMin != null
                 ? <p className="cifra mediana">{formatDuracion(data.permanenciaPromedioMin)}</p>
                 : <p className="detalle">Sin cobros este día</p>}
             </div>
             <div className="celda">
-              <h3>Hora de mayor flujo</h3>
+              <div className="celda-cab"><span className="kpi-ico"><Icon name="chart" size={18} /></span><h3>Hora de mayor flujo</h3></div>
               {data.horaPico
                 ? <><p className="cifra mediana">{String(data.horaPico.hora).padStart(2, '0')}:00–{String(data.horaPico.hora + 1).padStart(2, '0')}:00</p><small>{data.horaPico.entradas} {data.horaPico.entradas === 1 ? 'vehículo ingresado' : 'vehículos ingresados'}</small></>
                 : <p className="detalle">Sin movimiento este día</p>}
@@ -671,7 +671,7 @@ function DashboardTab({ parking }) {
           <div className="card">
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8 }}>
               <h3 style={{ margin: 0 }}>Detalle de tickets</h3>
-              <button type="button" className="secondary small" onClick={() => exportarCSV(data.tickets, fecha)} disabled={data.tickets.length === 0}><Icon name="download" size={16} />Exportar CSV</button>
+              <button type="button" className="dark small" onClick={() => exportarCSV(data.tickets, fecha)} disabled={data.tickets.length === 0}><Icon name="download" size={16} />Exportar CSV</button>
             </div>
             <div className="table-wrap">
               <table className="table">

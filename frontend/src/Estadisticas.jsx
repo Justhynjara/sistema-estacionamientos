@@ -57,25 +57,25 @@ export default function Estadisticas({ estacionamientoId, dias }) {
     <>
       <section className="tablero" aria-label={`Resumen de los últimos ${dias} días`}>
         <div className="celda">
-          <h3>Cobrado en caja</h3>
+          <div className="celda-cab"><span className="kpi-ico"><Icon name="coin" size={18} /></span><h3>Cobrado en caja</h3></div>
           <p className="cifra">{clp(total.cobrado)}</p>
           <Variacion actual={total.cobrado} anterior={anterior.cobrado} />
           {total.ticketPromedio != null && <small>{total.cobros} {total.cobros === 1 ? 'cobro' : 'cobros'} · promedio {clp(total.ticketPromedio)}</small>}
         </div>
         <div className="celda">
-          <h3>Vehículos ingresados</h3>
+          <div className="celda-cab"><span className="kpi-ico"><Icon name="car" size={18} /></span><h3>Vehículos ingresados</h3></div>
           <p className="cifra">{total.vehiculos}</p>
           <Variacion actual={total.vehiculos} anterior={anterior.vehiculos} />
           {total.permanenciaPromedioMin != null && <small>Permanencia promedio: {formatDuracion(total.permanenciaPromedioMin)}</small>}
         </div>
         <div className="celda">
-          <h3>Ocupación promedio</h3>
+          <div className="celda-cab"><span className="kpi-ico"><Icon name="building" size={18} /></span><h3>Ocupación promedio</h3></div>
           {data.ocupacionPromedio != null
             ? <><p className="cifra mediana">{formatPorcentaje(data.ocupacionPromedio)}</p><small>de los cupos, en promedio, durante el período</small></>
             : <p className="detalle">Sin cupos que medir</p>}
         </div>
         <div className="celda">
-          <h3>Mayor movimiento</h3>
+          <div className="celda-cab"><span className="kpi-ico"><Icon name="chart" size={18} /></span><h3>Mayor movimiento</h3></div>
           {data.horaPico
             ? <>
                 <p className="cifra mediana">{hh(data.horaPico.hora)}:00–{hh(data.horaPico.hora + 1)}:00</p>

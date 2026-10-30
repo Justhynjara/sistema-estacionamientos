@@ -132,8 +132,6 @@ input[inputmode="numeric"],input[type="number"]{
 .sign-band .live{display:inline-flex;gap:8px;align-items:center;color:#fff;font-weight:700}
 .live-dot{width:9px;height:9px;border-radius:50%;background:#5fe39a;animation:pulse 2.4s ease-out infinite}
 @keyframes pulse{0%{box-shadow:0 0 0 0 rgba(95,227,154,.6)}70%{box-shadow:0 0 0 8px rgba(95,227,154,0)}100%{box-shadow:0 0 0 0 rgba(95,227,154,0)}}
-.sign-band.slim{padding:18px 28px}
-.sign-band.slim h1{font-size:1.55rem;max-width:none}
 
 .container{max-width:1240px;width:100%;margin:0 auto;padding:24px 28px}
 
@@ -547,9 +545,7 @@ a:focus-visible,button:focus-visible,input:focus-visible,select:focus-visible,te
   .site-header .brand{font-size:.9rem;line-height:1.15;min-width:0}
   .site-header .navlink.opcional{display:none}
   .sign-band{padding:20px 16px}
-  .sign-band.slim{padding:14px 16px}
   .sign-band h1{font-size:1.7rem}
-  .sign-band.slim h1{font-size:1.25rem}
   .pago-banner{padding:0 16px}
   .card{padding:16px}
   .row-form input,.row-form select{min-width:0;width:100%;flex-basis:100%}
@@ -583,8 +579,8 @@ body:has(.chatbot-toggle) .site-footer .inner{padding-right:72px}
 .table-wrap .empty-state{border:0;border-radius:0;border-top:1px solid var(--rule-soft)}
 .site-header .actions{flex-wrap:nowrap}
 
-/* La banda de la portada se alinea con el encabezado (ancho completo); la de los paneles, con el contenido centrado. */
-.sign-band:not(.slim) .inner{max-width:none}
+/* La banda de la portada se alinea con el encabezado (ancho completo). */
+.sign-band .inner{max-width:none}
 /* Encabezado alineado con el contenido: centrado a 1240px en paneles y páginas de texto; a todo el
    ancho en la portada, donde el buscador y el mapa ocupan la pantalla completa. */
 .site-header{padding-inline:max(28px, calc((100% - 1240px) / 2 + 28px))}
@@ -742,3 +738,303 @@ body:has(.buscador) .site-footer .inner,body:has(.buscador) .owner-strip .inner{
 @media (max-width:760px){
   .como-funciona .inner{grid-template-columns:minmax(0,1fr);gap:28px;padding:32px 16px 40px}
 }
+
+/* ---------- Cifras del tablero: ícono circular junto al rótulo ---------- */
+.tablero .celda-cab{display:flex;align-items:center;gap:10px;margin:0 0 12px}
+.tablero .celda-cab h3{margin:0}
+.kpi-ico{flex:none;width:34px;height:34px;border-radius:50%;display:grid;place-items:center;background:var(--route-tint);color:var(--route)}
+
+/* ---------- Panel del dueño: vidrio esmerilado ---------- */
+/* Tarjetas translúcidas con desenfoque sobre un fondo de los azules de la marca. El blanco del vidrio
+   va al 78%: con menos, el texto secundario baja de 4.5:1 sobre las zonas más oscuras del fondo.
+   --muted se oscurece aquí (#3c4657: 5.0:1 sobre el vidrio encima del azul más oscuro). */
+.vidrio{
+  --glass:rgba(255,255,255,.78);
+  --glass-soft:rgba(255,255,255,.55);
+  --glass-line:rgba(255,255,255,.8);
+  --glass-shadow:0 12px 36px rgba(6,32,72,.22),inset 0 1px 0 rgba(255,255,255,.7);
+  --blur:blur(22px) saturate(150%);
+  --muted:#3c4657;
+  --radius-glass:22px;
+  flex:1 0 auto;display:flex;flex-direction:column;min-height:100vh;
+  background:
+    radial-gradient(42% 38% at 88% 14%,rgba(150,196,255,.55),transparent 70%),
+    radial-gradient(55% 45% at 22% 92%,rgba(176,208,246,.5),transparent 70%),
+    radial-gradient(40% 40% at 60% 55%,rgba(10,63,122,.6),transparent 70%),
+    linear-gradient(165deg,#08447f 0%,#0b5cad 48%,#3f7fc8 100%);
+}
+/* Lo que asome bajo el panel (rebote del scroll en el teléfono) sigue siendo azul, no gris. */
+body:has(.vidrio){background:#08447f}
+.vidrio main.container{flex:1 0 auto}
+
+/* Barra superior flotante, en píldora. */
+.vidrio .site-header{
+  top:12px;margin:12px max(16px, calc((100% - 1240px) / 2 + 28px)) 0;
+  padding:8px 10px 8px 14px;min-height:0;border:1px solid var(--glass-line);border-radius:999px;
+  background:rgba(255,255,255,.74);box-shadow:var(--glass-shadow);
+  -webkit-backdrop-filter:var(--blur);backdrop-filter:var(--blur);
+}
+.vidrio .saludo{display:flex;align-items:center;gap:10px;font-weight:700;font-size:.92rem;color:var(--ink);min-width:0}
+.vidrio .avatar{flex:none;width:30px;height:30px;border-radius:50%;display:grid;place-items:center;background:var(--sign);color:#fff;font:800 .74rem/1 var(--face);letter-spacing:.02em}
+.vidrio .role-pill{border-radius:999px;background:rgba(232,240,250,.9)}
+
+/* Titular sobre el azul: blanco a 2.3rem (≥ 6:1 sobre #0b5cad); la bajada en #e3ecf8 (≥ 5.5:1). */
+.vidrio-cabeza{color:#fff;margin:10px 0 6px}
+.vidrio-cabeza h1{margin:0;font-size:2.3rem;font-weight:800;letter-spacing:-.02em;line-height:1.05}
+.vidrio-cabeza p{margin:6px 0 0;color:#e3ecf8;font-weight:600;max-width:60ch}
+
+/* Superficies de vidrio. */
+.vidrio .card,.vidrio .tablero .celda{
+  background:var(--glass);border:1px solid var(--glass-line);border-radius:var(--radius-glass);
+  box-shadow:var(--glass-shadow);-webkit-backdrop-filter:var(--blur);backdrop-filter:var(--blur);
+}
+.vidrio .card{padding:22px 24px}
+
+/* Cifras: una tarjeta por cifra, con ícono circular, como tablero de vidrio. */
+.vidrio .tablero{gap:16px;background:transparent;box-shadow:none;overflow:visible;border-radius:0;color:var(--ink);--focus:var(--route)}
+.vidrio .tablero .celda{padding:18px 20px 20px}
+.vidrio .tablero .celda h3{color:var(--muted);font-size:.9rem;font-weight:700}
+.vidrio .tablero .cifra{color:var(--ink)}
+.vidrio .tablero small,.vidrio .tablero .detalle{color:var(--muted)}
+.vidrio .tablero ul{color:var(--muted)}
+.vidrio .tablero li{border-top-color:rgba(14,23,38,.1)}
+.vidrio .tablero li strong{color:var(--ink)}
+.vidrio .kpi-ico{background:#fff;box-shadow:0 2px 8px rgba(6,32,72,.14)}
+/* Variación como chip: verde/rojo de estado sobre su fondo claro; la flecha y el signo van siempre. */
+.vidrio .tablero .variacion{display:inline-flex;width:fit-content;margin-top:10px;padding:3px 9px;border-radius:999px;font-size:.8rem}
+.vidrio .tablero .variacion.sube{color:var(--free);background:var(--free-bg)}
+.vidrio .tablero .variacion.baja{color:var(--full);background:var(--full-bg)}
+.vidrio .tablero .variacion.igual{color:var(--muted);background:rgba(255,255,255,.7)}
+
+/* Controles en píldora. */
+.vidrio button{border-radius:999px}
+.vidrio button.secondary{background:rgba(255,255,255,.8)}
+.vidrio button.secondary:hover{background:#fff}
+.vidrio button.dark{background:var(--ink);color:#fff}
+.vidrio button.dark:hover{background:#1f2c44}
+.vidrio .link-button{border-radius:6px}
+/* Lo que queda directo sobre el fondo azul (fuera de las tarjetas) va en claro. */
+.vidrio main > div > div > .link-button,.vidrio main > div > div > .link-button:hover{color:#fff}
+.vidrio main > div > div > .loading-line{color:#e3ecf8}
+.vidrio input,.vidrio select{border-radius:14px;background:rgba(255,255,255,.88);border-color:rgba(14,23,38,.28)}
+.vidrio .segmentos{gap:2px;padding:4px;border-radius:999px;background:var(--glass-soft);border:1px solid var(--glass-line)}
+.vidrio .segmentos .filtro{border-color:transparent;background:transparent;min-height:32px}
+.vidrio .segmentos .filtro:hover{background:rgba(255,255,255,.75);border-color:transparent}
+.vidrio .segmentos .filtro[aria-checked="true"]{background:var(--ink);border-color:var(--ink);color:#fff}
+
+/* Pestañas: píldora flotante abajo, la activa en blanco. */
+.vidrio .tabs{
+  position:fixed;left:50%;bottom:22px;transform:translateX(-50%);z-index:900;
+  gap:4px;margin:0;padding:6px;overflow:visible;border:1px solid var(--glass-line);border-bottom:1px solid var(--glass-line);
+  border-radius:999px;background:rgba(255,255,255,.74);box-shadow:var(--glass-shadow);
+  -webkit-backdrop-filter:var(--blur);backdrop-filter:var(--blur);
+}
+.vidrio .tab{border-radius:999px;padding:10px 18px;color:var(--muted)}
+.vidrio .tab::after{display:none}
+.vidrio .tab:hover{background:rgba(255,255,255,.7);color:var(--ink)}
+.vidrio .tab.active{background:#fff;color:var(--ink);box-shadow:0 3px 10px rgba(6,32,72,.18)}
+/* Espacio para que la píldora no tape lo último del contenido ni los enlaces del pie. */
+.vidrio main.container{padding-bottom:112px}
+.vidrio .site-footer{background:rgba(6,24,52,.62);-webkit-backdrop-filter:var(--blur);backdrop-filter:var(--blur);padding-bottom:96px}
+
+/* Gráficos y tablas sobre vidrio. */
+.vidrio .flujo{border-bottom-color:rgba(14,23,38,.2)}
+.vidrio .flujo .col i{border-radius:7px 7px 2px 2px}
+.vidrio .flujo .col.cero i{background:rgba(14,23,38,.1)}
+.vidrio .table-wrap{background:var(--glass-soft);border-color:var(--glass-line);border-radius:16px}
+.vidrio .table th{background:rgba(255,255,255,.6);border-bottom-color:rgba(14,23,38,.12)}
+.vidrio .table td{border-bottom-color:rgba(14,23,38,.08)}
+.vidrio .table tbody tr:hover td{background:rgba(255,255,255,.6)}
+.vidrio .empty-state,.vidrio .flujo-vacio{background:var(--glass-soft);border-color:rgba(14,23,38,.25)}
+.vidrio .table-wrap .empty-state{background:transparent}
+.vidrio .capacidad .barra{background:rgba(14,23,38,.12)}
+
+/* Sin desenfoque disponible: el vidrio pasa a casi opaco para no perder contraste. */
+@supports not ((backdrop-filter:blur(1px)) or (-webkit-backdrop-filter:blur(1px))){
+  .vidrio{--glass:rgba(255,255,255,.94);--glass-soft:rgba(255,255,255,.85)}
+  .vidrio .site-header,.vidrio .tabs{background:rgba(255,255,255,.95)}
+}
+
+/* En teléfonos y tabletas las pestañas van arriba (abajo está el botón de escanear). */
+@media (max-width:900px){
+  .vidrio .tabs{position:static;transform:none;width:100%;margin:6px 0 4px;box-shadow:0 6px 18px rgba(6,32,72,.16)}
+  .vidrio .tabs:not(:has(> .tab:nth-child(3))) .tab,.vidrio .tab{flex:1 1 0;justify-content:center;text-align:center;padding:10px 12px}
+  .vidrio main.container{padding-bottom:24px}
+  .vidrio .site-footer{padding-bottom:20px}
+}
+@media (max-width:640px){
+  .vidrio .site-header{margin:10px 12px 0;padding:6px 8px 6px 12px}
+  .vidrio .saludo{display:none}
+  .vidrio-cabeza h1{font-size:1.7rem}
+  .vidrio .card{padding:16px;border-radius:18px}
+}
+
+/* ---------- Acceso: noche azul y tarjeta de vidrio oscuro, con el auto que vigila ---------- */
+/* Texto sobre el vidrio oscuro (~#0f2542): blanco 15:1, --muted claro #b9c8dc 9.6:1, enlaces #9cc8ff 9:1. */
+.acceso{
+  --ink:#f3f7fc;--muted:#b9c8dc;--rule:rgba(255,255,255,.3);--rule-soft:rgba(255,255,255,.14);
+  --panel:rgba(14,34,64,.62);--panel-alt:rgba(255,255,255,.06);--route:#9cc8ff;--route-dark:#c5deff;--focus:#9cc8ff;
+  --carro:#e9eef5;
+  color:var(--ink);color-scheme:dark;
+  background:
+    radial-gradient(45% 40% at 50% 30%,rgba(11,92,173,.55),transparent 70%),
+    radial-gradient(35% 35% at 85% 85%,rgba(63,127,200,.35),transparent 70%),
+    radial-gradient(30% 30% at 10% 70%,rgba(10,63,122,.6),transparent 70%),
+    linear-gradient(180deg,#050f1f 0%,#071a33 55%,#0a2546 100%);
+}
+body:has(.acceso){background:#050f1f}
+.acceso .site-footer{background:#030a16;color:#b9c8dc}
+.acceso .site-header{
+  top:12px;margin:12px max(16px, calc((100% - 1240px) / 2 + 28px)) 0;padding:8px 14px;min-height:0;
+  border:1px solid rgba(255,255,255,.14);border-radius:999px;background:rgba(10,28,54,.6);
+  -webkit-backdrop-filter:blur(18px) saturate(140%);backdrop-filter:blur(18px) saturate(140%);
+}
+.acceso .site-header .brand{color:#fff}
+.acceso .login-main{padding:56px 16px 48px}
+.acceso-escena{width:100%;max-width:440px;display:grid;justify-items:center}
+.acceso .login-card{
+  position:relative;z-index:1;max-width:none;margin-top:-22px;padding:30px 30px 26px;
+  border:1px solid rgba(255,255,255,.14);border-radius:24px;background:var(--panel);
+  box-shadow:0 30px 80px rgba(0,8,24,.55),inset 0 1px 0 rgba(255,255,255,.12);
+  -webkit-backdrop-filter:blur(24px) saturate(140%);backdrop-filter:blur(24px) saturate(140%);
+}
+.acceso .login-card .login-head{justify-content:center;text-align:center;flex-direction:column;gap:10px;margin-bottom:4px}
+.acceso .login-card .login-head .sign-e{display:none}
+.acceso .login-card h1{font-size:1.5rem;color:#fff}
+.acceso .login-card .lead{text-align:center;color:var(--muted);margin:.4em auto 1.3em;max-width:36ch}
+.acceso label{color:var(--muted);font-size:.84rem}
+.acceso input{background:rgba(255,255,255,.07);border:1.5px solid var(--rule);color:#fff;border-radius:14px;padding:12px 14px}
+.acceso input::placeholder{color:#8fa3bd}
+.acceso input:focus{border-color:#9cc8ff;box-shadow:0 0 0 4px rgba(156,200,255,.16);background:rgba(255,255,255,.1)}
+.acceso input:-webkit-autofill{-webkit-text-fill-color:#fff;-webkit-box-shadow:0 0 0 40px #13304f inset;caret-color:#fff}
+.acceso ::selection{background:rgba(156,200,255,.35);color:#fff}
+.clave-campo{position:relative}
+.clave-campo input{padding-right:48px}
+.ver-clave{position:absolute;right:6px;top:12px;width:38px;height:38px;padding:0;border-radius:10px;background:transparent;color:var(--muted);box-shadow:none}
+.ver-clave:hover{background:rgba(255,255,255,.08);color:#fff;box-shadow:none}
+.acceso button.entrar{
+  width:100%;margin-top:6px;padding:14px 18px;border-radius:14px;font-size:1rem;
+  background:linear-gradient(180deg,#2f86e6 0%,#0b5cad 100%);color:#fff;
+  box-shadow:0 10px 26px rgba(11,92,173,.45),inset 0 1px 0 rgba(255,255,255,.25);
+}
+.acceso button.entrar:hover{background:linear-gradient(180deg,#3d92f0 0%,#0d66bf 100%);box-shadow:0 14px 32px rgba(11,92,173,.55),inset 0 1px 0 rgba(255,255,255,.3)}
+.acceso button.entrar .icon{transition:transform .2s ease}
+.acceso button.entrar:hover .icon{transform:translateX(3px)}
+.acceso .login-card form > button[type="submit"]{border-radius:14px}
+.acceso .link-button{color:#9cc8ff}
+.acceso .link-button:hover{color:#c5deff}
+.acceso .enlaces{margin-top:16px}
+.acceso .badge.ok,.acceso .badge.off,.acceso .badge.info{--muted:#4a5568}
+
+/* El auto: asoma por detrás del borde superior de la tarjeta. */
+.acceso-auto{position:relative;z-index:0;width:250px;transition:transform .5s cubic-bezier(.16,1,.3,1)}
+.acceso-auto svg{display:block;width:100%;height:auto;overflow:visible}
+.acceso-auto .carro{fill:var(--carro)}
+.acceso-auto .vidrio-auto{fill:#3d6c9e}
+.acceso-auto .reflejo{stroke:rgba(255,255,255,.55);stroke-width:3;stroke-linecap:round}
+.acceso-auto .parrilla{fill:#0b2747}
+.acceso-auto .patente{fill:#fff;stroke:#0b2747;stroke-width:1}
+.acceso-auto .patente-txt{font:700 7.5px var(--num);fill:#0b2747;text-anchor:middle}
+.acceso-auto .aro{fill:#fff7d6;stroke:#b8c6d6;stroke-width:2;filter:drop-shadow(0 0 7px rgba(255,226,140,.85));transition:fill .25s ease,filter .25s ease}
+.acceso-auto .pupila{fill:#13253d;transform:translate(var(--mx,0px),var(--my,0px));transition:transform .18s cubic-bezier(.16,1,.3,1)}
+.acceso-auto .brillo{fill:#fff}
+.acceso-auto .parpado{fill:#cfd8e3;transform-box:fill-box;transform-origin:top;transform:scaleY(0);transition:transform .28s cubic-bezier(.16,1,.3,1)}
+.acceso-auto.reposo .parpado{animation:parpadeo 5.5s ease-in-out infinite}
+@keyframes parpadeo{0%,92%,100%{transform:scaleY(0)}95%{transform:scaleY(1)}}
+.acceso-auto.tapa .parpado{transform:scaleY(1)}
+.acceso-auto.espia .parpado{transform:scaleY(.6)}
+.acceso-auto.tapa .aro,.acceso-auto.espia .aro{fill:#e6ecf3;filter:none}
+.acceso-auto.mira .pupila{transition-duration:.12s}
+.acceso-auto .barrera .poste{fill:#c9d3df}
+.acceso-auto .brazo-base{fill:#fff}
+.acceso-auto .franja{fill:#d92d20}
+.acceso-auto .eje{fill:#0b2747}
+.acceso-auto .brazo{transform-box:view-box;transform-origin:9px 101px;transition:transform .45s cubic-bezier(.34,1.3,.5,1)}
+.acceso-auto.pasa .brazo{transform:rotate(-78deg)}
+.acceso-auto .auto{transform-box:view-box;transform-origin:100px 110px;transition:transform .5s .18s cubic-bezier(.5,0,.75,0),opacity .35s .3s ease}
+.acceso-auto.pasa .auto{transform:translateY(-18px) scale(.72);opacity:0}
+.acceso-auto.pasa .aro{fill:#fff7d6;filter:drop-shadow(0 0 12px rgba(255,226,140,1))}
+@media (max-width:640px){
+  .acceso .login-main{padding:36px 12px 32px}
+  .acceso .login-card{padding:24px 18px 20px}
+  .acceso-auto{width:200px}
+  .acceso .login-card{margin-top:-18px}
+}
+
+/* ---------- Vidrio en toda la web ---------- */
+/* Banda de titular: ya no es una franja azul sólida, sino tipografía blanca sobre el fondo de la marca. */
+.vidrio .sign-band{background:transparent;padding:34px 28px 26px}
+.vidrio .sign-band h1{font-size:clamp(2.2rem,4.2vw,3.3rem);letter-spacing:-.03em;max-width:18ch}
+.vidrio .sign-band p{color:#e3ecf8}
+/* Lo que queda directo sobre el fondo azul (fuera de las tarjetas) va en claro. */
+.vidrio main > div > .link-button,.vidrio main > div > .link-button:hover{color:#fff}
+
+/* Portada: el encabezado flotante ocupa el ancho de la página, igual que el buscador. */
+.vidrio:has(.buscador) .site-header{margin-inline:16px;padding:8px 10px 8px 14px}
+
+/* Buscador: columna de vidrio y mapa en un marco redondeado, separados por el fondo. */
+.vidrio .buscador{background:transparent;border:0;gap:16px;padding:0 16px 20px;grid-template-columns:minmax(0,480px) minmax(0,1fr)}
+.vidrio .buscador-col{
+  border:1px solid var(--glass-line);border-radius:var(--radius-glass);background:var(--glass);
+  box-shadow:var(--glass-shadow);-webkit-backdrop-filter:var(--blur);backdrop-filter:var(--blur);
+}
+.vidrio .buscador-mapa{
+  top:calc(var(--header-h) + 30px);height:calc(100vh - var(--header-h) - 50px);
+  border:1px solid var(--glass-line);border-radius:var(--radius-glass);overflow:hidden;box-shadow:var(--glass-shadow);
+}
+.vidrio .buscador .panel-accion{background:rgba(255,255,255,.7);border-color:rgba(14,23,38,.12);border-radius:16px}
+.vidrio .opciones{border-top-color:rgba(14,23,38,.12)}
+.vidrio .parada{border-bottom-color:rgba(14,23,38,.08)}
+.vidrio .parada.sel{background:linear-gradient(90deg,rgba(232,240,250,.95),transparent 85%);border-radius:0 14px 14px 0}
+.vidrio .gps-toggle{border-radius:14px;background:rgba(255,255,255,.88)}
+.vidrio .mapa-leyenda{border-radius:999px;background:rgba(255,255,255,.85);-webkit-backdrop-filter:var(--blur);backdrop-filter:var(--blur)}
+.vidrio .filtro{background:rgba(255,255,255,.8)}
+.vidrio .address-suggestions{border-radius:16px;background:rgba(255,255,255,.96)}
+
+/* Franja de dueños y "Cómo funciona": tarjetas de vidrio sobre el fondo. */
+.vidrio .owner-strip,.vidrio .como-funciona{background:transparent;border:0}
+.vidrio .owner-strip .inner,.vidrio .como-funciona .inner{
+  margin:0 16px 16px;border:1px solid var(--glass-line);border-radius:var(--radius-glass);background:var(--glass);
+  box-shadow:var(--glass-shadow);-webkit-backdrop-filter:var(--blur);backdrop-filter:var(--blur);
+}
+.vidrio .como-funciona .inner{margin-bottom:28px}
+.vidrio .cf-duenos{border-left:0;border-radius:14px;background:rgba(255,255,255,.7)}
+.vidrio .cf-instalar{background:rgba(255,255,255,.7);border-color:rgba(14,23,38,.12);border-radius:16px}
+.vidrio .cf-telefono{border-radius:40px;box-shadow:0 20px 50px rgba(6,32,72,.35)}
+
+/* Ticket público: pase con esquinas amplias y cuerpo de vidrio. */
+.vidrio .ticket{border-radius:24px;border:1px solid var(--glass-line);background:var(--glass);box-shadow:var(--glass-shadow);-webkit-backdrop-filter:var(--blur);backdrop-filter:var(--blur)}
+.vidrio .ticket-head{background:rgba(10,63,122,.92)}
+
+/* Páginas legales: lectura larga, vidrio casi opaco. */
+.vidrio .legal .card{background:rgba(255,255,255,.93)}
+
+/* Asistente y aviso de cookies como paneles flotantes de vidrio. */
+.vidrio .chatbot-panel{border-radius:22px;border-color:var(--glass-line);background:rgba(255,255,255,.88);-webkit-backdrop-filter:var(--blur);backdrop-filter:var(--blur)}
+.vidrio .chatbot-messages,.vidrio .chatbot-suggestions{background:rgba(246,248,250,.7)}
+.vidrio .chatbot-input input{border-radius:999px}
+.vidrio .cookie-notice{border-radius:22px;border-color:var(--glass-line);background:rgba(255,255,255,.88);-webkit-backdrop-filter:var(--blur);backdrop-filter:var(--blur)}
+
+@media (max-width:900px){
+  /* En una columna la columna del buscador se disuelve: cada parte es su propia tarjeta de vidrio. */
+  .vidrio .buscador{grid-template-columns:1fr;gap:12px;padding:0 12px 16px}
+  .vidrio .buscador-col{display:contents}
+  .vidrio .buscador .rail,.vidrio .buscador .opciones{
+    border:1px solid var(--glass-line);border-radius:20px;background:var(--glass);box-shadow:var(--glass-shadow);
+    -webkit-backdrop-filter:var(--blur);backdrop-filter:var(--blur);
+  }
+  .vidrio .buscador .opciones{padding:18px 16px 22px}
+  .vidrio .buscador-mapa{top:0;height:300px;border-radius:20px}
+  .vidrio .buscador-col > .panel-accion,.vidrio .buscador-col > p.badge{margin:0}
+  .vidrio .owner-strip .inner,.vidrio .como-funciona .inner{margin-inline:12px}
+}
+@media (max-width:640px){
+  .vidrio:has(.buscador) .site-header{margin-inline:12px}
+  .vidrio .sign-band{padding:24px 16px 18px}
+  .vidrio .sign-band h1{font-size:2rem}
+}
+.vidrio main > .link-button,.vidrio main > .link-button:hover{color:#fff}
+/* Una tabla que va suelta sobre el fondo (sin tarjeta) lleva el mismo vidrio que una tarjeta. */
+.vidrio .table-wrap{background:var(--glass);box-shadow:var(--glass-shadow);-webkit-backdrop-filter:var(--blur);backdrop-filter:var(--blur)}
+.vidrio .card .table-wrap{background:var(--glass-soft);box-shadow:none;-webkit-backdrop-filter:none;backdrop-filter:none}
+.vidrio:has(.buscador) .como-funciona .inner{max-width:none}

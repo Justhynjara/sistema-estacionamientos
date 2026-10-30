@@ -11,7 +11,7 @@ async function iniciarSesion(page, { email, password }) {
   await page.goto('/');
   await page.getByRole('button', { name: 'Acceso dueños' }).click();
   await page.getByLabel('Email').fill(email);
-  await page.getByLabel('Contraseña').fill(password);
+  await page.getByLabel('Contraseña', { exact: true }).fill(password);
   await page.getByRole('button', { name: 'Iniciar sesión' }).click();
 }
 

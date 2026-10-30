@@ -300,6 +300,24 @@ Esquinas suavemente redondeadas, nunca blandas: 8px en paneles, tablero y ticket
 - Grilla de celdas azul letrero separadas por 1px de blanco translúcido, 8px de radio exterior, sombra media. Rótulo de celda en texto de letrero 0.9rem/700; cifra en mono 700 a 2.6rem blanca; desglose en lista con filetes translúcidos y montos mono blancos. Hora pico como rango 24 h ("14:00–15:00").
 - **Gráfico de flujo:** barras azul ruta de 150px de alto máximo, hora pico en azul profundo, horas en cero en filete suave; eje de horas en mono 0.68rem.
 
+### Vidrio en toda la web (`.vidrio`)
+Pedido por el dueño del producto (referencias: reels "Glassy Dashboard V2" y un login con mascota): todas las vistas (portada con buscador, ticket público, postulación, legales y los paneles de dueño, administración y soporte) usan vidrio esmerilado sobre el azul de la marca; las de acceso usan la variante oscura (ver "Acceso"). Reemplaza a las superficies planas y a la banda azul sólida descritas arriba, que quedan como base de tokens. Conserva el letrero E, Overpass/Overpass Mono, la regla semáforo y el contraste AA.
+- **Titulares:** blanco sobre el fondo (la banda de letrero es transparente); en la portada, hasta 3.3rem. En los paneles, titular + bajada por rol (`vidrio-cabeza`).
+- **Portada:** columna del buscador y mapa como dos tarjetas de vidrio separadas por el fondo; bajo 900px cada parte (formulario, mapa, opciones) es su propia tarjeta. Franja de dueños y "Cómo funciona" también en vidrio.
+- **Tablas sueltas** (fuera de una tarjeta) llevan el mismo vidrio que una tarjeta; dentro de una tarjeta, una capa más tenue.
+- **Fondo:** degradado de los azules de la marca (#08447f → #0b5cad → #3f7fc8) con manchas de luz suaves; sin foto.
+- **Vidrio:** blanco al 78% con `backdrop-filter: blur(22px) saturate(150%)`, borde blanco al 80%, radio 22px (18px en móvil), sombra `0 12px 36px rgba(6,32,72,.22)`. Sin desenfoque disponible, pasa a 94% opaco. `--muted` baja a #3c4657 para mantener ≥ 4.5:1 sobre el vidrio.
+- **Barra superior:** píldora flotante con el letrero E; con sesión, saludo con avatar de iniciales (oculto bajo 640px), rol y Salir.
+- **Cifras:** una tarjeta de vidrio por cifra, con ícono en círculo blanco; la variación es un chip verde o rojo con flecha y signo.
+- **Pestañas:** píldora flotante abajo al centro, la activa en blanco; bajo 900px van arriba a todo el ancho (abajo está el botón de escanear).
+- **Controles:** botones e interruptores en píldora; "Exportar CSV" como botón oscuro; período como segmentado en píldora con la opción activa en tinta.
+
+### Acceso (`.acceso`, `AccesoAuto.jsx`)
+Pantallas de inicio de sesión, recuperación y cambio de contraseña: noche azul (#050f1f → #0a2546 con brillos de la marca) y tarjeta de vidrio oscuro (radio 24px, desenfoque 24px). Texto blanco, secundario #b9c8dc y enlaces #9cc8ff, todos ≥ 9:1.
+- **El auto que vigila:** un auto de frente asoma sobre la tarjeta tras una barrera de estacionamiento. Los focos siguen el email mientras se escribe, se apagan con párpados al escribir la contraseña (campos marcados con `data-clave`), se abren a medias si la clave está visible y, con el acceso correcto, la barrera sube y el auto entra (650 ms; sin espera con `prefers-reduced-motion`). Es decorativo (`aria-hidden`).
+- **Botón de entrar:** degradado azul (#2f86e6 → #0b5cad), radio 14px, flecha que avanza al pasar el mouse.
+- **Mostrar contraseña:** botón con ojo dentro del campo, `aria-pressed`.
+
 ### Ticket público
 - Pase de 540px: cabecera azul letrero con el letrero E, cuerpo blanco; código en mono pequeño; métricas con rótulo en mayúsculas y valor mono a 2.5rem; acciones separadas por filete.
 
