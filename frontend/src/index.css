@@ -1038,3 +1038,28 @@ body:has(.acceso){background:#050f1f}
 .vidrio .table-wrap{background:var(--glass);box-shadow:var(--glass-shadow);-webkit-backdrop-filter:var(--blur);backdrop-filter:var(--blur)}
 .vidrio .card .table-wrap{background:var(--glass-soft);box-shadow:none;-webkit-backdrop-filter:none;backdrop-filter:none}
 .vidrio:has(.buscador) .como-funciona .inner{max-width:none}
+
+/* ---------- Precarga de sesión: el letrero E con un aro que se dibuja y la línea de pista ---------- */
+.precarga{min-height:100vh;display:grid;place-content:center;justify-items:center;gap:0;padding:24px 16px;text-align:center;
+  animation:precarga-entra .5s .15s cubic-bezier(.16,1,.3,1) both}
+.precarga-marca{position:relative;width:120px;height:120px;display:grid;place-items:center}
+.precarga-marca::before{content:"";position:absolute;inset:18px;border-radius:50%;
+  background:radial-gradient(circle,rgba(63,146,240,.45),transparent 70%);filter:blur(14px);animation:precarga-halo 2.4s ease-in-out infinite}
+.precarga-marca .sign-e{position:relative;box-shadow:inset 0 0 0 2.5px #fff,0 10px 30px rgba(11,92,173,.55)}
+.precarga-aro{position:absolute;inset:0;width:100%;height:100%;transform:rotate(-90deg);overflow:visible}
+.precarga-aro circle{fill:none;stroke-width:2.5;stroke-linecap:round}
+.precarga-aro .pista{stroke:rgba(255,255,255,.1)}
+.precarga-aro .trazo{stroke:#9cc8ff;stroke-dasharray:28 72;filter:drop-shadow(0 0 6px rgba(156,200,255,.8));
+  transform-origin:60px 60px;animation:precarga-gira 1.4s linear infinite,precarga-largo 2.8s ease-in-out infinite}
+.precarga-nombre{margin:26px 0 0;font-weight:800;font-size:1.05rem;letter-spacing:.32em;text-transform:uppercase;color:#fff;padding-left:.32em}
+.precarga-via{position:relative;width:168px;height:3px;margin:18px 0 14px;border-radius:3px;overflow:hidden;
+  background:repeating-linear-gradient(90deg,rgba(255,255,255,.22) 0 12px,transparent 12px 22px)}
+.precarga-via span{position:absolute;inset:0 auto 0 0;width:42%;border-radius:3px;
+  background:linear-gradient(90deg,transparent,#9cc8ff 60%,#fff);box-shadow:0 0 10px rgba(156,200,255,.9);
+  animation:precarga-avanza 1.6s cubic-bezier(.65,0,.35,1) infinite}
+.precarga-txt{margin:0;font-size:.8rem;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
+@keyframes precarga-entra{from{opacity:0;transform:translateY(6px) scale(.98)}to{opacity:1;transform:none}}
+@keyframes precarga-gira{to{transform:rotate(360deg)}}
+@keyframes precarga-largo{0%,100%{stroke-dasharray:14 86}50%{stroke-dasharray:46 54}}
+@keyframes precarga-halo{0%,100%{opacity:.55;transform:scale(.92)}50%{opacity:1;transform:scale(1.06)}}
+@keyframes precarga-avanza{from{transform:translateX(-100%)}to{transform:translateX(240%)}}

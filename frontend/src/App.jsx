@@ -331,7 +331,20 @@ function App(){
 
  const abrirLogin=()=>{setShowLogin(true);setAuthView('login');};
 
- if(checkingSession) return <div className="login-shell acceso"><main className="login-main"><p className="loading-line"><span className="spinner"/>Cargando sesión…</p></main></div>;
+ if(checkingSession) return (
+  <div className="login-shell acceso precarga" role="status" aria-live="polite">
+   <div className="precarga-marca" aria-hidden="true">
+    <svg className="precarga-aro" viewBox="0 0 120 120" focusable="false">
+     <circle className="pista" cx="60" cy="60" r="54"/>
+     <circle className="trazo" cx="60" cy="60" r="54" pathLength="100"/>
+    </svg>
+    <SignE size={58}/>
+   </div>
+   <p className="precarga-nombre">Estacionados</p>
+   <div className="precarga-via" aria-hidden="true"><span/></div>
+   <p className="precarga-txt">Cargando sesión</p>
+  </div>
+ );
 
  // Cuenta marcada para cambio obligatorio: solo puede cambiar la clave o salir. El backend igual
  // bloquea todo lo demás (ver auth.middleware.js), así que esto es la cara visible de esa regla.
