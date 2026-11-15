@@ -1,6 +1,13 @@
 import { pool } from '../config/database.js';
 import { registrarAuditoria } from '../services/audit.service.js';
 import { estadoHorario } from '../utils/horario.js';
+import { emitCupos } from '../services/ticket.service.js';
+
+// El dueño de un estacionamiento debe ser un CLIENTE activo: solo ese rol puede gestionarlo.
+async function duenioValido(clienteId){
+  const r=await pool.query('SELECT rol,activo FROM usuarios WHERE id=$1',[clienteId]);
+  return r.rowCount && r.rows[0].rol==='CLIENTE' && r.rows[0].activo;
+}
 
 // Cada estacionamiento sale con su horario y con el estado calculado en este momento (abierto o
 // cerrado, y cuándo cambia), para que la web no tenga que repetir el cálculo en hora de Chile.
@@ -47,6 +54,7 @@ export async function getParking(req,res){
 }
 export async function createParking(req,res){
   const {cliente_id,nombre,direccion,latitud,longitud,precio_minuto,tarifa_minima,cupo_maximo}=req.body;
+  if(!await duenioValido(cliente_id)) return res.status(400).json({error:'El dueño debe ser un usuario activo con rol CLIENTE'});
   const r=await pool.query(`INSERT INTO estacionamientos
     (cliente_id,nombre,direccion,latitud,longitud,precio_minuto,tarifa_minima,cupo_maximo,cupos_disponibles)
     VALUES($1,$2,$3,$4,$5,$6,$7,$8,$8) RETURNING *`,
@@ -57,9 +65,10 @@ export async function createParking(req,res){
 export async function updateCapacity(req,res){
   const {cupo_maximo}=req.body;
   const r=await pool.query(`UPDATE estacionamientos
-    SET cupo_maximo=$1, cupos_disponibles=LEAST($1,cupos_disponibles)
+    SET cupo_maximo=$1, cupos_disponibles=LEAST($1, GREATEST(0, cupos_disponibles + ($1 - cupo_maximo)))
     WHERE id=$2 RETURNING *`,[cupo_maximo,req.params.id]);
   if(!r.rowCount) return res.status(404).json({error:'No encontrado'});
+  emitCupos(r.rows[0].id, r.rows[0].cupos_disponibles, r.rows[0].cupo_maximo);
   await registrarAuditoria(req.user.id, 'estacionamiento.actualizar_cupo', 'estacionamiento', r.rows[0].id, { cupo_maximo });
   res.json(r.rows[0]);
 }
@@ -93,21 +102,28 @@ export async function deleteParking(req,res){
   const e=await pool.query('SELECT id,nombre,cliente_id FROM estacionamientos WHERE id=$1',[req.params.id]);
   if(!e.rowCount) return res.status(404).json({error:'No encontrado'});
   const est=e.rows[0];
+  const client=await pool.connect();
   try {
-    await pool.query('DELETE FROM estacionamientos WHERE id=$1',[est.id]);
+    await client.query('BEGIN');
+    await client.query(
+      `DELETE FROM payments WHERE estacionamiento_id=$1 AND ticket_id IS NULL AND estado IN ('INICIADO','RECHAZADO','EXPIRADO')`,
+      [est.id]
+    );
+    await client.query('DELETE FROM estacionamientos WHERE id=$1',[est.id]);
+    await client.query('COMMIT');
   } catch (err) {
+    await client.query('ROLLBACK');
     if(err.code==='23503')
       return res.status(409).json({error:'No se puede eliminar: el estacionamiento tiene tickets o pagos en su historial. Solo puedes eliminar estacionamientos sin movimientos.'});
     throw err;
-  }
+  } finally { client.release(); }
   await registrarAuditoria(req.user.id, 'estacionamiento.eliminar', 'estacionamiento', est.id, { nombre: est.nombre, cliente_id: est.cliente_id });
   res.json({ ok: true });
 }
 export async function updateOwner(req,res){
   const {cliente_id}=req.body;
-  const due=await pool.query(`SELECT rol FROM usuarios WHERE id=$1`,[cliente_id]);
-  if(!due.rowCount || due.rows[0].rol!=='CLIENTE')
-    return res.status(400).json({error:'El nuevo dueño debe ser un usuario con rol CLIENTE'});
+  if(!await duenioValido(cliente_id))
+    return res.status(400).json({error:'El nuevo dueño debe ser un usuario activo con rol CLIENTE'});
   const anterior=await pool.query(`SELECT cliente_id FROM estacionamientos WHERE id=$1`,[req.params.id]);
   if(!anterior.rowCount) return res.status(404).json({error:'No encontrado'});
   const r=await pool.query(`UPDATE estacionamientos SET cliente_id=$1 WHERE id=$2 RETURNING *`,[cliente_id,req.params.id]);

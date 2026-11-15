@@ -70,7 +70,8 @@ function EstadoActivo({ t, ahora }) {
   return <span className="badge info">Reservado</span>;
 }
 
-function GestionTicketPanel({ reloadParking, ticketInicial, onTicketConsumido, estacionamientoId, estacionamientoNombre }) {
+function GestionTicketPanel({ reloadParking, ticketInicial, onTicketConsumido, estacionamientoId, estacionamientoNombre, version = 0 }) {
+  const [filtroPatente, setFiltroPatente] = useState('');
   const [codigo, setCodigo] = useState('');
   const [loading, setLoading] = useState('');
   const [mensaje, setMensaje] = useState(null);
@@ -107,6 +108,8 @@ function GestionTicketPanel({ reloadParking, ticketInicial, onTicketConsumido, e
     const id = setInterval(cargarActivos, 20000);
     return () => clearInterval(id);
   }, []);
+  // Un ticket recién emitido aparece de inmediato en la lista, sin esperar el refresco de 20 s.
+  useEffect(() => { if (version) cargarActivos(); }, [version]);
 
   // Punto de entrada común para un código que llega por el escáner o por el enlace del QR
   // (el dueño escanea con la cámara del teléfono estando con sesión iniciada): si el vehículo
@@ -216,7 +219,12 @@ function GestionTicketPanel({ reloadParking, ticketInicial, onTicketConsumido, e
       });
       setCobro(null); setCodigo('');
       reloadParking(); cargarActivos();
-    } catch (err) { setMensaje({ tipo: 'off', texto: err.response?.data?.error || 'No se pudo cerrar el ticket' }); }
+    } catch (err) {
+      // Si otra pestaña (u otro cajero) lo cobró primero, se quita la tarjeta y se refresca la lista.
+      const msg = err.response?.data?.error;
+      setMensaje({ tipo: 'off', texto: msg === 'Ticket activo no encontrado' ? 'Este ticket ya fue cobrado o ya no está activo.' : msg || 'No se pudo cerrar el ticket' });
+      setCobro(null); cargarActivos(); reloadParking();
+    }
     finally { setLoading(''); }
   }
 
@@ -227,13 +235,23 @@ function GestionTicketPanel({ reloadParking, ticketInicial, onTicketConsumido, e
       <div className="card">
         <h3>Vehículos y reservas{estacionamientoNombre ? ` en ${estacionamientoNombre}` : ''}</h3>
         <p className="muted small">Busca por patente: no necesitas el código QR para validar o cobrar.</p>
+        {activos.length > 0 && (
+          <input
+            className="mono"
+            placeholder="Filtrar por patente"
+            aria-label="Filtrar vehículos por patente"
+            value={filtroPatente}
+            onChange={e => setFiltroPatente(e.target.value)}
+            style={{ maxWidth: 260 }}
+          />
+        )}
         {activos.length === 0 && <div className="empty-state">No hay vehículos ni reservas pendientes en este momento.</div>}
         {activos.length > 0 && (
           <div className="table-wrap">
             <table className="table activos">
               <thead><tr><th>Patente</th>{!estacionamientoId && <th>Estacionamiento</th>}<th>Estado</th><th>Entrada</th><th>Tiempo</th><th><span className="sr-only">Acción</span></th></tr></thead>
               <tbody>
-                {activos.map(t => (
+                {activos.filter(t => (t.patente || '').includes(filtroPatente.replace(/[\s.\-·]/g, '').toUpperCase())).map(t => (
                   <tr key={t.id}>
                     <td className="mono c-patente"><strong>{t.patente || '—'}</strong></td>
                     {!estacionamientoId && <td className="c-lugar">{t.estacionamiento_nombre}</td>}
@@ -289,7 +307,8 @@ function GestionTicketPanel({ reloadParking, ticketInicial, onTicketConsumido, e
                   min={0}
                   placeholder="¿Con cuánto le pagan?"
                   value={cobro.recibido}
-                  onChange={e => setCobro({ ...cobro, recibido: e.target.value })}
+                  step={1}
+                  onChange={e => setCobro({ ...cobro, recibido: e.target.value.replace(/\D/g, '') })}
                   aria-label="Monto recibido"
                   autoFocus
                 />
@@ -359,6 +378,7 @@ function EstacionamientosTab({ parking, reloadParking, ticketInicial, onTicketCo
   const [ticketEmitido, setTicketEmitido] = useState(null);
   const [emitiendo, setEmitiendo] = useState(null); // { p, patente, loading }
   const [seleccionadoId, setSeleccionadoId] = useState(null);
+  const [versionActivos, setVersionActivos] = useState(0);
   const [editandoHorario, setEditandoHorario] = useState(null); // id del estacionamiento
   // Se fija solo en el montaje: el propio GestionTicketPanel limpia ticketInicial (para sacar el
   // código de la URL) apenas lo consume, y no queremos que ese cambio nos saque de este modo a
@@ -373,13 +393,14 @@ function EstacionamientosTab({ parking, reloadParking, ticketInicial, onTicketCo
     const { p, patente } = emitiendo;
     setEmitiendo(e => ({ ...e, loading: true }));
     try {
-      const r = await api.post('/tickets', { estacionamiento_id: p.id, patente: patente.trim().toUpperCase() || null });
+      const r = await api.post('/tickets', { estacionamiento_id: p.id, patente: patente.replace(/[\s.\-·]/g, '').toUpperCase() || null });
       setTicketEmitido({ codigo: r.data.codigo_qr, nombre: p.nombre, direccion: p.direccion, patente: r.data.patente, fechaEntrada: r.data.fecha_entrada, tarifa: formatTarifa(p) });
       setEmitiendo(null);
       reloadParking();
+      setVersionActivos(v => v + 1);
     } catch (err) {
-      alert(err.response?.data?.error || 'Error al emitir ticket');
-      setEmitiendo(e => ({ ...e, loading: false }));
+      // El motivo concreto (patente inválida, ya está dentro, sin cupos) junto al formulario.
+      setEmitiendo(e => ({ ...e, loading: false, error: err.response?.data?.detalles?.[0]?.mensaje || err.response?.data?.error || 'No se pudo emitir el ticket' }));
     }
   }
 
@@ -450,11 +471,12 @@ function EstacionamientosTab({ parking, reloadParking, ticketInicial, onTicketCo
               className="mono"
               placeholder="Patente del vehículo (opcional)"
               value={emitiendo.patente}
-              onChange={e => setEmitiendo({ ...emitiendo, patente: e.target.value })}
+              onChange={e => setEmitiendo({ ...emitiendo, patente: e.target.value, error: '' })}
               aria-label="Patente del vehículo"
               autoFocus
             />
           </div>
+          {emitiendo.error && <p className="badge off" role="alert">{emitiendo.error}</p>}
           <div className="row-form" style={{ marginTop: 12 }}>
             <button type="button" onClick={confirmarEmision} disabled={emitiendo.loading}>
               {emitiendo.loading ? <span className="spinner" /> : <Icon name="check" />}Confirmar emisión en {emitiendo.p.nombre}
@@ -488,7 +510,7 @@ function EstacionamientosTab({ parking, reloadParking, ticketInicial, onTicketCo
         </div>
       )}
 
-      <GestionTicketPanel key={seleccionado.id} reloadParking={reloadParking} estacionamientoId={seleccionado.id} estacionamientoNombre={seleccionado.nombre} />
+      <GestionTicketPanel key={seleccionado.id} reloadParking={reloadParking} estacionamientoId={seleccionado.id} estacionamientoNombre={seleccionado.nombre} version={versionActivos} />
     </div>
   );
 }

@@ -2,7 +2,8 @@ import { Router } from 'express';
 import { auth } from '../middleware/auth.middleware.js';
 import { roles } from '../middleware/role.middleware.js';
 import { validateBody, validateParams, validateQuery } from '../middleware/validate.middleware.js';
-import { reservaLimiter } from '../middleware/rateLimit.middleware.js';
+import { solicitudLimiter } from '../middleware/rateLimit.middleware.js';
+import { logger } from '../config/logger.js';
 import { crearSolicitud, listSolicitudes, getSolicitud, revisarSolicitud, marcarProcesada } from '../services/solicitud.service.js';
 import { crearSolicitudSchema, revisarSolicitudSchema, listSolicitudesQuerySchema } from '../validation/solicitud.schema.js';
 import { idParamSchema } from '../validation/common.schema.js';
@@ -10,12 +11,16 @@ import { idParamSchema } from '../validation/common.schema.js';
 const r = Router();
 
 // Pública: cualquier interesado en ser cliente (dueño de estacionamiento) puede postular.
-r.post('/', reservaLimiter, validateBody(crearSolicitudSchema), async (req, res) => {
+r.post('/', solicitudLimiter, validateBody(crearSolicitudSchema), async (req, res) => {
   // Señuelo antibot (ver solicitud.schema.js): si vino lleno, se responde como si hubiera
   // funcionado, sin crear la solicitud ni delatar que fue detectado como bot.
   if (req.body.sitio_web) return res.status(201).json({ id: null, estado: 'PENDIENTE', created_at: new Date().toISOString() });
   try { res.status(201).json(await crearSolicitud(req.body)); }
-  catch (e) { res.status(400).json({ error: e.message }); }
+  catch (e) {
+    // El error de la base (tipos, rangos) no se le muestra al público: solo queda en el log.
+    logger.error({ err: e }, 'No se pudo registrar una solicitud');
+    res.status(500).json({ error: 'No se pudo registrar la solicitud. Intenta nuevamente.' });
+  }
 });
 
 r.get('/', auth, roles('SOPORTE', 'ADMIN'), validateQuery(listSolicitudesQuerySchema), async (req, res) => {

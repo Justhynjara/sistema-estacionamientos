@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 const CLAVE = 'aviso_cookies_visto';
 
@@ -11,11 +11,22 @@ const CLAVE = 'aviso_cookies_visto';
 // personal ni algo que necesite su propio consentimiento.
 export default function CookieNotice() {
   const [visible, setVisible] = useState(false);
+  const ref = useRef(null);
 
   useEffect(() => {
     try { setVisible(localStorage.getItem(CLAVE) !== '1'); }
     catch { setVisible(true); }
   }, []);
+
+  // Publica el alto del aviso en --aviso-cookies: los botones flotantes (asistente, escanear) y las
+  // pestañas fijas suben ese tanto mientras el aviso está abierto, en vez de quedar tapados.
+  useEffect(() => {
+    const raiz = document.documentElement;
+    if (!visible || !ref.current || typeof ResizeObserver === 'undefined') return;
+    const obs = new ResizeObserver(() => raiz.style.setProperty('--aviso-cookies', `${ref.current.offsetHeight + 16}px`));
+    obs.observe(ref.current);
+    return () => { obs.disconnect(); raiz.style.removeProperty('--aviso-cookies'); };
+  }, [visible]);
 
   function cerrar() {
     setVisible(false);
@@ -24,7 +35,7 @@ export default function CookieNotice() {
 
   if (!visible) return null;
   return (
-    <div className="cookie-notice" role="region" aria-label="Aviso de cookies">
+    <div ref={ref} className="cookie-notice" role="region" aria-label="Aviso de cookies">
       <p>
         Usamos una sola cookie, necesaria para mantener tu sesión iniciada si eres dueño de un
         estacionamiento o administrador. No usamos cookies de analítica ni de publicidad.{' '}

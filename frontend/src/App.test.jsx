@@ -71,8 +71,21 @@ describe('App', () => {
     expect(localStorage.getItem('token')).toBeNull(); // ya no se guarda nada ahí
   });
 
+  test('si se agotan los intentos, el login dice eso y no "credenciales inválidas"', async () => {
+    api.post.mockRejectedValueOnce(Object.assign(new Error('429'), { response: { status: 429, data: { error: 'Demasiados intentos. Intenta nuevamente en unos minutos.' } } }));
+    const alertSpy = vi.spyOn(window, 'alert').mockImplementation(() => {});
+    const user = userEvent.setup();
+    render(<App />);
+    await screen.findByText('MockBuscarCercanos');
+    await user.click(screen.getByRole('button', { name: /acceso dueños/i }));
+    await user.type(screen.getByLabelText('Email'), 'cliente@demo.cl');
+    await user.type(screen.getByLabelText('Contraseña', { exact: true }), 'password');
+    await user.click(screen.getByRole('button', { name: /iniciar sesión/i }));
+    await waitFor(() => expect(alertSpy).toHaveBeenCalledWith('Demasiados intentos. Intenta nuevamente en unos minutos.'));
+  });
+
   test('login con credenciales inválidas muestra una alerta y no navega a ningún panel', async () => {
-    api.post.mockRejectedValueOnce(new Error('Credenciales inválidas'));
+    api.post.mockRejectedValueOnce(Object.assign(new Error('401'), { response: { status: 401, data: { error: 'Credenciales inválidas' } } }));
     const alertSpy = vi.spyOn(window, 'alert').mockImplementation(() => {});
     const user = userEvent.setup();
     render(<App />);

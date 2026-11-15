@@ -83,6 +83,7 @@ describe('tarifa por horario (espejo del backend)', () => {
   });
   test('el texto de la tarifa incluye los tramos', () => {
     expect(formatTarifa({ precio_minuto: 20, tarifa_minima: 500, tarifas_horario: NOCHE })).toBe('$20/min · 20:00–08:00 $10/min · mínimo $500');
-    expect(formatTarifa({ precio_minuto: 20, tarifa_minima: 0, tarifas_horario: [{ desde: '00:00', hasta: '24:00', precio_minuto: 5 }] })).toBe('$20/min · todo el día $5/min');
+    expect(formatTarifa({ precio_minuto: 20, tarifa_minima: 0, tarifas_horario: [{ desde: '00:00', hasta: '24:00', precio_minuto: 5 }] })).toBe('todo el día $5/min');
+    // Un tramo de todo el día reemplaza al precio base: mostrar ambos confundía al conductor.
   });
 });

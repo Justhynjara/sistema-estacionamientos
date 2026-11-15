@@ -1,7 +1,10 @@
 import { useEffect, useRef, useState } from 'react';
 import Icon from './Icon.jsx';
+import { useReservaConfig } from './utils/reservaConfig.js';
+import { formatCLP } from './utils/tarifa.js';
 
-const FAQ = [
+// El monto y la duración de la reserva vienen de los parámetros del sistema (ver useReservaConfig).
+const crearFAQ = ({ monto, ttl }) => [
   {
     pregunta: '¿Cómo busco un estacionamiento?',
     keywords: ['buscar', 'busco', 'encontrar', 'cerca', 'cupo', 'disponible', 'mapa'],
@@ -13,21 +16,22 @@ const FAQ = [
     // "reservando", etc. Sin esto, preguntar literalmente "¿Cómo reservo un cupo?" empataba
     // en puntaje con la FAQ de "buscar" (por la keyword 'cupo') y ganaba la que aparece primero.
     keywords: ['reserv', 'cupo', 'apartar'],
-    respuesta: 'En la tarjeta del estacionamiento presiona "Reservar cupo", ingresa la patente de tu vehículo y confirma. Se te pedirá un micropago de $100 CLP por Webpay para validar que la reserva es real — una vez aprobado, tu reserva queda activa por 10 minutos. Si llegas a tiempo, ese monto se descuenta de lo que pagues al salir; si no, no se reembolsa.'
+    respuesta: `En la tarjeta del estacionamiento presiona "Reservar · ${monto}", ingresa la patente de tu vehículo y confirma. Se te pedirá un micropago de ${monto} CLP por Webpay para validar que la reserva es real — una vez aprobado, tu reserva queda activa por ${ttl} minutos. Si llegas a tiempo, ese monto se descuenta de lo que pagues al salir; si no, no se reembolsa.`
   },
   {
-    pregunta: '¿Por qué me cobran $100 al reservar?',
-    keywords: ['micropago', '100', 'cobro', 'cobran', 'por que', 'porqué', 'reserva pagada', 'pago reserva'],
-    respuesta: 'Es un micropago mínimo de $100 CLP para evitar reservas falsas que ocupen cupos sin intención real de llegar. Si validas tu reserva a tiempo, el cupo queda para ti y ese monto se descuenta de tu pago final; si no llegas dentro de los 10 minutos, la reserva se libera automáticamente y el monto no se reembolsa.'
+    pregunta: `¿Por qué me cobran ${monto} al reservar?`,
+    // Sin 'cobran' suelto: "¿cuánto cobran por hora?" es una pregunta de tarifa, no del micropago.
+    keywords: ['micropago', 'cobran al reservar', 'cobran por reservar', 'por que', 'porqué', 'reserva pagada', 'pago reserva'],
+    respuesta: `Es un micropago mínimo de ${monto} CLP para evitar reservas falsas que ocupen cupos sin intención real de llegar. Si validas tu reserva a tiempo, el cupo queda para ti y ese monto se descuenta de tu pago final; si no llegas dentro de los ${ttl} minutos, la reserva se libera automáticamente y el monto no se reembolsa.`
   },
   {
     pregunta: '¿Cuánto dura mi reserva?',
     keywords: ['duracion', 'dura', 'minutos', 'expira', 'vence', 'tiempo reserva'],
-    respuesta: 'Las reservas duran 10 minutos desde que se confirma el pago. Si no validas tu llegada dentro de ese tiempo, el cupo se libera automáticamente para otros usuarios.'
+    respuesta: `Las reservas duran ${ttl} minutos desde que se confirma el pago. Si no validas tu llegada dentro de ese tiempo, el cupo se libera automáticamente para otros usuarios.`
   },
   {
     pregunta: '¿Cómo pago al salir del estacionamiento?',
-    keywords: ['pagar', 'pago', 'salir', 'cobro', 'efectivo', 'tarjeta', 'debito', 'credito', 'cuanto cuesta'],
+    keywords: ['pagar', 'pago', 'salir', 'cobro', 'efectivo', 'tarjeta', 'debito', 'credito', 'cuanto cuesta', 'cuanto cobran', 'por hora', 'tarifa', 'precio', 'valor'],
     respuesta: 'Al salir, el encargado del estacionamiento te cobra directamente: en efectivo (te calculará el vuelto) o con tarjeta de débito/crédito en su propio POS. El monto se calcula por los minutos que estuviste dentro y el precio por minuto del lugar, con un valor base mínimo. Si escaneas el QR de tu ticket con la cámara del teléfono, verás cuánto llevas estacionado y cuánto pagarías en ese momento.'
   },
   {
@@ -43,7 +47,7 @@ const FAQ = [
   {
     id: 'ser_cliente',
     pregunta: '¿Quieres ser cliente?',
-    keywords: ['registrar', 'dueño', 'dueno', 'ser cliente', 'quiero ser cliente', 'agregar estacionamiento', 'publicar mi estacionamiento', 'sumar mi estacionamiento'],
+    keywords: ['registrar', 'dueño', 'dueno', 'ser cliente', 'quiero ser cliente', 'agregar estacionamiento', 'publicar mi estacionamiento', 'sumar mi estacionamiento', 'postul', 'unirme', 'sumarme', 'tengo un estacionamiento', 'mi estacionamiento'],
     respuesta: 'Puedes postular tu estacionamiento para sumarlo al sistema. Nuestro equipo de soporte revisará tus datos y fotos para validar que cumple los requisitos; si es aprobado, un administrador te creará un usuario y correo de acceso, y luego un equipo coordinará contigo la instalación y configuración en terreno.'
   },
   {
@@ -62,7 +66,7 @@ function normalizar(texto) {
     .normalize('NFD').replace(/[̀-ͯ]/g, '');
 }
 
-function buscarMejorMatch(texto) {
+function buscarMejorMatch(texto, FAQ) {
   const t = normalizar(texto);
   let mejor = null, mejorScore = 0;
   for (const item of FAQ) {
@@ -76,6 +80,8 @@ function buscarMejorMatch(texto) {
 }
 
 export default function ChatBot({ onAbrirSolicitud }) {
+  const cfg = useReservaConfig();
+  const FAQ = crearFAQ({ monto: formatCLP(cfg.monto), ttl: cfg.ttl_min });
   const [abierto, setAbierto] = useState(false);
   const [mensajes, setMensajes] = useState([SALUDO]);
   const [texto, setTexto] = useState('');
@@ -85,10 +91,18 @@ export default function ChatBot({ onAbrirSolicitud }) {
     if (abierto) finRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [mensajes, abierto]);
 
+  // Escape cierra el asistente, como cualquier diálogo.
+  useEffect(() => {
+    if (!abierto) return;
+    const onKey = e => { if (e.key === 'Escape') setAbierto(false); };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [abierto]);
+
   function enviar(pregunta) {
     const p = (pregunta ?? texto).trim();
     if (!p) return;
-    const match = buscarMejorMatch(p);
+    const match = buscarMejorMatch(p, FAQ);
     const botMsg = match
       ? { rol: 'bot', texto: match.respuesta, accion: match.id === 'ser_cliente' ? 'ser_cliente' : null }
       : { rol: 'bot', texto: FALLBACK };
@@ -114,12 +128,12 @@ export default function ChatBot({ onAbrirSolicitud }) {
       </button>
 
       {abierto && (
-        <div className="chatbot-panel">
+        <div className="chatbot-panel" role="dialog" aria-label="Asistente">
           <div className="chatbot-header">
             <span><Icon name="chat" />Asistente</span>
             <button type="button" onClick={() => setAbierto(false)}>Cerrar</button>
           </div>
-          <div className="chatbot-messages">
+          <div className="chatbot-messages" aria-live="polite">
             {mensajes.map((m, i) => (
               <div key={i}>
                 <div className={'chatbot-msg ' + m.rol}>{m.texto}</div>

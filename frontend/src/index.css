@@ -458,13 +458,13 @@ button.badge:hover{filter:brightness(.98);box-shadow:none}
 
 /* ---------- Asistente ---------- */
 .chatbot-toggle{
-  position:fixed;right:22px;bottom:22px;z-index:1500;
+  position:fixed;right:22px;bottom:calc(22px + var(--aviso-cookies, 0px));z-index:1500;
   width:56px;height:56px;border-radius:50%;padding:0;
   box-shadow:var(--shadow-lg);
 }
 .chatbot-panel{
-  position:fixed;right:22px;bottom:90px;z-index:1500;
-  width:min(360px,calc(100vw - 44px));max-height:min(500px,calc(100vh - 140px));
+  position:fixed;right:22px;bottom:calc(90px + var(--aviso-cookies, 0px));z-index:1500;
+  width:min(360px,calc(100vw - 44px));max-height:min(500px,calc(100dvh - 140px));
   background:var(--panel);border:1px solid var(--rule);border-radius:var(--radius);
   box-shadow:var(--shadow-lg);display:flex;flex-direction:column;overflow:hidden;
   animation:aparecer .22s cubic-bezier(.16,1,.3,1) both;
@@ -613,7 +613,7 @@ body:has(.buscador) .site-footer .inner,body:has(.buscador) .owner-strip .inner{
 @media (max-width:900px) and (pointer:coarse){
   .escanear-fab{
     display:inline-flex;align-items:center;gap:8px;
-    position:fixed;left:16px;bottom:calc(16px + env(safe-area-inset-bottom, 0px));z-index:1500;
+    position:fixed;left:16px;bottom:calc(16px + env(safe-area-inset-bottom, 0px) + var(--aviso-cookies, 0px));z-index:1500;
     min-height:52px;padding:0 20px;border-radius:26px;
     background:var(--ink);color:#fff;box-shadow:var(--shadow-lg);font-weight:800;
   }
@@ -824,7 +824,7 @@ body:has(.vidrio){background:#08447f}
 
 /* Pestañas: píldora flotante abajo, la activa en blanco. */
 .vidrio .tabs{
-  position:fixed;left:50%;bottom:22px;transform:translateX(-50%);z-index:900;
+  position:fixed;left:50%;bottom:calc(22px + var(--aviso-cookies, 0px));transform:translateX(-50%);z-index:900;
   gap:4px;margin:0;padding:6px;overflow:visible;border:1px solid var(--glass-line);border-bottom:1px solid var(--glass-line);
   border-radius:999px;background:rgba(255,255,255,.74);box-shadow:var(--glass-shadow);
   -webkit-backdrop-filter:var(--blur);backdrop-filter:var(--blur);
@@ -857,8 +857,9 @@ body:has(.vidrio){background:#08447f}
 
 /* En teléfonos y tabletas las pestañas van arriba (abajo está el botón de escanear). */
 @media (max-width:900px){
-  .vidrio .tabs{position:static;transform:none;width:100%;margin:6px 0 4px;box-shadow:0 6px 18px rgba(6,32,72,.16)}
-  .vidrio .tabs:not(:has(> .tab:nth-child(3))) .tab,.vidrio .tab{flex:1 1 0;justify-content:center;text-align:center;padding:10px 12px}
+  .vidrio .tabs{position:static;transform:none;width:100%;max-width:100%;margin:6px 0 4px;box-shadow:0 6px 18px rgba(6,32,72,.16);overflow-x:auto;scrollbar-width:none}
+  .vidrio .tab{flex:1 0 auto;justify-content:center;text-align:center;padding:10px 12px;white-space:nowrap}
+  .vidrio .tabs:not(:has(> .tab:nth-child(3))) .tab{flex:1 1 0}
   .vidrio main.container{padding-bottom:24px}
   .vidrio .site-footer{padding-bottom:20px}
 }
@@ -992,6 +993,8 @@ body:has(.acceso){background:#050f1f}
 .vidrio .gps-toggle.on:hover{background:var(--route-dark);border-color:var(--route-dark)}
 .vidrio .mapa-leyenda{border-radius:999px;background:rgba(255,255,255,.85);-webkit-backdrop-filter:var(--blur);backdrop-filter:var(--blur)}
 .vidrio .filtro{background:rgba(255,255,255,.8)}
+/* El vidrio no debe tapar el filtro elegido: sin esto el activo quedaba blanco sobre blanco. */
+.vidrio .filtro[aria-pressed="true"],.vidrio .filtro[aria-checked="true"]{background:var(--ink);border-color:var(--ink);color:#fff}
 .vidrio .address-suggestions{border-radius:16px;background:rgba(255,255,255,.96)}
 
 /* Franja de dueños y "Cómo funciona": tarjetas de vidrio sobre el fondo. */
@@ -1066,3 +1069,21 @@ body:has(.acceso){background:#050f1f}
 @keyframes precarga-largo{0%,100%{stroke-dasharray:14 86}50%{stroke-dasharray:46 54}}
 @keyframes precarga-halo{0%,100%{opacity:.55;transform:scale(.92)}50%{opacity:1;transform:scale(1.06)}}
 @keyframes precarga-avanza{from{transform:translateX(-100%)}to{transform:translateX(240%)}}
+
+/* Con el aviso de cookies abierto se deja espacio al final para que nada quede debajo de él. */
+body:has(.cookie-notice){padding-bottom:var(--aviso-cookies, 0px)}
+
+/* Las sugerencias de dirección deben quedar sobre el mapa y los botones flotantes: el vidrio
+   (backdrop-filter) crea su propio contexto de apilamiento, así que se sube la columna entera
+   mientras la lista está abierta. */
+.buscador-col:has(.address-suggestions),.rail:has(.address-suggestions){position:relative;z-index:1700}
+
+/* Teléfono horizontal: el asistente usa casi todo el alto y las sugerencias pasan a una fila con
+   desplazamiento, para que quede espacio para leer las respuestas. */
+@media (max-height:520px){
+  .chatbot-panel{bottom:12px;right:88px;max-height:calc(100dvh - 24px)}
+  .chatbot-header{padding-block:8px}
+  .chatbot-messages{min-height:96px}
+  .chatbot-suggestions{flex-wrap:nowrap;overflow-x:auto;padding-bottom:8px}
+  .chatbot-suggestions button{flex:none}
+}

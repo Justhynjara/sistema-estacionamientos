@@ -29,6 +29,12 @@ JOIN (VALUES
 WHERE e.nombre='Parking Centro'
 AND NOT EXISTS (SELECT 1 FROM tickets);
 
+-- Los tickets ACTIVOS de ejemplo ya ocupan cupos: sin esto el recinto mostraba más autos dentro que
+-- su capacidad al llenarse.
+UPDATE estacionamientos e
+SET cupos_disponibles = e.cupo_maximo - (SELECT count(*) FROM tickets t WHERE t.estacionamiento_id = e.id AND t.estado IN ('ACTIVO','RESERVADO'))
+WHERE e.nombre = 'Parking Centro';
+
 INSERT INTO parametros_sistema (clave,valor,descripcion) VALUES
 ('comision_plataforma','10','Porcentaje que retiene la plataforma por ticket cobrado'),
 ('moneda','CLP','Moneda utilizada para mostrar precios'),

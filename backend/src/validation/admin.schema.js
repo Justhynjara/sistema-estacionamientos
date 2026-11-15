@@ -2,8 +2,8 @@ import { z } from 'zod';
 
 export const createUserSchema = z.object({
   nombre: z.string().trim().min(2, 'Nombre muy corto').max(120),
-  email: z.string().trim().toLowerCase().email('Email inválido'),
-  password: z.string().min(8, 'La contraseña debe tener al menos 8 caracteres'),
+  email: z.string().trim().toLowerCase().max(180, 'Email demasiado largo').email('Email inválido'),
+  password: z.string().min(8, 'La contraseña debe tener al menos 8 caracteres').refine(v => v.trim().length >= 8, 'La contraseña no puede ser solo espacios'),
   rol: z.enum(['USUARIO', 'CLIENTE', 'ADMIN', 'SOPORTE'])
 });
 

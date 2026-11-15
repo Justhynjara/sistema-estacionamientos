@@ -16,7 +16,9 @@ import Tarifa from './Tarifa.jsx';
 import EstadoHorario from './EstadoHorario.jsx';
 import { textoEstado } from './utils/horario.js';
 import { formatCLP } from './utils/tarifa.js';
-import { AVISO_RESERVA_MIN, estadoReserva, formatRestante } from './utils/reserva.js';
+import { AVISO_RESERVA_MIN, CLAVE_ULTIMA_RESERVA, estadoReserva, formatRestante } from './utils/reserva.js';
+import { useReservaConfig } from './utils/reservaConfig.js';
+import { CONTACTO_LEGAL } from './legal/contenido.js';
 import { FILTROS_INICIALES, HORAS_ESTADIA, aplicarFiltros } from './utils/filtros.js';
 
 const SOCKET_URL = API_ORIGIN;
@@ -39,6 +41,16 @@ function paradaIcon(n, lleno, sel, cerrado) {
 
 // Fuera de su horario un estacionamiento se muestra, pero no se puede reservar ni ir hacia él.
 const estaCerrado = p => p.horario_estado ? !p.horario_estado.abierto : false;
+
+// Hoy cierra antes de que venza una reserva: el servidor la rechazaría igual, así que se avisa en el
+// botón en vez de dejar escribir la patente para recibir el error después.
+function cierraAntesDe(p, minutos) {
+  const c = p.horario_estado?.cambio;
+  if (!p.horario_estado?.abierto || !c || c.tipo !== 'cierra' || c.en_dias !== 0) return false;
+  const [h, m] = c.hora.split(':').map(Number);
+  const ahora = new Date();
+  return (h * 60 + m) - (ahora.getHours() * 60 + ahora.getMinutes()) < minutos;
+}
 
 function formatDistancia(km) {
   return km < 1 ? `${Math.round(km * 1000)} m` : `${km.toFixed(1).replace('.', ',')} km`;
@@ -117,12 +129,14 @@ function ClickToSetLocation({ onSelect }) {
 
 // Cuenta regresiva de la reserva. Al entrar en los últimos minutos cambia a aviso: el texto se
 // anuncia una sola vez a los lectores de pantalla (role="alert") y el teléfono vibra si puede.
-function Countdown({ expira }) {
-  const [ahora, setAhora] = useState(Date.now());
+// desfase: diferencia con la hora del servidor, para que un reloj de teléfono corrido no adelante ni
+// atrase el vencimiento (la vista pública del ticket ya lo corregía; este panel no).
+function Countdown({ expira, desfase = 0, monto }) {
+  const [ahora, setAhora] = useState(Date.now() + desfase);
   useEffect(() => {
-    const id = setInterval(() => setAhora(Date.now()), 1000);
+    const id = setInterval(() => setAhora(Date.now() + desfase), 1000);
     return () => clearInterval(id);
-  }, [expira]);
+  }, [expira, desfase]);
   const { restanteMs, vencida, porVencer } = estadoReserva(expira, ahora);
   useEffect(() => {
     if (porVencer) navigator.vibrate?.([200, 100, 200]);
@@ -133,14 +147,17 @@ function Countdown({ expira }) {
       <span className={'badge ' + (porVencer ? 'warn' : 'ok')}>Válida por <span className="mono">{formatRestante(restanteMs)}</span> min</span>
       {porVencer && (
         <p className="badge warn" role="alert">
-          Quedan menos de {AVISO_RESERVA_MIN} minutos. Si no alcanzas a llegar, el cupo se libera y los $100 no se reembolsan.
+          Quedan menos de {AVISO_RESERVA_MIN} minutos. Si no alcanzas a llegar, el cupo se libera y los {formatCLP(monto)} no se reembolsan.
         </p>
       )}
     </>
   );
 }
 
-export default function BuscarCercanos({ reservaCodigoInicial } = {}) {
+export default function BuscarCercanos({ reservaCodigoInicial, reservaRecienPagada = false } = {}) {
+  const reservaCfg = useReservaConfig();
+  const [reservaAviso, setReservaAviso] = useState('');
+  const [rutaAviso, setRutaAviso] = useState(null); // { id, texto }
   const [userPos, setUserPos] = useState(null);
   const [geoError, setGeoError] = useState('');
   const [manualMode, setManualMode] = useState(false);
@@ -181,17 +198,30 @@ export default function BuscarCercanos({ reservaCodigoInicial } = {}) {
 
   useEffect(() => {
     if (!reservaCodigoInicial) return;
+    const olvidar = () => { try { localStorage.removeItem(CLAVE_ULTIMA_RESERVA); } catch { /* sin almacenamiento */ } };
     api.get(`/tickets/reserva/${reservaCodigoInicial}`)
-      .then(r => setReserva({
-        codigo: r.data.codigo_qr,
-        nombre: r.data.estacionamiento_nombre,
-        direccion: r.data.estacionamiento_direccion,
-        expira: r.data.reserva_expira,
-        latitud: r.data.latitud,
-        longitud: r.data.longitud
-      }))
-      .catch(() => setReservaError('Tu pago se procesó, pero no pudimos recuperar el comprobante de la reserva. Si el pago fue aprobado, contacta al estacionamiento.'));
-  }, [reservaCodigoInicial]);
+      .then(r => {
+        // Ya validada al llegar: no es una reserva por vencer, sino un ticket activo.
+        if (r.data.estado === 'ACTIVO') {
+          olvidar();
+          if (reservaRecienPagada) setReservaAviso('Tu reserva ya fue validada al llegar: tu ticket está activo.');
+          return;
+        }
+        setReserva({
+          codigo: r.data.codigo_qr,
+          nombre: r.data.estacionamiento_nombre,
+          direccion: r.data.estacionamiento_direccion,
+          expira: r.data.reserva_expira,
+          desfase: r.data.ahora ? new Date(r.data.ahora).getTime() - Date.now() : 0,
+          latitud: r.data.latitud,
+          longitud: r.data.longitud
+        });
+      })
+      .catch(() => {
+        olvidar();
+        if (reservaRecienPagada) setReservaError(`Tu pago se procesó, pero no pudimos recuperar el comprobante de la reserva. Escríbenos a ${CONTACTO_LEGAL} indicando la patente del vehículo.`);
+      });
+  }, [reservaCodigoInicial, reservaRecienPagada]);
 
   function setManualLocation(coords) {
     setUserPos(coords);
@@ -303,14 +333,26 @@ export default function BuscarCercanos({ reservaCodigoInicial } = {}) {
 
   async function verRuta(p) {
     if (estaCerrado(p)) return;
-    if (!userPos) { setError('Aún no se ha obtenido tu ubicación actual'); return; }
-    setSelectedId(p.id);
+    // El aviso va junto a la tarjeta tocada: en el celular el formulario queda muy arriba y el error
+    // ahí no se veía.
+    setRutaAviso(null);
+    if (!userPos) {
+      setRutaAviso({ id: p.id, texto: 'Para trazar la ruta necesitamos tu partida: activa el GPS, escribe una dirección en "Desde" o toca el mapa.' });
+      return;
+    }
     try {
       const ruta = await routeGeometry(userPos, { lat: Number(p.latitud), lng: Number(p.longitud) });
+      // Se marca como trazada solo cuando la ruta llegó: antes se marcaba aunque fallara y el mapa
+      // seguía mostrando la ruta anterior.
+      setSelectedId(p.id);
       setSelectedRoute(ruta);
       lastRoutedFrom.current = userPos;
-    } catch (err) {
-      setError(err.message || 'No se pudo trazar la ruta');
+      if (window.matchMedia?.('(max-width: 900px)').matches) {
+        const reducido = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+        document.querySelector('.buscador-mapa')?.scrollIntoView?.({ behavior: reducido ? 'auto' : 'smooth', block: 'start' });
+      }
+    } catch {
+      setRutaAviso({ id: p.id, texto: 'No pudimos calcular la ruta: el servicio de mapas no respondió. Intenta de nuevo en un momento, o usa "Navegar con Waze".' });
     }
   }
 
@@ -329,10 +371,17 @@ export default function BuscarCercanos({ reservaCodigoInicial } = {}) {
   async function confirmarReserva(e) {
     e.preventDefault();
     const p = reservaPendiente;
-    if (!p || !patenteReserva.trim()) return;
+    if (!p) return;
+    // Se revisa antes de enviar (igual que el servidor): una patente mal escrita no llega a gastar un
+    // intento del límite de reservas, y un campo con solo espacios ya no deja el botón sin respuesta.
+    const patente = patenteReserva.replace(/[\s.\-·]/g, '').toUpperCase();
+    if (!/^[A-Z0-9]{5,8}$/.test(patente) || (patente.match(/[A-Z]/g) || []).length < 2) {
+      setReservaError('Patente inválida: usa el formato AB1234 o BBCD12.');
+      return;
+    }
     setReservandoId(p.id); setReservaError('');
     try {
-      const r = await api.post('/payments/webpay/reserve-start', { estacionamiento_id: p.id, patente: patenteReserva.trim() });
+      const r = await api.post('/payments/webpay/reserve-start', { estacionamiento_id: p.id, patente });
       redirectToWebpay(r.data.url, r.data.token);
     } catch (err) {
       setReservaError(err.response?.data?.detalles?.[0]?.mensaje || err.response?.data?.error || 'No se pudo iniciar el pago de la reserva');
@@ -418,7 +467,7 @@ export default function BuscarCercanos({ reservaCodigoInicial } = {}) {
         {reservaPendiente && (
           <section className="panel-accion" aria-labelledby="reserva-titulo">
             <h3 id="reserva-titulo"><Icon name="ticket" />Reservar cupo en {reservaPendiente.nombre}</h3>
-            <p className="small">Ingresa la patente del vehículo que va a estacionar. Para confirmar, se te pedirá un micropago de <strong>$100 CLP</strong> por Webpay — evita reservas falsas y tu cupo queda apartado por <strong>10 minutos</strong>. Si llegas a tiempo, se descuenta de lo que pagues al salir; si la reserva expira sin usarse, <strong>el monto no se reembolsa</strong>. Si el último cupo se ocupa mientras pagas, anulamos el cobro automáticamente.</p>
+            <p className="small">Ingresa la patente del vehículo que va a estacionar. Para confirmar, se te pedirá un micropago de <strong>{formatCLP(reservaCfg.monto)} CLP</strong> por Webpay — evita reservas falsas y tu cupo queda apartado por <strong>{reservaCfg.ttl_min} minutos</strong>. Si llegas a tiempo, se descuenta de lo que pagues al salir; si la reserva expira sin usarse, <strong>el monto no se reembolsa</strong>. Si el último cupo se ocupa mientras pagas, anulamos el cobro automáticamente.</p>
             {reservaError && <p className="badge off">{reservaError}</p>}
             <form onSubmit={confirmarReserva}>
               <label htmlFor="patente-reserva">Patente</label>
@@ -448,7 +497,7 @@ export default function BuscarCercanos({ reservaCodigoInicial } = {}) {
               <QRCodeCanvas value={qrPayload(reserva.codigo)} downloadable filename={`reserva-${reserva.codigo.slice(0, 8)}`} label="Código QR de tu reserva" />
             </div>
             <p className="codigo-largo">{reserva.codigo}</p>
-            <Countdown expira={reserva.expira} />
+            <Countdown expira={reserva.expira} desfase={reserva.desfase} monto={reservaCfg.monto} />
             <div className="row-form" style={{ marginTop: 12 }}>
               {reserva.latitud && reserva.longitud && (
                 <button type="button" className="secondary" onClick={() => abrirWaze({ latitud: reserva.latitud, longitud: reserva.longitud })}><Icon name="nav" />Navegar con Waze</button>
@@ -464,7 +513,8 @@ export default function BuscarCercanos({ reservaCodigoInicial } = {}) {
             </div>
           </section>
         )}
-        {reservaError && !reservaPendiente && <p className="badge off">{reservaError}</p>}
+        {reservaError && !reservaPendiente && <p className="badge off" role="alert">{reservaError}</p>}
+        {reservaAviso && <p className="badge ok" role="status">{reservaAviso}</p>}
 
         <section className="opciones" aria-labelledby="opciones-titulo">
           <div className="opciones-cabecera">
@@ -518,6 +568,7 @@ export default function BuscarCercanos({ reservaCodigoInicial } = {}) {
                 const lleno = p.cupos_disponibles <= 0;
                 const cerrado = estaCerrado(p);
                 const sel = selectedId === p.id;
+                const cierraPronto = !cerrado && cierraAntesDe(p, reservaCfg.ttl_min);
                 return (
                   <li className={'parada' + (cerrado ? ' cerrado' : lleno ? ' lleno' : '') + (sel ? ' sel' : '')} key={p.id}>
                     <span className="k" aria-hidden="true">{p.n}</span>
@@ -554,8 +605,9 @@ export default function BuscarCercanos({ reservaCodigoInicial } = {}) {
                       {p.ruta && p.ruta.duracionMin >= 1 && <span><Icon name="car" size={16} /><span><span className="num">{Math.round(p.ruta.duracionMin)}</span> min en auto desde tu partida</span></span>}
                     </div>
                     <div className="acciones">
-                      <button type="button" className="dark small" onClick={() => iniciarReserva(p)} disabled={lleno || cerrado}>
-                        {cerrado ? 'Cerrado ahora' : lleno ? 'Sin cupos' : 'Reservar · $100'}
+                      <button type="button" className="dark small" onClick={() => iniciarReserva(p)} disabled={lleno || cerrado || cierraPronto}
+                        title={cierraPronto ? `Cierra antes de que venza una reserva de ${reservaCfg.ttl_min} minutos` : undefined}>
+                        {cerrado ? 'Cerrado ahora' : lleno ? 'Sin cupos' : cierraPronto ? 'Cierra pronto' : `Reservar · ${formatCLP(reservaCfg.monto)}`}
                       </button>
                       <button type="button" className="secondary small" onClick={() => verRuta(p)} disabled={lleno || cerrado} aria-pressed={sel}>
                         <Icon name="route" size={16} />{sel ? 'Ruta trazada' : 'Ver ruta'}
@@ -564,6 +616,7 @@ export default function BuscarCercanos({ reservaCodigoInicial } = {}) {
                         <Icon name="nav" size={16} />Navegar con Waze
                       </button>
                     </div>
+                    {rutaAviso?.id === p.id && <p className="badge off" role="alert">{rutaAviso.texto}</p>}
                   </li>
                 );
               })}

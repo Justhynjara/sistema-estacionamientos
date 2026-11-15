@@ -3,6 +3,8 @@ import { api } from './services/api.js';
 import { formatTarifa } from './utils/tarifa.js';
 import Icon from './Icon.jsx';
 
+const MAX_COMENTARIO = 1000;
+
 const ESTADO_LABEL = {
   PENDIENTE: { texto: 'Pendiente', cls: 'info' },
   APROBADA: { texto: 'Aprobada', cls: 'ok' },
@@ -14,15 +16,21 @@ function RevisionSolicitud({ id, onRevisado }) {
   const [detalle, setDetalle] = useState(null);
   const [comentario, setComentario] = useState('');
   const [loading, setLoading] = useState('');
+  const [error, setError] = useState('');
 
   useEffect(() => { api.get(`/solicitudes/${id}`).then(r => setDetalle(r.data)); }, [id]);
 
   async function revisar(estado) {
+    setError('');
+    // Un rechazo sin motivo deja al solicitante sin saber qué corregir (la API también lo exige).
+    if (estado === 'RECHAZADA' && !comentario.trim()) { setError('Escribe el motivo del rechazo para el solicitante.'); return; }
     setLoading(estado);
     try {
       await api.patch(`/solicitudes/${id}/revision`, { estado, comentario: comentario.trim() || null });
       onRevisado();
-    } catch (err) { alert(err.response?.data?.error || 'No se pudo registrar la revisión'); }
+    } catch (err) {
+      setError(err.response?.data?.detalles?.[0]?.mensaje || err.response?.data?.error || 'No se pudo registrar la revisión');
+    }
     finally { setLoading(''); }
   }
 
@@ -54,17 +62,31 @@ function RevisionSolicitud({ id, onRevisado }) {
         </ul>
       </div>
 
-      <textarea
-        placeholder="Comentario para el solicitante o para el equipo (opcional)"
-        value={comentario}
-        onChange={e => setComentario(e.target.value)}
-        rows={2}
-        aria-label="Comentario de la revisión"
-      />
-      <div className="row-form">
-        <button type="button" onClick={() => revisar('APROBADA')} disabled={!!loading}>{loading === 'APROBADA' ? <span className="spinner" /> : <Icon name="check" />}Aprobar</button>
-        <button type="button" className="danger" onClick={() => revisar('RECHAZADA')} disabled={!!loading} style={{ marginLeft: 12 }}>{loading === 'RECHAZADA' ? <span className="spinner" /> : <Icon name="x" />}Rechazar</button>
-      </div>
+      {detalle.estado === 'PENDIENTE' ? (
+        <>
+          <textarea
+            placeholder="Comentario para el solicitante (obligatorio si rechazas)"
+            value={comentario}
+            onChange={e => setComentario(e.target.value)}
+            rows={2}
+            maxLength={MAX_COMENTARIO}
+            aria-label="Comentario de la revisión"
+            aria-describedby="comentario-contador"
+          />
+          <p id="comentario-contador" className="muted small" style={{ margin: '2px 0 8px' }}>{comentario.length} / {MAX_COMENTARIO} caracteres</p>
+          {error && <p className="badge off" role="alert">{error}</p>}
+          <div className="row-form">
+            <button type="button" onClick={() => revisar('APROBADA')} disabled={!!loading}>{loading === 'APROBADA' ? <span className="spinner" /> : <Icon name="check" />}Aprobar</button>
+            <button type="button" className="danger" onClick={() => revisar('RECHAZADA')} disabled={!!loading} style={{ marginLeft: 12 }}>{loading === 'RECHAZADA' ? <span className="spinner" /> : <Icon name="x" />}Rechazar</button>
+          </div>
+        </>
+      ) : (
+        // Ya revisada: se muestra la decisión tomada en vez de botones que la API igual rechazaría.
+        <div>
+          <p><strong>Estado:</strong> <span className={'badge ' + ESTADO_LABEL[detalle.estado].cls}>{ESTADO_LABEL[detalle.estado].texto}</span></p>
+          <p><strong>Comentario de soporte:</strong> {detalle.comentario_soporte || 'Sin comentario'}</p>
+        </div>
+      )}
     </div>
   );
 }
@@ -96,7 +118,9 @@ export default function SoportePanel() {
         </div>
       </div>
 
-      {seleccionadaId && <RevisionSolicitud id={seleccionadaId} onRevisado={cargar} />}
+      {/* La key reinicia el componente al cambiar de solicitud: sin ella, el comentario escrito para
+          una se arrastraba a la siguiente y se enviaba al solicitante equivocado. */}
+      {seleccionadaId && <RevisionSolicitud key={seleccionadaId} id={seleccionadaId} onRevisado={cargar} />}
 
       <div className="table-wrap">
         <table className="table">

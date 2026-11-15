@@ -71,7 +71,7 @@ function ParkingTab({ parking, reloadParking, users }) {
     try {
       await api.put(`/admin/parking/${id}/capacity`, { cupo_maximo: Number(nuevo) });
       reloadParking();
-    } catch (err) { alert(err.response?.data?.error || 'Error al actualizar cupo'); }
+    } catch (err) { alert(err.response?.data?.detalles?.[0]?.mensaje || err.response?.data?.error || 'Error al actualizar cupo'); }
   }
 
   async function eliminar(p) {
@@ -88,7 +88,10 @@ function ParkingTab({ parking, reloadParking, users }) {
     const minima = prompt('Nuevo valor base mínimo (CLP)', Number(p.tarifa_minima));
     if (minima === null || minima.trim() === '') return;
     try {
-      await api.put(`/admin/parking/${p.id}/pricing`, { precio_minuto: Number(precio), tarifa_minima: Number(minima) });
+      const numero = v => Number(String(v).trim().replace(/\./g, '').replace(',', '.'));
+      const n = { precio_minuto: numero(precio), tarifa_minima: numero(minima) };
+      if (Number.isNaN(n.precio_minuto) || Number.isNaN(n.tarifa_minima)) { alert('Escribe montos numéricos, por ejemplo 25 o 16,5'); return; }
+      await api.put(`/admin/parking/${p.id}/pricing`, n);
       reloadParking();
     } catch (err) { alert(err.response?.data?.detalles?.[0]?.mensaje || err.response?.data?.error || 'Error al actualizar la tarifa'); }
   }
@@ -292,7 +295,10 @@ function UsersTab({ users, reloadUsers, currentUserId }) {
                   <option value="ADMIN">ADMIN</option>
                 </select>
               </td>
-              <td><span className={'badge ' + (u.activo ? 'ok' : 'off')}>{u.activo ? 'Activo' : 'Inactivo'}</span></td>
+              <td>
+                <span className={'badge ' + (u.activo ? 'ok' : 'off')}>{u.activo ? 'Activo' : 'Inactivo'}</span>
+                {u.bloqueado && <span className="badge warn" title="Bloqueado por intentos fallidos. Desactívalo y vuelve a activarlo para desbloquearlo.">Bloqueado</span>}
+              </td>
               <td className="acciones">
                 <div className="row-form">
                   <button type="button" className="secondary small" disabled={u.id === currentUserId} onClick={() => toggleActivo(u)}>{u.activo ? 'Desactivar' : 'Activar'}</button>

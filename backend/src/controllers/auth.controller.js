@@ -146,7 +146,7 @@ export async function changePassword(req,res){
   if(!r.rowCount) return res.status(401).json({error:'Sesión inválida'});
 
   const actualOk=await bcrypt.compare(passwordActual, r.rows[0].password_hash);
-  if(!actualOk) return res.status(401).json({error:'La contraseña actual no es correcta'});
+  if(!actualOk) return res.status(400).json({error:'La contraseña actual no es correcta'});
 
   // La nueva no puede ser la misma que la vigente: cambiarla por sí misma no cumple el objetivo.
   if(await bcrypt.compare(passwordNueva, r.rows[0].password_hash))

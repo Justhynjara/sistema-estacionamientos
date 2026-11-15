@@ -50,7 +50,7 @@ export default function AddressAutocomplete({ value, onChange, onSelect, placeho
         value={value}
         onChange={handleChange}
         onFocus={() => setAbierto(true)}
-        onKeyDown={e => { if (e.key === 'Escape') setAbierto(false); }}
+        onKeyDown={e => { if (e.key === 'Escape' || e.key === 'Enter') setAbierto(false); }}
         autoComplete="off"
       />
       {mostrarPanel && (

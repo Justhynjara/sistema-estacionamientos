@@ -1,7 +1,7 @@
 import { z } from 'zod';
+import { normalizarPatente, esPatenteValida, MENSAJE_PATENTE } from './common.schema.js';
 
 export const startReservationPaymentSchema = z.object({
   estacionamiento_id: z.string().uuid('Id inválido'),
-  patente: z.string().trim().toUpperCase()
-    .regex(/^[A-Z0-9]{5,8}$/, 'Ingresa una patente válida (5 a 8 caracteres alfanuméricos)')
+  patente: z.preprocess(normalizarPatente, z.string({ message: 'Ingresa la patente' }).refine(esPatenteValida, MENSAJE_PATENTE))
 });

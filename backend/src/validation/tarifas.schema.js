@@ -8,7 +8,7 @@ const aMinutos = hhmm => { const [h, m] = hhmm.split(':').map(Number); return h 
 const tramo = z.object({
   desde: hora,
   hasta: horaFin,
-  precio_minuto: z.number().nonnegative('El precio no puede ser negativo').max(100000, 'El precio por minuto no puede superar $100.000')
+  precio_minuto: z.number().positive('El precio del tramo debe ser mayor a 0').max(100000, 'El precio por minuto no puede superar $100.000')
 }).refine(t => t.desde !== t.hasta, { message: 'El tramo debe empezar y terminar a horas distintas', path: ['hasta'] });
 
 // Minutos del día que cubre un tramo (cruza la medianoche si termina antes de empezar).

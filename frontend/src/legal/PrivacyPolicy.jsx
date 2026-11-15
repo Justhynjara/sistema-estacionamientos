@@ -42,6 +42,8 @@ export default function PrivacyPolicy() {
         <li><strong>Render y Neon:</strong> alojan la aplicación y la base de datos.</li>
         <li><strong>Un proveedor de correo (SMTP):</strong> cuando esté activo, envía el correo de recuperación de contraseña a quien lo solicite.</li>
         <li><strong>OpenStreetMap:</strong> entrega las imágenes del mapa. Al cargarlas, tu navegador le revela tu dirección IP a ese servicio, como con cualquier mapa incrustado.</li>
+        <li><strong>Nominatim (OpenStreetMap):</strong> convierte en coordenadas las direcciones que escribes en "Desde", "Hacia" o en la postulación. Tu navegador le envía directamente ese texto y tu dirección IP.</li>
+        <li><strong>OSRM (project-osrm.org):</strong> calcula la ruta y el tiempo en auto. Tu navegador le envía las coordenadas de tu partida y del estacionamiento elegido, junto con tu dirección IP.</li>
       </ul>
       <p>No usamos Google Analytics, Meta Pixel ni ninguna herramienta de publicidad o rastreo. Más detalles de las cookies que sí usamos en nuestra <a href="/?legal=cookies">Política de Cookies</a>.</p>
 

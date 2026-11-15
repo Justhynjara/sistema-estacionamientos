@@ -3,7 +3,7 @@ import { pool } from '../config/database.js';
 import { env } from '../config/env.js';
 import { logger } from '../config/logger.js';
 import { webpayTransaction } from './webpay.service.js';
-import { reserveTicket, getReservationTtlMin } from './ticket.service.js';
+import { reserveTicket, getReservationTtlMin, exigirPatenteLibre } from './ticket.service.js';
 import { motivoNoReservable } from '../utils/horario.js';
 
 const STALE_PAYMENT_MIN = 30; // Transbank invalida el token bastante antes de esto.
@@ -29,7 +29,7 @@ export function startPaymentSweeper(logger) {
   }, 5 * 60000);
 }
 
-async function getReservaMontoClp() {
+export async function getReservaMontoClp() {
   const r = await pool.query(`SELECT valor FROM parametros_sistema WHERE clave='reserva_monto_clp'`);
   const monto = Number(r.rows[0]?.valor);
   return Number.isFinite(monto) && monto >= 100 ? monto : 100;
@@ -44,6 +44,7 @@ export async function startReservationPayment(estacionamientoId, patente) {
   const cerrado = motivoNoReservable(p.rows[0].horario, await getReservationTtlMin());
   if (cerrado) throw new Error(cerrado);
   if (p.rows[0].cupos_disponibles <= 0) throw new Error('Sin cupos disponibles');
+  await exigirPatenteLibre(pool, estacionamientoId, patente);
 
   const monto = await getReservaMontoClp();
   const buyOrder = ('R' + crypto.randomUUID().replace(/-/g, '')).slice(0, 26);

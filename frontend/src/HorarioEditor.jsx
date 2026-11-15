@@ -36,7 +36,12 @@ export default function HorarioEditor({ nombre, horario, onGuardar, onCancelar }
     if (invalida) { setError('Revisa los horarios: la apertura y el cierre de un día no pueden ser iguales.'); return; }
     setGuardando(true); setError('');
     try { await onGuardar(aHorario(filas)); }
-    catch (err) { setError(err.response?.data?.detalles?.[0]?.mensaje || err.response?.data?.error || 'No se pudo guardar el horario'); setGuardando(false); }
+    catch (err) {
+      const d = err.response?.data?.detalles?.[0];
+      const dia = d?.campo?.match(/^horario\.(\d)/)?.[1];
+      setError(d ? `${dia !== undefined ? `${DIAS[dia]}: ` : ''}${d.mensaje}` : err.response?.data?.error || 'No se pudo guardar el horario');
+      setGuardando(false);
+    }
   }
 
   return (

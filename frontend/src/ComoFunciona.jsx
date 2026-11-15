@@ -10,7 +10,7 @@ const TRANSCRIPCION = [
   'Filtra solo los abiertos y los que tienen cupos.',
   'Elige cuánto tiempo te quedas para ver el costo estimado, y ordénalos por precio.',
   'Traza la ruta en el mapa o ábrela en Waze.',
-  'Reserva tu cupo por $100 con Webpay; se descuentan de lo que pagas al salir.',
+  'Reserva tu cupo con un micropago en Webpay; se descuenta de lo que pagas al salir.',
   'Al llegar recibes un ticket con QR: escanéalo para ver tu tiempo y cuánto llevas a pagar.',
   'Si administras un estacionamiento, entra con tu cuenta.',
   'Ves tus estacionamientos con su ocupación y horario.',
@@ -22,7 +22,7 @@ const TRANSCRIPCION = [
 const PASOS = [
   ['search', 'Busca', 'Escribe tu destino o déjalo vacío para ver lo que hay a tu alrededor. Sin registrarte.'],
   ['coin', 'Compara', 'Cupos en tiempo real, horario, tarifa y cuánto te costaría quedarte 1 a 4 horas.'],
-  ['ticket', 'Reserva', 'Aparta tu cupo por $100 con Webpay. Se descuentan de lo que pagas al salir.'],
+  ['ticket', 'Reserva', 'Aparta tu cupo con un micropago en Webpay. Se descuenta de lo que pagas al salir.'],
   ['camera', 'Escanea tu ticket', 'Con la cámara ves cuánto tiempo llevas y cuánto vas a pagar, minuto a minuto.']
 ];
 

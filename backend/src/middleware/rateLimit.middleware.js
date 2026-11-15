@@ -44,6 +44,7 @@ export const authLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
   keyGenerator: realIp,
+  skipSuccessfulRequests: true,
   message: { error: 'Demasiados intentos. Intenta nuevamente en unos minutos.' }
 });
 
@@ -53,7 +54,19 @@ export const reservaLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
   keyGenerator: realIp,
+  skipFailedRequests: true,
   message: { error: 'Demasiadas reservas seguidas. Intenta nuevamente en unos minutos.' }
+});
+
+// Postular un estacionamiento tiene su propio contador: compartir el de reservas hacía que quien
+// postulaba gastara los intentos de reserva de su IP (y al revés) y recibiera un mensaje de reservas.
+export const solicitudLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  limit: 5,
+  standardHeaders: true,
+  legacyHeaders: false,
+  keyGenerator: realIp,
+  message: { error: 'Demasiadas postulaciones seguidas. Intenta nuevamente en una hora.' }
 });
 
 // La vista pública del ticket se refresca sola cada 30 s en cada teléfono con el QR abierto

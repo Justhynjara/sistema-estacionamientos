@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { api } from './services/api.js';
 import LocationPicker from './LocationPicker.jsx';
 import { comprimirImagen } from './utils/imageCompress.js';
@@ -21,6 +21,10 @@ export default function SolicitudClienteForm({ onCerrar }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [enviado, setEnviado] = useState(false);
+  const tituloRef = useRef(null);
+
+  // Al abrir el formulario el foco va al título, para que el lector de pantalla anuncie dónde está.
+  useEffect(() => { tituloRef.current?.focus(); }, []);
 
   async function agregarFotos(e) {
     const archivos = Array.from(e.target.files || []);
@@ -31,14 +35,13 @@ export default function SolicitudClienteForm({ onCerrar }) {
       return;
     }
     setComprimiendo(true); setError('');
-    try {
-      const nuevas = await Promise.all(archivos.map(comprimirImagen));
-      setFotos(f => [...f, ...nuevas]);
-    } catch {
-      setError('No se pudo procesar alguna imagen');
-    } finally {
-      setComprimiendo(false);
-    }
+    // Una imagen que no se puede leer no descarta las demás: se agregan las válidas y se nombra la que falló.
+    const resultados = await Promise.allSettled(archivos.map(comprimirImagen));
+    const nuevas = resultados.filter(r => r.status === 'fulfilled').map(r => r.value);
+    const fallidas = archivos.filter((_, i) => resultados[i].status === 'rejected').map(a => a.name);
+    setFotos(f => [...f, ...nuevas]);
+    if (fallidas.length) setError(`No se pudo leer como imagen: ${fallidas.join(', ')}`);
+    setComprimiendo(false);
   }
 
   function quitarFoto(i) {
@@ -83,12 +86,12 @@ export default function SolicitudClienteForm({ onCerrar }) {
     <div className="card">
       <div className="card-head">
         <div>
-          <h2>Datos de tu estacionamiento</h2>
+          <h2 ref={tituloRef} tabIndex={-1}>Datos de tu estacionamiento</h2>
           <p className="lead" style={{ marginBottom: 0 }}>Nuestro equipo de soporte revisará los datos y fotos para validar que cumple los requisitos.</p>
         </div>
         <button type="button" className="secondary small" onClick={onCerrar}>Cerrar</button>
       </div>
-      {error && <p className="badge off">{error}</p>}
+      {error && <p className="badge off" role="alert">{error}</p>}
       <form onSubmit={enviar}>
         {/* Señuelo antibot: fuera de la pantalla y sin tabulador, así que ninguna persona lo ve ni
             lo llena; un bot que autocompleta todos los campos del formulario, sí. */}
@@ -105,7 +108,7 @@ export default function SolicitudClienteForm({ onCerrar }) {
         <div className="row-form">
           <input placeholder="Tu nombre" aria-label="Tu nombre" value={form.nombre_solicitante} onChange={e => setForm({ ...form, nombre_solicitante: e.target.value })} required />
           <input type="email" placeholder="Tu email" aria-label="Tu email" value={form.email} onChange={e => setForm({ ...form, email: e.target.value })} required />
-          <input type="tel" placeholder="Teléfono (opcional)" aria-label="Teléfono" value={form.telefono} onChange={e => setForm({ ...form, telefono: e.target.value })} />
+          <input type="tel" placeholder="Teléfono (opcional)" aria-label="Teléfono" pattern="[+]?[0-9 ().-]{8,20}" title="Por ejemplo: +56 9 1234 5678" value={form.telefono} onChange={e => setForm({ ...form, telefono: e.target.value })} />
         </div>
         <input placeholder="Nombre del establecimiento" aria-label="Nombre del establecimiento" value={form.nombre_establecimiento} onChange={e => setForm({ ...form, nombre_establecimiento: e.target.value })} required />
         <input placeholder="Dirección" aria-label="Dirección" value={form.direccion} onChange={e => setForm({ ...form, direccion: e.target.value })} required />

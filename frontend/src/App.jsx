@@ -12,6 +12,9 @@ import LegalPage from './legal/LegalPage.jsx';
 import Footer from './legal/Footer.jsx';
 import CookieNotice from './legal/CookieNotice.jsx';
 import {CONTACTO_LEGAL} from './legal/contenido.js';
+import {CLAVE_ULTIMA_RESERVA} from './utils/reserva.js';
+import {useReservaConfig} from './utils/reservaConfig.js';
+import {formatCLP} from './utils/tarifa.js';
 import ComoFunciona from './ComoFunciona.jsx';
 import AccesoAuto from './AccesoAuto.jsx';
 import Icon,{SignE} from './Icon.jsx';
@@ -87,7 +90,9 @@ function Login({onLogin,onCancel,onForgot}){
       await new Promise(ok=>setTimeout(ok,reducido?0:650));
       onLogin({...r.data.user,debeCambiarPassword:r.data.debeCambiarPassword});
     }
-    catch{alert('Credenciales inválidas')}
+    catch(err){
+      alert(err.response?.data?.error || (err.response ? 'Credenciales inválidas' : 'No pudimos conectar con el servidor. Revisa tu conexión e intenta de nuevo.'));
+    }
     finally{setLoading(false)}
   }
   return <LoginShell paso={paso} mostrarClave={mostrarClave}>
@@ -209,6 +214,8 @@ function CambiarPasswordObligatorio({onListo,onSalir}){
 
 function PagoBanner({estado,monto,orden,onClose}){
   if(!estado) return null;
+  monto=/^\d{1,7}$/.test(monto||'')?monto:null;
+  orden=/^[A-Za-z0-9]{1,26}$/.test(orden||'')?orden:null;
   const montoTxt=monto?` de $${Number(monto).toLocaleString('es-CL')}`:'';
   const textos={
     aprobado:{cls:'ok',texto:`Pago aprobado${monto?` por $${Number(monto).toLocaleString('es-CL')}`:''}.`},
@@ -246,7 +253,25 @@ function App(){
  const [resetToken,setResetToken]=useState(null);
  const [pago,setPago]=useState(null);
  const [reservaCodigo,setReservaCodigo]=useState(null);
- const [mostrarSolicitud,setMostrarSolicitud]=useState(false);
+ // El formulario de postulación vive en la URL (?postular): así el botón "atrás" lo cierra en vez de
+ // sacar a la persona del sitio, y se puede volver a él.
+ const [mostrarSolicitud,setMostrarSolicitud]=useState(()=>new URLSearchParams(window.location.search).has('postular'));
+ const [sesionExpirada,setSesionExpirada]=useState(false);
+ const reservaCfg=useReservaConfig();
+ function abrirSolicitud(){
+   const url=new URL(window.location.href); url.search='?postular';
+   window.history.pushState({postular:true},'',url);
+   setMostrarSolicitud(true);
+ }
+ function cerrarSolicitud(){
+   if(window.history.state?.postular) window.history.back();
+   else { window.history.replaceState({},'',window.location.pathname); setMostrarSolicitud(false); }
+ }
+ useEffect(()=>{
+   const onPop=()=>setMostrarSolicitud(new URLSearchParams(window.location.search).has('postular'));
+   window.addEventListener('popstate',onPop);
+   return ()=>window.removeEventListener('popstate',onPop);
+ },[]);
  const [ticketCodigo,setTicketCodigo]=useState(null);
  // Cada lectura con el botón de cámara remonta el panel del dueño para que tome el ticket nuevo.
  const [lecturaQR,setLecturaQR]=useState(0);
@@ -289,7 +314,12 @@ function App(){
    if(reset) setResetToken(reset);
    if(pagoEstado) setPago({estado:pagoEstado, monto:params.get('monto'), orden:params.get('orden')});
    if(reserva) setReservaCodigo(reserva);
-   if(legal) setLegalPage(legal);
+   if(['privacidad','terminos','cookies'].includes(legal)) setLegalPage(legal);
+   // El comprobante de la última reserva pagada sobrevive a una recarga o a volver atrás.
+   try{
+     if(reserva) localStorage.setItem(CLAVE_ULTIMA_RESERVA,reserva);
+     else { const guardada=localStorage.getItem(CLAVE_ULTIMA_RESERVA); if(guardada && !ticket) setReservaCodigo(guardada); }
+   }catch{ /* sin almacenamiento local: solo se pierde el respaldo */ }
    if(reset || pagoEstado || reserva){
      const url=new URL(window.location.href);
      url.search='';
@@ -316,7 +346,7 @@ function App(){
  }
 
  useEffect(()=>{
-   const onLogout=()=>setUser(null);
+   const onLogout=()=>setUser(u=>{ if(u) setSesionExpirada(true); return null; });
    window.addEventListener('auth:logout',onLogout);
    return ()=>window.removeEventListener('auth:logout',onLogout);
  },[]);
@@ -372,7 +402,7 @@ function App(){
      <Header/>
      <main className="container" style={{maxWidth:880}}>
        <div className="vidrio-cabeza"><h1>Postula tu estacionamiento</h1></div>
-       <SolicitudClienteForm onCerrar={()=>setMostrarSolicitud(false)}/>
+       <SolicitudClienteForm onCerrar={cerrarSolicitud}/>
      </main>
      <Footer/>
    </div>;
@@ -402,13 +432,14 @@ function App(){
 
  if(!user){
    return <div className="vidrio">
-     <Header onAcceso={abrirLogin} onPostular={()=>setMostrarSolicitud(true)}/>
+     <Header onAcceso={abrirLogin} onPostular={abrirSolicitud}/>
      <SignBand titulo="Encuentra estacionamiento cerca de tu destino">
-       <p><span className="live"><span className="live-dot" aria-hidden="true"/>Cupos en tiempo real</span><br/>Sin registro. Reserva tu cupo por $100, que se descuentan al salir.</p>
+       <p><span className="live"><span className="live-dot" aria-hidden="true"/>Cupos en tiempo real</span><br/>Sin registro. Reserva tu cupo por {formatCLP(reservaCfg.monto)}, que se descuentan al salir.</p>
      </SignBand>
      <PagoBanner estado={pago?.estado} monto={pago?.monto} orden={pago?.orden} onClose={()=>setPago(null)}/>
+     {sesionExpirada && <div className="pago-banner"><button type="button" className="badge off" role="alert" onClick={()=>setSesionExpirada(false)} aria-label="Tu sesión expiró. Inicia sesión de nuevo para continuar. Cerrar aviso"><span>Tu sesión expiró. Inicia sesión de nuevo para continuar.</span><Icon name="x" size={16} className="cerrar"/></button></div>}
      <main>
-       <BuscarCercanos reservaCodigoInicial={reservaCodigo}/>
+       <BuscarCercanos reservaCodigoInicial={reservaCodigo} reservaRecienPagada={pago?.estado==='aprobado'}/>
        <section className="owner-strip" aria-labelledby="owner-strip-titulo">
          <div className="inner">
            <SignE size={40}/>
@@ -417,14 +448,14 @@ function App(){
              <p>Emite y cobra tickets con QR, mira tu ocupación en tiempo real y revisa lo recaudado en el día.</p>
            </div>
            <div className="acciones">
-             <button type="button" className="secondary" onClick={()=>setMostrarSolicitud(true)}>Postular mi estacionamiento</button>
+             <button type="button" className="secondary" onClick={abrirSolicitud}>Postular mi estacionamiento</button>
              <button type="button" className="dark" onClick={abrirLogin}>Ingresar<Icon name="arrowRight" size={16}/></button>
            </div>
          </div>
        </section>
        <ComoFunciona/>
      </main>
-     <ChatBot onAbrirSolicitud={()=>setMostrarSolicitud(true)}/>
+     <ChatBot onAbrirSolicitud={abrirSolicitud}/>
      <EscanearTicket onCodigo={abrirTicketEscaneado} rotulo="Escanear mi ticket" ayuda="Apunta al código QR de tu ticket para ver cuánto tiempo llevas y cuánto vas a pagar."/>
      <Footer/>
      <CookieNotice/>
@@ -446,7 +477,7 @@ function App(){
        ? <ClientePanel key={lecturaQR} ticketInicial={ticketCodigo} onTicketConsumido={cerrarTicket}/>
        : user.rol==='SOPORTE'
        ? <SoportePanel/>
-       : <BuscarCercanos reservaCodigoInicial={reservaCodigo}/>}
+       : <BuscarCercanos reservaCodigoInicial={reservaCodigo} reservaRecienPagada={pago?.estado==='aprobado'}/>}
    </main>
    {user.rol==='CLIENTE' && <EscanearTicket onCodigo={abrirTicketEscaneado} rotulo="Escanear para cobrar" ayuda="Apunta al código QR del ticket del conductor: si es de uno de tus estacionamientos, pasas directo al cobro."/>}
    {user.rol==='USUARIO' && <EscanearTicket onCodigo={abrirTicketEscaneado} rotulo="Escanear mi ticket" ayuda="Apunta al código QR de tu ticket para ver cuánto tiempo llevas y cuánto vas a pagar."/>}

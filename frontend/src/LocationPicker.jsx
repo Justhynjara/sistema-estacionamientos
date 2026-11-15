@@ -41,10 +41,12 @@ export default function LocationPicker({ value, onChange }) {
   return (
     <div style={{ margin: '6px 0 14px' }}>
       <div className="row-form">
-        <input placeholder="Buscar dirección para ubicar en el mapa" value={busqueda} onChange={e => setBusqueda(e.target.value)} aria-label="Buscar dirección" />
+        {/* Este campo vive dentro del formulario de postulación: Enter debe buscar la dirección, no
+            enviar la postulación (quien usa solo teclado no puede marcar el punto en el mapa). */}
+        <input placeholder="Buscar dirección para ubicar en el mapa" value={busqueda} onChange={e => setBusqueda(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') buscarDireccion(e); }} aria-label="Buscar dirección" />
         <button type="button" onClick={buscarDireccion} disabled={buscando} className="secondary">{buscando ? <span className="spinner" /> : <Icon name="search" />}{buscando ? 'Buscando...' : 'Buscar'}</button>
       </div>
-      {error && <p className="badge off">{error}</p>}
+      {error && <p className="badge off" role="alert">{error}</p>}
       <p className="muted small" style={{ margin: '8px 0 6px' }}>O haz clic directamente en el mapa para fijar la ubicación exacta.</p>
       <div style={{ borderRadius: 8, overflow: 'hidden', border: '1px solid var(--rule)' }}>
         <MapContainer center={[center.lat, center.lng]} zoom={value ? 15 : 12} style={{ height: 260, width: '100%' }}>

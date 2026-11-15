@@ -34,6 +34,19 @@ export function emitCupos(estacionamientoId, cuposDisponibles, cupoMaximo){
   });
 }
 
+// Un vehículo no puede estar dos veces dentro del mismo recinto: emitir otro ticket (o pagar otra
+// reserva) con una patente que ya tiene uno vigente consumía un cupo de más.
+export async function exigirPatenteLibre(db, estacionamientoId, patente){
+  if(!patente) return;
+  const r=await db.query(
+    `SELECT estado FROM tickets WHERE estacionamiento_id=$1 AND patente=$2 AND estado IN ('ACTIVO','RESERVADO') LIMIT 1`,
+    [estacionamientoId, patente]
+  );
+  if(r.rowCount) throw new Error(r.rows[0].estado === 'ACTIVO'
+    ? `La patente ${patente} ya tiene un ticket activo en este estacionamiento`
+    : `La patente ${patente} ya tiene una reserva vigente en este estacionamiento`);
+}
+
 export async function createTicket(estacionamientoId, patente, clienteId){
   const client=await pool.connect();
   try {
@@ -45,6 +58,7 @@ export async function createTicket(estacionamientoId, patente, clienteId){
     if(!p.rowCount) throw new Error('Estacionamiento no encontrado');
     if(p.rows[0].cliente_id !== clienteId) throw new Error('Este estacionamiento no te pertenece');
     if(p.rows[0].cupos_disponibles <= 0) throw new Error('Sin cupos disponibles');
+    await exigirPatenteLibre(client, estacionamientoId, patente);
 
     const qr=generateQR();
     const t=await client.query(
@@ -136,6 +150,7 @@ export async function reserveTicket(estacionamientoId, patente){
     const cerrado=motivoNoReservable(p.rows[0].horario, ttlMin);
     if(cerrado) throw new Error(cerrado);
     if(p.rows[0].cupos_disponibles <= 0) throw new Error('Sin cupos disponibles');
+    await exigirPatenteLibre(client, estacionamientoId, patente);
 
     const qr=generateQR();
     const expira=new Date(Date.now()+ttlMin*60000);
@@ -160,10 +175,10 @@ export async function getReservaPublica(qr){
             e.nombre AS estacionamiento_nombre,e.direccion AS estacionamiento_direccion,
             e.latitud,e.longitud
      FROM tickets t JOIN estacionamientos e ON e.id=t.estacionamiento_id
-     WHERE t.codigo_qr=$1 AND t.estado IN ('RESERVADO','ACTIVO')`, [qr]
+     WHERE t.codigo_qr IN ($1, lower($1)) AND t.estado IN ('RESERVADO','ACTIVO')`, [qr]
   );
   if(!r.rowCount) throw new Error('Reserva no encontrada o ya expiró');
-  return r.rows[0];
+  return { ...r.rows[0], ahora: new Date().toISOString() };
 }
 
 // Vista pública del ticket: la ve quien escanea el QR con la cámara del teléfono (normalmente el
@@ -175,7 +190,8 @@ export async function getTicketPublico(qr){
             e.nombre AS estacionamiento_nombre,e.direccion AS estacionamiento_direccion,
             e.precio_minuto,e.tarifa_minima,e.tarifas_horario
      FROM tickets t JOIN estacionamientos e ON e.id=t.estacionamiento_id
-     WHERE t.codigo_qr=$1`, [qr]
+     -- Los códigos se generan en minúsculas: uno transcrito a mano en mayúsculas también se encuentra.
+     WHERE t.codigo_qr IN ($1, lower($1))`, [qr]
   );
   if(!r.rowCount) throw new Error('Ticket no encontrado');
   const row=r.rows[0];

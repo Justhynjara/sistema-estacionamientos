@@ -10,6 +10,14 @@ function hora(iso) {
   return new Date(iso).toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit', hourCycle: 'h23' });
 }
 
+// "a las 20:08" si fue hoy; "el 27-10 a las 20:08" si no: una estadía de varios días no debe leerse
+// como si hubiera empezado hoy.
+function cuando(iso) {
+  const d = new Date(iso);
+  const dia = d.toDateString() === new Date().toDateString() ? '' : `el ${d.toLocaleDateString('es-CL', { day: '2-digit', month: '2-digit' })} `;
+  return `${dia}a las ${hora(iso)}`;
+}
+
 // Lo que ve quien escanea el QR del ticket con la cámara del teléfono (normalmente el conductor):
 // cuánto lleva estacionado y cuánto tendría que pagar si saliera ahora. No requiere sesión.
 export default function TicketPublico({ codigo, onEntrarDueno, onCerrar }) {
@@ -31,9 +39,12 @@ export default function TicketPublico({ codigo, onEntrarDueno, onCerrar }) {
         })
         .catch(err => {
           if (!vivo) return;
-          setError(err.response?.status === 404
+          const status = err.response?.status;
+          setError(status === 404
             ? 'No encontramos este ticket. Revisa que el código QR esté completo.'
-            : 'No pudimos cargar tu ticket. Intenta nuevamente en un momento.');
+            : status === 400
+              ? 'Ese código no corresponde a un ticket. Revisa que el código QR esté completo.'
+              : 'No pudimos cargar tu ticket. Intenta nuevamente en un momento.');
         });
     }
     cargar();
@@ -81,7 +92,7 @@ export default function TicketPublico({ codigo, onEntrarDueno, onCerrar }) {
             <p aria-label="Tiempo estacionado" className="valor">
               {formatCronometro(ahoraServidor - new Date(t.fecha_entrada).getTime())}
             </p>
-            <p className="muted small" style={{ margin: 0 }}>Entraste a las <span className="mono">{hora(t.fecha_entrada)}</span> · {formatDuracion(minutos)} cobrados</p>
+            <p className="muted small" style={{ margin: 0 }}>Entraste <span className="mono">{cuando(t.fecha_entrada)}</span> · {formatDuracion(minutos)} cobrados</p>
           </div>
           <div className="ticket-metrica" style={{ marginTop: 12 }}>
             <p className="etq">Monto a pagar hasta ahora</p>
@@ -113,7 +124,7 @@ export default function TicketPublico({ codigo, onEntrarDueno, onCerrar }) {
                 {porVencer && <p className="badge warn" role="alert">Quedan menos de {AVISO_RESERVA_MIN} minutos. Si no alcanzas a llegar, el cupo se libera.</p>}
               </div>
             )}
-          <p className="muted">Muestra este QR al dueño al llegar para validar tu cupo. Tarifa: {formatTarifa(t)}.</p>
+          {!vencida && <p className="muted">Muestra este QR al dueño al llegar para validar tu cupo. Tarifa: {formatTarifa(t)}.</p>}
         </>
       );
     }

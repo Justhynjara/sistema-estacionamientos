@@ -60,7 +60,9 @@ export function formatCLP(n) {
 // horario si los hay: "$25/min · 20:00–08:00 $10/min".
 export function formatTarifa({ precio_minuto, tarifa_minima, tarifas_horario }) {
   const base = `${formatCLP(precio_minuto)}/min`;
-  const partes = [base, ...(tarifas_horario || []).map(t => `${formatTramo(t)} ${formatCLP(t.precio_minuto)}/min`)];
+  const tramos = (tarifas_horario || []).map(t => `${formatTramo(t)} ${formatCLP(t.precio_minuto)}/min`);
+  const todoElDia = (tarifas_horario || []).some(t => formatTramo(t) === 'todo el día');
+  const partes = todoElDia ? tramos : [base, ...tramos];
   if (Number(tarifa_minima) > 0) partes.push(`mínimo ${formatCLP(tarifa_minima)}`);
   return partes.join(' · ');
 }

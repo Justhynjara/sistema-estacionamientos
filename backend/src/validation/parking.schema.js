@@ -23,7 +23,7 @@ export const createParkingSchema = z.object({
   longitud: z.coerce.number().min(-180).max(180),
   precio_minuto: precioMinuto,
   tarifa_minima: tarifaMinima.default(0),
-  cupo_maximo: z.coerce.number().int().positive()
+  cupo_maximo: z.coerce.number().int().positive().max(100000, 'El cupo máximo no puede superar 100.000')
 }).refine(tieneTarifa, sinTarifa);
 
 export const updatePricingSchema = z.object({
@@ -32,7 +32,7 @@ export const updatePricingSchema = z.object({
 }).refine(tieneTarifa, sinTarifa);
 
 export const updateCapacitySchema = z.object({
-  cupo_maximo: z.coerce.number().int().positive()
+  cupo_maximo: z.coerce.number().int().positive().max(100000, 'El cupo máximo no puede superar 100.000')
 });
 
 export const updateOwnerSchema = z.object({

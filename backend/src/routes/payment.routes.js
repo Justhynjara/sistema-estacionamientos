@@ -1,5 +1,6 @@
 import {Router} from 'express';
-import {startReservationPayment,confirmPayment} from '../services/payment.service.js';
+import {startReservationPayment,confirmPayment,getReservaMontoClp} from '../services/payment.service.js';
+import {getReservationTtlMin} from '../services/ticket.service.js';
 import {startReservationPaymentSchema} from '../validation/payment.schema.js';
 import {validateBody} from '../middleware/validate.middleware.js';
 import {reservaLimiter} from '../middleware/rateLimit.middleware.js';
@@ -7,6 +8,12 @@ import {env} from '../config/env.js';
 import {logger} from '../config/logger.js';
 
 const r=Router();
+
+// Monto y duración de la reserva, que el administrador puede cambiar: la web los muestra desde aquí
+// en vez de tenerlos escritos (antes decía "$100" y "10 minutos" aunque el parámetro fuera otro).
+r.get('/reserva-config',async(req,res)=>{
+  res.json({monto:await getReservaMontoClp(),ttl_min:await getReservationTtlMin()});
+});
 
 // Micropago público (sin autenticación) para confirmar una reserva y evitar reservas falsas.
 // Es el único cobro real por Webpay del sistema: el cobro al cerrar un ticket lo hace el
@@ -20,7 +27,8 @@ r.post('/webpay/reserve-start',reservaLimiter,validateBody(startReservationPayme
 // tanto si fue exitoso como si el usuario lo canceló.
 async function handleWebpayReturn(req,res){
   const token=req.body?.token_ws || req.query?.token_ws;
-  if(!token){
+  const abortado=req.body?.TBK_TOKEN || req.query?.TBK_TOKEN;
+  if(!token || abortado){
     // TBK_TOKEN presente = el usuario abortó el pago en Webpay.
     return res.redirect(`${env.frontendUrl}/?pago=cancelado`);
   }

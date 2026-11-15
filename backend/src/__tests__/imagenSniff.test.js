@@ -25,4 +25,12 @@ describe('coincideConTipoDeclarado: los bytes reales deben coincidir con lo que 
     assert.equal(coincideConTipoDeclarado(PNG_1PX, 'webp'), false);
     assert.equal(coincideConTipoDeclarado(JPEG_1PX, 'png'), false);
   });
+
+  test('rechaza un archivo que solo copia la firma inicial de la imagen (políglota)', () => {
+    const firmaPng = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
+    const poliglota = Buffer.concat([firmaPng, Buffer.from('<html><script>alert(1)</script></html>')]);
+    assert.equal(coincideConTipoDeclarado('data:image/png;base64,' + poliglota.toString('base64'), 'png'), false);
+    const jpegCortado = Buffer.concat([Buffer.from([0xff, 0xd8, 0xff, 0xe0]), Buffer.from('no termina como JPEG')]);
+    assert.equal(coincideConTipoDeclarado('data:image/jpeg;base64,' + jpegCortado.toString('base64'), 'jpeg'), false);
+  });
 });

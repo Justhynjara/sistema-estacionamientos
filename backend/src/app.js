@@ -1,4 +1,5 @@
 import 'express-async-errors';
+import './config/zod.js';
 import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';

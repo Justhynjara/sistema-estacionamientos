@@ -74,10 +74,11 @@ describe('cambio de contraseña obligatorio al primer ingreso', () => {
   });
 
   test('change-password rechaza la clave actual incorrecta', async () => {
+    // 400 y no 401: un 401 hace que la web crea que la sesión expiró y la cierre sin explicar nada.
     const res = await request(app).post('/api/auth/change-password')
       .set('Authorization', `Bearer ${tokenNuevo}`)
       .send({ passwordActual: 'equivocada9', passwordNueva: CLAVE_NUEVA });
-    assert.equal(res.status, 401);
+    assert.equal(res.status, 400);
   });
 
   test('change-password rechaza una clave nueva demasiado corta', async () => {

@@ -2,6 +2,10 @@
 // últimos 3 se avisa al conductor y se destaca en la lista del dueño.
 export const AVISO_RESERVA_MIN = 3;
 
+// La última reserva pagada se recuerda en este navegador: si el conductor recarga o vuelve atrás
+// después de pagar, el comprobante (con su QR) sigue disponible mientras la reserva esté vigente.
+export const CLAVE_ULTIMA_RESERVA = 'ultima_reserva';
+
 export function estadoReserva(expira, ahora = Date.now()) {
   const restanteMs = Math.max(0, new Date(expira).getTime() - ahora);
   return {
