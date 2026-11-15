@@ -987,6 +987,9 @@ body:has(.acceso){background:#050f1f}
 .vidrio .parada{border-bottom-color:rgba(14,23,38,.08)}
 .vidrio .parada.sel{background:linear-gradient(90deg,rgba(232,240,250,.95),transparent 85%);border-radius:0 14px 14px 0}
 .vidrio .gps-toggle{border-radius:14px;background:rgba(255,255,255,.88)}
+/* El vidrio no debe tapar el estado activo: con GPS encendido el ícono es blanco sobre azul. */
+.vidrio .gps-toggle.on{background:var(--route);border-color:var(--route);color:#fff}
+.vidrio .gps-toggle.on:hover{background:var(--route-dark);border-color:var(--route-dark)}
 .vidrio .mapa-leyenda{border-radius:999px;background:rgba(255,255,255,.85);-webkit-backdrop-filter:var(--blur);backdrop-filter:var(--blur)}
 .vidrio .filtro{background:rgba(255,255,255,.8)}
 .vidrio .address-suggestions{border-radius:16px;background:rgba(255,255,255,.96)}
